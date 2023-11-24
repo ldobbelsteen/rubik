@@ -1,0 +1,1 @@
+minimum size solution of 9 moves found in 1 day, 5:06:14.707291 using 7 cores and 20 moves at maximum: half turn row 0, half turn column 1, quarter turn row 1 to the right, quarter turn depth 0 counterclockwise, quarter turn column 0 downwards, quarter turn row 1 to the right, half turn depth 1, quarter turn column 1 downwards, quarter turn depth 1 counterclockwise
