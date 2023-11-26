@@ -1,6 +1,6 @@
 import numpy as np
 from PIL import Image, ImageDraw
-import solve_puzzle
+import solve
 import sys
 
 
@@ -21,7 +21,7 @@ def print_puzzle(puzzle: list[list[list[int]]]):
                         start_x + ((x + 1) * square_size),
                         start_y + ((y + 1) * square_size),
                     ),
-                    fill=solve_puzzle.color_name(face[y][x]),
+                    fill=solve.color_name(face[y][x]),
                     outline="black",
                     width=4,
                 )
