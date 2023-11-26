@@ -1,22 +1,18 @@
-import sys
 import os
-import solve
+import sys
+from multiprocessing import cpu_count
+from solve import solve_puzzles
 
-# python solve_all_unsolved.py {directory} {max_moves} {minimize_cores}
+# python solve_unsolved.py {puzzle_dir}
 if __name__ == "__main__":
-    directory = sys.argv[1]
-    max_moves = int(sys.argv[2])
-    minimize_cores = int(sys.argv[3])
-
-    n = int(directory[-1])
-    files = [
-        os.path.join(directory, f)
-        for f in os.listdir(directory)
-        if os.path.isfile(os.path.join(directory, f))
-    ]
-    for file in files:
-        if file.endswith(".txt") and file + ".solution" not in files:
-            print(
-                f"\nsolving {file} with max moves {max_moves} and minimize cores {minimize_cores}..."
-            )
-            solve.main(file, max_moves, minimize_cores)
+    puzzles: list[str] = []
+    puzzle_dir = sys.argv[1]
+    for file in os.listdir(puzzle_dir):
+        path = os.path.join(puzzle_dir, file)
+        if (
+            os.path.isfile(path)
+            and path.endswith(".cube")
+            and not os.path.isfile(path + ".result")
+        ):
+            puzzles.append(path)
+    solve_puzzles(sorted(puzzles), cpu_count())
