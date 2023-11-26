@@ -1,13 +1,15 @@
-import numpy as np
 import random
 import sys
+import numpy as np
 
-# python generate_puzzle.py {n} {randomizations}
-if __name__ == "__main__":
-    n = int(sys.argv[1])
-    randomizations = int(sys.argv[2])
 
-    result = np.array([np.array([np.array([f for _ in range(n)]) for _ in range(n)]) for f in range(6)])
+def main(n: int, randomizations: int):
+    result = np.array(
+        [
+            np.array([np.array([f for _ in range(n)]) for _ in range(n)])
+            for f in range(6)
+        ]
+    )
 
     for _ in range(randomizations):
         i = random.randrange(n)
@@ -110,6 +112,11 @@ if __name__ == "__main__":
                 if i == n - 1:
                     result[2] = np.rot90(result[2], k=2)
 
-    file = open(f"puzzles/dim{n}/random{randomizations}.txt", "w")
+    file = open(f"puzzles/dim{n}-random{randomizations}", "w")
     file.write(str(result.tolist()))
     file.close()
+
+
+# e.g. python generate.py {n} {randomizations}
+if __name__ == "__main__":
+    main(int(sys.argv[1]), int(sys.argv[2]))

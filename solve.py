@@ -64,12 +64,19 @@ def move_name(ma: int, md: int, mi: int):
 
 def state_to_cube(n, model, state):
     """Convert a state to a printable cube using a model."""
-    return np.array([[[model[state[f][y][x]].as_long() for x in range(n)] for y in range(n)] for f in range(6)])
+    return np.array(
+        [
+            [[model[state[f][y][x]].as_long() for x in range(n)] for y in range(n)]
+            for f in range(6)
+        ]
+    )
 
 
 def impl(conditions: list, consequences: list):
     """Express an implication in a Z3 disjuction, which is more efficient."""
-    return z3.Or([z3.Not(condition) for condition in conditions] + [z3.And(consequences)])
+    return z3.Or(
+        [z3.Not(condition) for condition in conditions] + [z3.And(consequences)]
+    )
 
 
 def solve(starting_state: list[list[list[int]]], max_moves: int):
@@ -78,14 +85,24 @@ def solve(starting_state: list[list[list[int]]], max_moves: int):
 
     # List of states of the cube. The front, right, back and left faces face upwards.
     # The bottom and top faces both face upwards when rotating them towards you.
-    color_states = [[[[z3.Int(f"{s},{f},{y},{x}") for x in range(n)] for y in range(n)] for f in range(6)] for s in range(max_moves + 1)]
+    color_states = [
+        [
+            [[z3.Int(f"{s},{f},{y},{x}") for x in range(n)] for y in range(n)]
+            for f in range(6)
+        ]
+        for s in range(max_moves + 1)
+    ]
 
     # Restrict color states domains.
     for s in range(len(color_states)):
         for f in range(6):
             for y in range(n):
                 for x in range(n):
-                    solver.add(z3.And(color_states[s][f][y][x] >= 0, color_states[s][f][y][x] < 6))
+                    solver.add(
+                        z3.And(
+                            color_states[s][f][y][x] >= 0, color_states[s][f][y][x] < 6
+                        )
+                    )
 
     # Restrict starting colors of cube to input.
     for f in range(6):
@@ -96,7 +113,20 @@ def solve(starting_state: list[list[list[int]]], max_moves: int):
     def is_complete(s: int):
         """Return restriction on whether a state is complete."""
         return z3.And(
-            [z3.And([z3.And([color_states[s][f][y][x] == color_states[s][f][0][0] for x in range(n)]) for y in range(n)]) for f in range(6)]
+            [
+                z3.And(
+                    [
+                        z3.And(
+                            [
+                                color_states[s][f][y][x] == color_states[s][f][0][0]
+                                for x in range(n)
+                            ]
+                        )
+                        for y in range(n)
+                    ]
+                )
+                for f in range(6)
+            ]
         )
 
     # Restrict final state to being complete.
@@ -133,18 +163,37 @@ def solve(starting_state: list[list[list[int]]], max_moves: int):
         solver.add(
             z3.Implies(
                 move_indices[s - 1] == n,
-                z3.And([color_states[s][f][y][x] == color_states[s - 1][f][y][x] for f in range(6) for y in range(n) for x in range(n)]),
+                z3.And(
+                    [
+                        color_states[s][f][y][x] == color_states[s - 1][f][y][x]
+                        for f in range(6)
+                        for y in range(n)
+                        for x in range(n)
+                    ]
+                ),
             )
         )
 
     # Restrict color states using shortcuts file.
-    shortcuts: list[list[list[set[tuple[tuple[int | None, int | None, int | None], tuple[int, int, int]]]]]] = eval(
-        open(f"shortcuts/dim{n}/shortcuts.txt", "r").read()
-    )
+    shortcuts: list[
+        list[
+            list[
+                set[
+                    tuple[
+                        tuple[int | None, int | None, int | None], tuple[int, int, int]
+                    ]
+                ]
+            ]
+        ]
+    ] = eval(open(f"shortcuts/dim{n}/shortcuts.txt", "r").read())
     for s in range(1, len(color_states)):
         # Create storage for collecting implications together.
         implications = {
-            ma: {mi: {md: set() for md in list(range(3)) + [None]} for mi in list(range(n)) + [None]} for ma in list(range(3)) + [None]
+            ma: {
+                mi: {md: set() for md in list(range(3)) + [None]}
+                for mi in list(range(n)) + [None]
+            }
+            for ma in list(range(3)) + [None]
         }
 
         # Collect implications from shortcuts file.
@@ -168,8 +217,11 @@ def solve(starting_state: list[list[list[int]]], max_moves: int):
                     if md is not None:
                         conditions.append(move_directions[s - 1] == md)
                     consequences = [
-                        color_states[s][f][y][x] == color_states[s - 1][f_target][y_target][x_target]
-                        for (f, y, x), (f_target, y_target, x_target) in implications[ma][mi][md]
+                        color_states[s][f][y][x]
+                        == color_states[s - 1][f_target][y_target][x_target]
+                        for (f, y, x), (f_target, y_target, x_target) in implications[
+                            ma
+                        ][mi][md]
                     ]
                     if len(consequences) == 0:
                         continue
@@ -196,7 +248,19 @@ def solve(starting_state: list[list[list[int]]], max_moves: int):
             z3.Or(
                 [
                     move_axes[s - 1] != move_axes[s],
-                    z3.And([z3.And([z3.Or(move_indices[s - 1] != b, move_indices[s] != c) for c in range(1, b)]) for b in range(n, 1, -1)]),
+                    z3.And(
+                        [
+                            z3.And(
+                                [
+                                    z3.Or(
+                                        move_indices[s - 1] != b, move_indices[s] != c
+                                    )
+                                    for c in range(1, b)
+                                ]
+                            )
+                            for b in range(n, 1, -1)
+                        ]
+                    ),
                 ]
             )
         )
@@ -227,13 +291,19 @@ def main(puzzle_file: str, max_moves: int, minimize_cores: int):
         if solution == "unsat":
             print(f"no solution possible, found in {datetime.now()-start}")
         else:
-            print(f"solution of {len(solution)} moves found in {datetime.now()-start}: {', '.join(solution)}")
+            print(
+                f"solution of {len(solution)} moves found in {datetime.now()-start}: {', '.join(solution)}"
+            )
         exit()
 
     best_solution = None
     with Manager() as manager:
-        prospects = list(range(max_moves + 1))  # try all max_moves from 0 to n (inclusive)
-        processes: dict[int, Process] = {}  # store all running processes with their max_moves parameter
+        prospects = list(
+            range(max_moves + 1)
+        )  # try all max_moves from 0 to n (inclusive)
+        processes: dict[
+            int, Process
+        ] = {}  # store all running processes with their max_moves parameter
         solutions = manager.Queue()  # queue into which solutions are put
 
         def spawn_new_solver():
@@ -246,7 +316,9 @@ def main(puzzle_file: str, max_moves: int, minimize_cores: int):
             if len(prospects) > 0:
                 median = len(prospects) // 2
                 max_moves = prospects.pop(median)
-                process = Process(target=solve_wrapper, args=(puzzle, max_moves, solutions))
+                process = Process(
+                    target=solve_wrapper, args=(puzzle, max_moves, solutions)
+                )
                 assert not max_moves in processes
                 processes[max_moves] = process
                 process.start()
@@ -270,7 +342,9 @@ def main(puzzle_file: str, max_moves: int, minimize_cores: int):
                 # If solution is better, replace the best solution and report.
                 if best_solution is None or len(solution) < len(best_solution):
                     best_solution = solution
-                    print(f"solution of {len(best_solution)} moves found after {datetime.now()-start}, minimizing...")
+                    print(
+                        f"solution of {len(best_solution)} moves found after {datetime.now()-start}, minimizing..."
+                    )
 
                 # Filter out prospects which are worse than the current best.
                 prospects = [p for p in prospects if p < len(best_solution)]

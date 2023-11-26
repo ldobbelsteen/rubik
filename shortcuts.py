@@ -146,7 +146,9 @@ def tree(n: int) -> dict:
     }
 
 
-def new_color(n: int, ma: int, mi: int, md: int, f: int, y: int, x: int) -> tuple[int, int, int]:
+def new_color(
+    n: int, ma: int, mi: int, md: int, f: int, y: int, x: int
+) -> tuple[int, int, int]:
     """Get color of cell based on last state, move and cell location."""
     if ma == 0:
         if f == 4 and mi == 0:
@@ -280,16 +282,31 @@ def new_color(n: int, ma: int, mi: int, md: int, f: int, y: int, x: int) -> tupl
     return (f, y, x)
 
 
-def tree_to_aiger(interface: _mdd.Interface, tree: dict, leaf_index: int, default_output: str) -> aiger.BoolExpr:
+def tree_to_aiger(
+    interface: _mdd.Interface, tree: dict, leaf_index: int, default_output: str
+) -> aiger.BoolExpr:
     """Create AIGER circuit based on tree represented by a dictionary.."""
 
-    def symbolic_equality(varname1: str, varname2: str, inverted: bool) -> aiger.BoolExpr:
-        var1 = interface.var(varname1) if varname1 != interface.output.name else interface.output
-        var2 = interface.var(varname2) if varname2 != interface.output.name else interface.output
+    def symbolic_equality(
+        varname1: str, varname2: str, inverted: bool
+    ) -> aiger.BoolExpr:
+        var1 = (
+            interface.var(varname1)
+            if varname1 != interface.output.name
+            else interface.output
+        )
+        var2 = (
+            interface.var(varname2)
+            if varname2 != interface.output.name
+            else interface.output
+        )
         return reduce(
             lambda x, y: x | y,
             [
-                aiger.BoolExpr(var1.expr() == var1.encode(i)) & aiger.BoolExpr(var2.expr() == var2.encode(i if not inverted else n - 1 - i))
+                aiger.BoolExpr(var1.expr() == var1.encode(i))
+                & aiger.BoolExpr(
+                    var2.expr() == var2.encode(i if not inverted else n - 1 - i)
+                )
                 for i in range(n)  # domain of [0..n-1] is assumed
             ],
         )
@@ -302,12 +319,16 @@ def tree_to_aiger(interface: _mdd.Interface, tree: dict, leaf_index: int, defaul
             else:
                 return symbolic_equality(inp, value, False)
         else:
-            return aiger.BoolExpr(interface.var(inp).expr() == interface.var(inp).encode(value))
+            return aiger.BoolExpr(
+                interface.var(inp).expr() == interface.var(inp).encode(value)
+            )
 
     def conditions_to_aiger(conditions: list[tuple[str, str | int]]) -> aiger.BoolExpr:
         return reduce(lambda x, y: x & y, map(condition_to_aiger, conditions))
 
-    def get_paths(subtree, prefix: list[tuple[str, str | int]]) -> list[tuple[list[tuple[str, str | int]], str | int]]:
+    def get_paths(
+        subtree, prefix: list[tuple[str, str | int]]
+    ) -> list[tuple[list[tuple[str, str | int]], str | int]]:
         if type(subtree) is tuple:  # leaf reached
             return [(prefix, subtree[leaf_index])]
         result = []
@@ -319,7 +340,11 @@ def tree_to_aiger(interface: _mdd.Interface, tree: dict, leaf_index: int, defaul
 
     # If all conditions on a path hold, the output should be equal to the leaf at the end.
     implication_tuples = [
-        (conditions_to_aiger(conditions), interface.output.expr() == interface.output.encode(leaf)) for conditions, leaf in paths
+        (
+            conditions_to_aiger(conditions),
+            interface.output.expr() == interface.output.encode(leaf),
+        )
+        for conditions, leaf in paths
     ]
 
     # If none of the paths hold, the output is the specified default leaf.
@@ -359,7 +384,9 @@ def shortcut_is_subset(sc1: tuple, sc2: tuple):
 
 def shortcuts_conflict(sc1: tuple, sc2: tuple):
     """Check if two shortcuts have different values for the same variable."""
-    return not all([sc1[i] is None or sc2[i] is None or sc1[i] == sc2[i] for i in range(len(sc1))])
+    return not all(
+        [sc1[i] is None or sc2[i] is None or sc1[i] == sc2[i] for i in range(len(sc1))]
+    )
 
 
 def shortcuts_combined(sc1: tuple, sc2: tuple):
@@ -367,7 +394,13 @@ def shortcuts_combined(sc1: tuple, sc2: tuple):
     return tuple([sc1[i] if sc1[i] is not None else sc2[i] for i in range(len(sc1))])
 
 
-def shortcut_output(leaf_index: int, f: int, y: int, x: int, sc: tuple[int | None, int | None, int | None]) -> int:
+def shortcut_output(
+    leaf_index: int,
+    f: int,
+    y: int,
+    x: int,
+    sc: tuple[int | None, int | None, int | None],
+) -> int:
     """Get the output (at leaf_index in the leaves) corresponding to a shortcut."""
     ma = sc[0] if sc[0] is not None else 0
     mi = sc[1] if sc[1] is not None else 0
@@ -375,7 +408,12 @@ def shortcut_output(leaf_index: int, f: int, y: int, x: int, sc: tuple[int | Non
     return new_color(n, ma, mi, md, f, y, x)[leaf_index]
 
 
-def shortcut_holds(sc: tuple[int | None, int | None, int | None], ma: int | None, mi: int | None, md: int | None):
+def shortcut_holds(
+    sc: tuple[int | None, int | None, int | None],
+    ma: int | None,
+    mi: int | None,
+    md: int | None,
+):
     if sc[0] is None or sc[0] == ma:
         if sc[1] is None or sc[1] == mi:
             if sc[2] is None or sc[2] == md:
@@ -383,7 +421,13 @@ def shortcut_holds(sc: tuple[int | None, int | None, int | None], ma: int | None
     return False
 
 
-def compute_shortcuts_per_output(tree: dict, leaf_index: int, output_name: str, output_domain: list[str | int], default_output: str | int):
+def compute_shortcuts_per_output(
+    tree: dict,
+    leaf_index: int,
+    output_name: str,
+    output_domain: list[str | int],
+    default_output: str | int,
+):
     """Get all shortcuts of one of the output values (the one at leaf_index in the leaves)."""
     # All possible inputs and their domains.
     input_domains = {
@@ -415,9 +459,9 @@ def compute_shortcuts_per_output(tree: dict, leaf_index: int, output_name: str, 
     # For every combination of f, y and x, compute subsets of the move representation
     # which result in the MDD only having one leaf node when applied. These subsets are
     # as small as possible (a.k.a. any of its subsets result in zero leaf nodes).
-    shortcuts: list[list[list[set[tuple[tuple[int | None, int | None, int | None], int]]]]] = [
-        [[set() for _ in range(n)] for _ in range(n)] for _ in range(6)
-    ]
+    shortcuts: list[
+        list[list[set[tuple[tuple[int | None, int | None, int | None], int]]]]
+    ] = [[[set() for _ in range(n)] for _ in range(n)] for _ in range(6)]
     for f in range(6):
         mdd1 = mdd.let({"f": f})
         for y in range(n):
@@ -431,10 +475,18 @@ def compute_shortcuts_per_output(tree: dict, leaf_index: int, output_name: str, 
                         for md in list(range(3)) + [None]:
                             mdd6 = mdd5.let({"md": md}) if md is not None else mdd5
                             if has_one_leaf(mdd6):
-                                new_shortcut = ((ma, mi, md), shortcut_output(leaf_index, f, y, x, (ma, mi, md)))
+                                new_shortcut = (
+                                    (ma, mi, md),
+                                    shortcut_output(leaf_index, f, y, x, (ma, mi, md)),
+                                )
                                 current_shortcuts = shortcuts[f][y][x]
                                 # Check if no existing shortcut is a subset.
-                                if all([not shortcut_is_subset(csc[0], new_shortcut[0]) for csc in current_shortcuts]):
+                                if all(
+                                    [
+                                        not shortcut_is_subset(csc[0], new_shortcut[0])
+                                        for csc in current_shortcuts
+                                    ]
+                                ):
                                     # Remove any supersets, which are weaker than this new shortcut.
                                     for csc in set(current_shortcuts):
                                         if shortcut_is_subset(new_shortcut[0], csc[0]):
@@ -450,7 +502,9 @@ def intersect_shortcuts(
     x: set[tuple[tuple[int | None, int | None, int | None], int]],
 ):
     """Create shortcuts for (f, y, x) by intersecting all combinations of their separate shortcuts."""
-    result: set[tuple[tuple[int | None, int | None, int | None], tuple[int, int, int]]] = set()
+    result: set[
+        tuple[tuple[int | None, int | None, int | None], tuple[int, int, int]]
+    ] = set()
     for scf in f:
         for scy in y:
             for scx in x:
@@ -459,7 +513,9 @@ def intersect_shortcuts(
                     and not shortcuts_conflict(scy[0], scx[0])
                     and not shortcuts_conflict(scx[0], scf[0])
                 ):
-                    shortcut = shortcuts_combined(shortcuts_combined(scf[0], scy[0]), scx[0])
+                    shortcut = shortcuts_combined(
+                        shortcuts_combined(scf[0], scy[0]), scx[0]
+                    )
                     output = (scf[1], scy[1], scx[1])
                     # Check if no existing shortcut is a subset.
                     if all([not shortcut_is_subset(sc[0], shortcut) for sc in result]):
@@ -506,10 +562,31 @@ def compute_shortcuts(n: int):
 
     # Combine the three types of shortcuts.
     print("combining shortcuts...")
-    return [[[intersect_shortcuts(ssf[f][y][x], ssy[f][y][x], ssx[f][y][x]) for x in range(n)] for y in range(n)] for f in range(6)]
+    return [
+        [
+            [
+                intersect_shortcuts(ssf[f][y][x], ssy[f][y][x], ssx[f][y][x])
+                for x in range(n)
+            ]
+            for y in range(n)
+        ]
+        for f in range(6)
+    ]
 
 
-def verify_shortcuts(shortcuts: list[list[list[set[tuple[tuple[int | None, int | None, int | None], tuple[int, int, int]]]]]]):
+def verify_shortcuts(
+    shortcuts: list[
+        list[
+            list[
+                set[
+                    tuple[
+                        tuple[int | None, int | None, int | None], tuple[int, int, int]
+                    ]
+                ]
+            ]
+        ]
+    ],
+):
     print("testing shortcuts...")
 
     # Test for valid shortcut and output domains.

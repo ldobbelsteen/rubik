@@ -1,10 +1,10 @@
+import sys
 import numpy as np
 from PIL import Image, ImageDraw
 import solve
-import sys
 
 
-def print_puzzle(puzzle: list[list[list[int]]]):
+def main(puzzle: list[list[list[int]]]):
     n = len(puzzle[0])
     square_size = 48
     image_size = (3 * n * square_size, 4 * n * square_size)
@@ -35,8 +35,6 @@ def print_puzzle(puzzle: list[list[list[int]]]):
     im.show()
 
 
-# python print_puzzle.py {puzzle.txt}
+# e.g. python print.py puzzles/dim2-random10.cube
 if __name__ == "__main__":
-    file = sys.argv[1]
-    puzzle = eval(open(file, "r").read())
-    print_puzzle(puzzle)
+    main(eval(open(sys.argv[1], "r").read()))
