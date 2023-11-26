@@ -1,0 +1,25 @@
+{
+    "k": 7,
+    "moves": [
+        "half row 0",
+        "quarter layer 0 counterclockwise",
+        "quarter row 1 left",
+        "quarter column 0 up",
+        "half row 1",
+        "quarter column 1 down",
+        "quarter row 1 left"
+    ],
+    "total_cpu_time": "0:03:06.484116",
+    "cpu_time_per_k": {
+        "0": "0:00:00.101452",
+        "1": "0:00:00.227318",
+        "2": "0:00:00.477106",
+        "3": "0:00:00.797211",
+        "4": "0:00:02.394019",
+        "5": "0:00:17.847155",
+        "6": "0:02:08.958876",
+        "7": "0:00:19.174860",
+        "8": "0:00:16.506119"
+    },
+    "k_upperbound": 11
+}
