@@ -4,8 +4,8 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from misc import timestamped
-from shortcuts import compute_missing_shortcuts, load_shortcuts_amalgamated
+from misc import print_with_stamp
+import move_mapping
 
 
 def k_upperbound(n: int):
@@ -176,12 +176,12 @@ def solve(starting_state: list[list[list[int]]], k: int):
     for s in range(len(colors) - 1):
         solver.add(z3.Or(move_indices[s] != n, is_complete(s)))
 
-    # Restrict color states using shortcuts file.
-    shortcuts = load_shortcuts_amalgamated(n)
+    # Restrict color states using pre-generated move mappings file.
+    mappings = move_mapping.load(n)
     for s in range(len(colors) - 1):
-        for ma in shortcuts:
-            for mi in shortcuts[ma]:
-                for md in shortcuts[ma][mi]:
+        for ma in mappings:
+            for mi in mappings[ma]:
+                for md in mappings[ma][mi]:
                     conditions = []
                     if ma is not None:
                         conditions.append(move_axes[s] == ma)
@@ -193,7 +193,7 @@ def solve(starting_state: list[list[list[int]]], k: int):
                     consequences = [
                         colors[s + 1][cell_idx(f_in, y_in, x_in)]
                         == colors[s][cell_idx(f_out, y_out, x_out)]
-                        for (f_in, y_in, x_in), (f_out, y_out, x_out) in shortcuts[ma][
+                        for (f_in, y_in, x_in), (f_out, y_out, x_out) in mappings[ma][
                             mi
                         ][md]
                     ]
@@ -278,8 +278,9 @@ def solve_puzzles(files: list[str], process_count: int):
         # List of n values for each of the puzzles.
         ns = [len(puzzles[i][0]) for i in range(len(puzzles))]
 
-        # Compute any missing pre-computed shortcuts.
-        compute_missing_shortcuts(set(ns))
+        # Generate any missing move mappings.
+        for n in ns:
+            move_mapping.generate(n)
 
         # List of upperbounds for k for each of the puzzles.
         k_upperbounds = [k_upperbound(ns[i]) for i in range(len(puzzles))]
@@ -338,10 +339,8 @@ def solve_puzzles(files: list[str], process_count: int):
             cpu_time = datetime.now() - start
             cpu_times[puzzle_index][k] = cpu_time
             if minimum is None:
-                print(
-                    timestamped(
-                        f"{files[puzzle_index]}: unsat for k = {k} found in {cpu_time}..."
-                    )
+                print_with_stamp(
+                    f"{files[puzzle_index]}: unsat for k = {k} found in {cpu_time}..."
                 )
                 k_prospects[puzzle_index] = [
                     p for p in k_prospects[puzzle_index] if p > k
@@ -354,10 +353,8 @@ def solve_puzzles(files: list[str], process_count: int):
                 for _ in range(killed):
                     spawn_new_process()
             else:
-                print(
-                    timestamped(
-                        f"{files[puzzle_index]}: sat for k = {k} found in {cpu_time}..."
-                    )
+                print_with_stamp(
+                    f"{files[puzzle_index]}: sat for k = {k} found in {cpu_time}..."
                 )
                 current_minimum = k_minima[puzzle_index]
                 if current_minimum is None or k < len(current_minimum):
@@ -377,16 +374,12 @@ def solve_puzzles(files: list[str], process_count: int):
                 total_cpu_time = sum(cpu_times[puzzle_index].values(), timedelta())
 
                 if minimum is None:
-                    print(
-                        timestamped(
-                            f"{files[puzzle_index]}: found no solution with k ≤ {k_upperbounds[puzzle_index]} to be possible in {total_cpu_time}"
-                        )
+                    print_with_stamp(
+                        f"{files[puzzle_index]}: found no solution with k ≤ {k_upperbounds[puzzle_index]} to be possible in {total_cpu_time}"
                     )
                 else:
-                    print(
-                        timestamped(
-                            f"{files[puzzle_index]}: minimum k = {len(minimum)} found in {total_cpu_time}"
-                        )
+                    print_with_stamp(
+                        f"{files[puzzle_index]}: minimum k = {len(minimum)} found in {total_cpu_time}"
                     )
 
                 result = {
@@ -404,6 +397,6 @@ def solve_puzzles(files: list[str], process_count: int):
                 result_file.close()
 
 
-# e.g. python solve.py puzzles/dim2-random10.cube puzzles/dim3-random9.cube ...
+# e.g. python solve_puzzles.py ./puzzles/n2-random10.cube ./puzzles/n3-random9.cube ...
 if __name__ == "__main__":
     solve_puzzles(sys.argv[1:], cpu_count())

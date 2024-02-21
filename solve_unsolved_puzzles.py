@@ -1,12 +1,11 @@
 import os
-import sys
 from multiprocessing import cpu_count
-from solve import solve_puzzles
+from solve_puzzles import solve_puzzles
 
-# python solve_unsolved.py {puzzle_dir}
+# e.g. python solve_unsolved_puzzles.py
 if __name__ == "__main__":
     puzzles: list[str] = []
-    puzzle_dir = sys.argv[1]
+    puzzle_dir = "./puzzles/"
     for file in os.listdir(puzzle_dir):
         path = os.path.join(puzzle_dir, file)
         if (

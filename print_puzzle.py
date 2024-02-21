@@ -1,7 +1,7 @@
 import sys
 import numpy as np
 from PIL import Image, ImageDraw
-import solve
+import solve_puzzles
 
 
 def main(puzzle: list[list[list[int]]]):
@@ -21,7 +21,7 @@ def main(puzzle: list[list[list[int]]]):
                         start_x + ((x + 1) * square_size),
                         start_y + ((y + 1) * square_size),
                     ),
-                    fill=solve.color_name(face[y][x]),
+                    fill=solve_puzzles.color_name(face[y][x]),
                     outline="black",
                     width=4,
                 )
@@ -35,6 +35,6 @@ def main(puzzle: list[list[list[int]]]):
     im.show()
 
 
-# e.g. python print.py puzzles/dim2-random10.cube
+# e.g. python print_puzzle.py ./puzzles/n2-random10.cube
 if __name__ == "__main__":
     main(eval(open(sys.argv[1], "r").read()))

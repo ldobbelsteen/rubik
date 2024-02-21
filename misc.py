@@ -1,5 +1,5 @@
 from datetime import datetime
 
 
-def timestamped(s: str):
-    return f"[{datetime.now().isoformat(' ', 'seconds')}] {s}"
+def print_with_stamp(s: str):
+    print(f"[{datetime.now().isoformat(' ', 'seconds')}] {s}")
