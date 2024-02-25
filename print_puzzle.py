@@ -4,7 +4,7 @@ from PIL import Image, ImageDraw
 import solve_puzzles
 
 
-def main(puzzle: list[list[list[int]]]):
+def print(puzzle: list[list[list[int]]]):
     n = len(puzzle[0])
     square_size = 48
     image_size = (3 * n * square_size, 4 * n * square_size)
@@ -35,6 +35,6 @@ def main(puzzle: list[list[list[int]]]):
     im.show()
 
 
-# e.g. python print_puzzle.py ./puzzles/n2-random10.cube
+# e.g. python print_puzzle.py ./puzzles/n2-random10.txt
 if __name__ == "__main__":
-    main(eval(open(sys.argv[1], "r").read()))
+    print(eval(open(sys.argv[1], "r").read()))

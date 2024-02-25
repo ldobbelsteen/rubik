@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from misc import print_with_stamp
+from misc import print_with_stamp, str_to_state
 import move_mapping
 
 
@@ -272,7 +272,7 @@ def solve_puzzles(files: list[str], process_count: int):
     with Manager() as manager:
         # List of puzzles to solve
         puzzles: list[list[list[list[int]]]] = [
-            eval(open(file, "r").read()) for file in files
+            str_to_state(open(file, "r").read()) for file in files
         ]
 
         # List of n values for each of the puzzles.
@@ -392,11 +392,10 @@ def solve_puzzles(files: list[str], process_count: int):
                     "k_upperbound": k_upperbounds[puzzle_index],
                 }
 
-                result_file = open(files[puzzle_index] + ".result", "w")
-                result_file.write(json.dumps(result, indent=4))
-                result_file.close()
+                with open(files[puzzle_index] + ".solution", "w") as solution_file:
+                    solution_file.write(json.dumps(result, indent=4))
 
 
-# e.g. python solve_puzzles.py ./puzzles/n2-random10.cube ./puzzles/n3-random9.cube ...
+# e.g. python solve_puzzles.py ./puzzles/n2-random10.txt ./puzzles/n3-random9.txt ...
 if __name__ == "__main__":
     solve_puzzles(sys.argv[1:], cpu_count())

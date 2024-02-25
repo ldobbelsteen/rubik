@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from functools import reduce
 from dd.autoref import BDD, Function
-from misc import print_with_stamp
+from misc import print_with_stamp, create_parent_directory
 
 
 def mapping(
@@ -465,130 +465,133 @@ def minimal_substitution_subsets(
 
 
 def file_path(n):
-    return f"./move_mappings/n{n}"
+    return f"./move_mappings/n{n}.txt"
 
 
 def generate(n: int):
     path = file_path(n)
-
     if os.path.isfile(path):
         return  # already generated, so skip
+    create_parent_directory(path)
 
     print_with_stamp(f"generating move mappings for n = {n}...")
+
+    bdd = BDD()
+    root = bdd.true
+    domains: dict[str, set[int]] = {}
+
+    move_vars = {"ma": set(range(3)), "mi": set(range(n)), "md": set(range(3))}
+
+    input_vars = {
+        "f_in": set(range(6)),
+        "y_in": set(range(n)),
+        "x_in": set(range(n)),
+    }
+
+    output_vars = {
+        "f_out": set(range(6)),
+        "y_out": set(range(n)),
+        "x_out": set(range(n)),
+    }
+
+    # Add variables.
+    for name, domain in move_vars.items():
+        root = add_variable(name, domain, bdd, root, domains)
+    for name, domain in input_vars.items():
+        root = add_variable(name, domain, bdd, root, domains)
+    for name, domain in output_vars.items():
+        root = add_variable(name, domain, bdd, root, domains)
+
+    # Add all composite variables encountered in the tree.
+    for conditions, output in extract_mapping_tree_paths(n):
+        for left, right in conditions:
+            if not isinstance(left, int) and left not in domains:
+                root = add_composite_variable(left, bdd, root, domains)
+            if not isinstance(right, int) and right not in domains:
+                root = add_composite_variable(right, bdd, root, domains)
+        if output[0] not in domains:
+            root = add_composite_variable(output[0], bdd, root, domains)
+        if output[1] not in domains:
+            root = add_composite_variable(output[1], bdd, root, domains)
+        if output[2] not in domains:
+            root = add_composite_variable(output[2], bdd, root, domains)
+
+    def output_equals(output: tuple[str | int, str | int, str | int]):
+        """Return condition on the output being equal to a tuple."""
+        return (
+            equality_condition("f_out", output[0], bdd, domains)
+            & equality_condition("y_out", output[1], bdd, domains)
+            & equality_condition("x_out", output[2], bdd, domains)
+        )
+
+    # Add the paths as restrictions.
+    one_path_holds = bdd.false
+    for conditions, output in extract_mapping_tree_paths(n):
+        one_condition_false = bdd.false
+        for left, right in conditions:
+            one_condition_false = one_condition_false | ~equality_condition(
+                left, right, bdd, domains
+            )
+        root = root & (one_condition_false | output_equals(output))
+        one_path_holds = one_path_holds | ~one_condition_false
+
+    # If none of the paths hold, the default output of (f, y, x) holds.
+    root = root & (one_path_holds | output_equals(("f_in", "y_in", "x_in")))
+
+    mappings: list[
+        tuple[
+            tuple[int | None, int | None, int | None],
+            tuple[int, int, int],
+            tuple[int, int, int],
+        ]
+    ] = []
+
+    # Extract mappings from the diagram.
+    for subset in minimal_substitution_subsets(
+        move_vars | input_vars | output_vars, bdd, root
+    ):
+        vals = {k: v for k, v in subset}
+        mappings.append(
+            (
+                (vals.get("ma"), vals.get("mi"), vals.get("md")),
+                (vals["f_in"], vals["y_in"], vals["x_in"]),
+                (vals["f_out"], vals["y_out"], vals["x_out"]),
+            )
+        )
+
+    # Sort to make result deterministic.
+    mappings.sort(key=lambda sc: str(sc))
+
     with open(path, "w") as file:
-        bdd = BDD()
-        root = bdd.true
-        domains: dict[str, set[int]] = {}
-
-        move_vars = {"ma": set(range(3)), "mi": set(range(n)), "md": set(range(3))}
-
-        input_vars = {
-            "f_in": set(range(6)),
-            "y_in": set(range(n)),
-            "x_in": set(range(n)),
-        }
-
-        output_vars = {
-            "f_out": set(range(6)),
-            "y_out": set(range(n)),
-            "x_out": set(range(n)),
-        }
-
-        # Add variables.
-        for name, domain in move_vars.items():
-            root = add_variable(name, domain, bdd, root, domains)
-        for name, domain in input_vars.items():
-            root = add_variable(name, domain, bdd, root, domains)
-        for name, domain in output_vars.items():
-            root = add_variable(name, domain, bdd, root, domains)
-
-        # Add all composite variables encountered in the tree.
-        for conditions, output in extract_mapping_tree_paths(n):
-            for left, right in conditions:
-                if not isinstance(left, int) and left not in domains:
-                    root = add_composite_variable(left, bdd, root, domains)
-                if not isinstance(right, int) and right not in domains:
-                    root = add_composite_variable(right, bdd, root, domains)
-            if output[0] not in domains:
-                root = add_composite_variable(output[0], bdd, root, domains)
-            if output[1] not in domains:
-                root = add_composite_variable(output[1], bdd, root, domains)
-            if output[2] not in domains:
-                root = add_composite_variable(output[2], bdd, root, domains)
-
-        def output_equals(output: tuple[str | int, str | int, str | int]):
-            """Return condition on the output being equal to a tuple."""
-            return (
-                equality_condition("f_out", output[0], bdd, domains)
-                & equality_condition("y_out", output[1], bdd, domains)
-                & equality_condition("x_out", output[2], bdd, domains)
-            )
-
-        # Add the paths as restrictions.
-        one_path_holds = bdd.false
-        for conditions, output in extract_mapping_tree_paths(n):
-            one_condition_false = bdd.false
-            for left, right in conditions:
-                one_condition_false = one_condition_false | ~equality_condition(
-                    left, right, bdd, domains
-                )
-            root = root & (one_condition_false | output_equals(output))
-            one_path_holds = one_path_holds | ~one_condition_false
-
-        # If none of the paths hold, the default output of (f, y, x) holds.
-        root = root & (one_path_holds | output_equals(("f_in", "y_in", "x_in")))
-
-        mappings: list[
-            tuple[
-                tuple[int | None, int | None, int | None],
-                tuple[int, int, int],
-                tuple[int, int, int],
-            ]
-        ] = []
-
-        # Extract mappings from the diagram.
-        for subset in minimal_substitution_subsets(
-            move_vars | input_vars | output_vars, bdd, root
-        ):
-            vals = {k: v for k, v in subset}
-            mappings.append(
-                (
-                    (vals.get("ma"), vals.get("mi"), vals.get("md")),
-                    (vals["f_in"], vals["y_in"], vals["x_in"]),
-                    (vals["f_out"], vals["y_out"], vals["x_out"]),
-                )
-            )
-
-        mappings.sort(key=lambda sc: str(sc))  # Sort to make result deterministic.
-        file.write(str(mappings))
+        for move, input, output in mappings:
+            move_str = "".join(["*" if c is None else str(c) for c in move])
+            input_str = "".join([str(c) for c in input])
+            output_str = "".join([str(c) for c in output])
+            file.write(f"{move_str} {input_str} {output_str}\n")
 
 
 def load(n: int):
     with open(file_path(n), "r") as file:
-        mappings: list[
-            tuple[
-                tuple[int | None, int | None, int | None],
-                tuple[int, int, int],
-                tuple[int, int, int],
-            ]
-        ] = eval(file.read())
-
-        return {
+        result = {
             ma: {
-                mi: {
-                    md: [
-                        (mapping[1], mapping[2])
-                        for mapping in mappings
-                        if mapping[0][0] == ma
-                        and mapping[0][1] == mi
-                        and mapping[0][2] == md
-                    ]
-                    for md in list(range(3)) + [None]
-                }
+                mi: {md: [] for md in list(range(3)) + [None]}
                 for mi in list(range(n)) + [None]
             }
             for ma in list(range(3)) + [None]
         }
+
+        for line in file:
+            move_raw, input_raw, output_raw = line.split(" ")
+            move = (
+                None if move_raw[0] == "*" else int(move_raw[0]),
+                None if move_raw[1] == "*" else int(move_raw[1]),
+                None if move_raw[2] == "*" else int(move_raw[2]),
+            )
+            input = (int(input_raw[0]), int(input_raw[1]), int(input_raw[2]))
+            output = (int(output_raw[0]), int(output_raw[1]), int(output_raw[2]))
+            result[move[0]][move[1]][move[2]].append((input, output))
+
+        return result
 
 
 # e.g. python move_mapping.py {n}

@@ -10,8 +10,8 @@ if __name__ == "__main__":
         path = os.path.join(puzzle_dir, file)
         if (
             os.path.isfile(path)
-            and path.endswith(".cube")
-            and not os.path.isfile(path + ".result")
+            and path.endswith(".txt")
+            and not os.path.isfile(path + ".solution")
         ):
             puzzles.append(path)
     solve_puzzles(sorted(puzzles), cpu_count())
