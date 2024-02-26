@@ -17,14 +17,13 @@ def k_upperbound(n: int):
             return 11  # God's Number
         case 3:
             return 20  # God's Number
-        case 4:
-            return 35  # guestimate
         case _:
             raise Exception(f"upperbound of {n} not set")
 
 
 def solve_for_k(puzzle: State, k: int, pattern_depth: int):
-    """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible."""
+    """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible.
+    Also returns, in both cases, the time it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
     solver = z3.Optimize()
 
@@ -65,7 +64,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
         """Return restriction on whether a state is complete."""
         return z3.And(
             [
-                colors[s][cell_idx(f, y, x)] == colors[s][cell_idx(f, 0, 0)]
+                colors[s][cell_idx(f, y, x)] == f
                 for f in range(6)
                 for y in range(puzzle.n)
                 for x in range(puzzle.n)
