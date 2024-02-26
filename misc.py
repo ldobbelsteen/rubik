@@ -91,13 +91,32 @@ class State:
         if self.n**2 != face_size:
             raise Exception(f"invalid state string size: {s}")
 
-        flat = np.array([int(c) for c in s])
+        flat = np.array([None if c == "*" else int(c) for c in s])
         self.state = np.array(
             [flat_face.reshape(-1, self.n) for flat_face in flat.reshape(-1, face_size)]
         )
 
-    def to_str(self):
-        return "".join([str(c) for c in self.state.flatten()])
+    def to_str(self) -> str:
+        return "".join(
+            [
+                "*" if self.is_unset(f, y, x) else str(self.get_color(f, y, x))
+                for f in range(6)
+                for y in range(self.n)
+                for x in range(self.n)
+            ]
+        )
+
+    def to_str_only_corners(self) -> str:
+        return "".join(
+            [
+                "*"
+                if self.is_unset(f, y, x) or not self.is_corner_cell(f, y, x)
+                else str(self.get_color(f, y, x))
+                for f in range(6)
+                for y in range(self.n)
+                for x in range(self.n)
+            ]
+        )
 
     @staticmethod
     def finished(n: int):
@@ -105,8 +124,22 @@ class State:
             "0" * n**2 + "1" * n**2 + "2" * n**2 + "3" * n**2 + "4" * n**2 + "5" * n**2
         )
 
-    def get_color(self, f: int, y: int, x: int):
-        return self.state[f, y, x]
+    def is_unset(self, f: int, y: int, x: int):
+        return self.state[f, y, x] is None
+
+    def get_color(self, f: int, y: int, x: int) -> int:
+        result = self.state[f, y, x]
+        if result is None:
+            raise Exception("got color of unset cell")
+        return result
+
+    def is_corner_cell(self, f: int, y: int, x: int) -> bool:
+        return (
+            (y == 0 and x == 0)
+            or (y == 0 and x == self.n - 1)
+            or (y == self.n - 1 and x == 0)
+            or (y == self.n - 1 and x == self.n - 1)
+        )
 
     def reverse_move(self, mi: int, ma: int, md: int):
         if md == 0:

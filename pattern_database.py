@@ -32,7 +32,7 @@ def generate(n: int, d: int):
                         state.execute_move(mi, ma, md)
                         depth += 1
 
-                        s = state.to_str()
+                        s = state.to_str_only_corners()
                         if s not in patterns or depth < patterns[s]:
                             patterns[s] = depth
                         recurse(depth, state)

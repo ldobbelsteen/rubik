@@ -1,8 +1,9 @@
 import os
 from multiprocessing import cpu_count
 from solve import solve
+import sys
 
-# e.g. python solve_unsolved.py
+# e.g. python solve_unsolved.py {pattern_depth}
 if __name__ == "__main__":
     puzzles: list[str] = []
     puzzle_dir = "./puzzles/"
@@ -14,4 +15,4 @@ if __name__ == "__main__":
             and not os.path.isfile(path + ".solution")
         ):
             puzzles.append(path)
-    solve(sorted(puzzles), cpu_count())
+    solve(sorted(puzzles), cpu_count(), int(sys.argv[1]))

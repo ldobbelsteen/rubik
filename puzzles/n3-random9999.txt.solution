@@ -1,0 +1,23 @@
+{
+    "k": 6,
+    "pattern_depth": 0,
+    "moves": [
+        "half row 0",
+        "quarter column 1 down",
+        "half column 2",
+        "quarter row 2 right",
+        "quarter layer 1 clockwise",
+        "half row 0"
+    ],
+    "total_solve_time": "0:00:10.639503",
+    "total_prep_time": "0:00:01.816082",
+    "prep_time_per_k": {
+        "5": "0:00:00.821668",
+        "6": "0:00:00.994414"
+    },
+    "solve_time_per_k": {
+        "5": "0:00:01.873279",
+        "6": "0:00:08.766224"
+    },
+    "k_upperbound": 20
+}

@@ -190,7 +190,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     # Add restrictions for pattern database.
     patterns = pattern_database.load(puzzle.n, pattern_depth)
     for state, minimum_remaining in patterns:
-        for s in range(max(0, len(colors) - minimum_remaining), len(colors)):
+        for s in range(max(0, len(colors) - minimum_remaining + 1), len(colors)):
             solver.add(
                 z3.Not(
                     z3.And(
@@ -199,6 +199,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
                             for f in range(6)
                             for y in range(puzzle.n)
                             for x in range(puzzle.n)
+                            if not state.is_unset(f, y, x)
                         ]
                     )
                 )
@@ -224,10 +225,8 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     return moves, prep_time, solve_time
 
 
-def solve(files: list[str], process_count: int):
+def solve(files: list[str], process_count: int, pattern_depth: int):
     """Solve a list of puzzles, efficiently distributing tasks among multiple processes."""
-
-    pattern_depth = 0
 
     with Manager() as manager:
         # List of puzzles to solve.
@@ -365,6 +364,6 @@ def solve(files: list[str], process_count: int):
                     solution_file.write(json.dumps(result, indent=4))
 
 
-# e.g. python solve.py ./puzzles/n2-random10.txt ...
+# e.g. python solve.py {pattern_depth} ./puzzles/n2-random10.txt ...
 if __name__ == "__main__":
-    solve(sys.argv[1:], cpu_count())
+    solve(sys.argv[2:], cpu_count(), int(sys.argv[1]))
