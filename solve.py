@@ -44,21 +44,31 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
 
     # Restrict color domains to the six colors.
     for s in range(len(colors)):
-        for f in range(6):
-            for y in range(puzzle.n):
-                for x in range(puzzle.n):
-                    solver.add(
-                        z3.And(
-                            colors[s][cell_idx(f, y, x)] >= 0,
-                            colors[s][cell_idx(f, y, x)] < 6,
-                        )
+        solver.add(
+            z3.And(
+                [
+                    z3.And(
+                        colors[s][cell_idx(f, y, x)] >= 0,
+                        colors[s][cell_idx(f, y, x)] < 6,
                     )
+                    for f in range(6)
+                    for y in range(puzzle.n)
+                    for x in range(puzzle.n)
+                ]
+            )
+        )
 
     # Restrict colors of first state to starting state.
-    for f in range(6):
-        for y in range(puzzle.n):
-            for x in range(puzzle.n):
-                solver.add(colors[0][cell_idx(f, y, x)] == puzzle.get_color(f, y, x))
+    solver.add(
+        z3.And(
+            [
+                colors[0][cell_idx(f, y, x)] == puzzle.get_color(f, y, x)
+                for f in range(6)
+                for y in range(puzzle.n)
+                for x in range(puzzle.n)
+            ]
+        )
+    )
 
     def is_complete(s: int):
         """Return restriction on whether a state is complete."""

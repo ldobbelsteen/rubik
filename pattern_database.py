@@ -43,8 +43,8 @@ def generate(n: int, d: int):
     recurse(0, State.finished(n))
 
     with open(path, "w") as file:
-        for state, k in patterns.items():
-            file.write(f"{state} {k}\n")
+        for state, minimum_remaining in patterns.items():
+            file.write(f"{state} {minimum_remaining}\n")
 
 
 def load(n: int, d: int):
