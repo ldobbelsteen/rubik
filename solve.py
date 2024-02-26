@@ -4,8 +4,9 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from misc import print_with_stamp, str_to_state
+from misc import print_with_stamp, State, move_name
 import move_mapping
+import pattern_database
 
 
 def k_upperbound(n: int):
@@ -22,96 +23,20 @@ def k_upperbound(n: int):
             raise Exception(f"upperbound of {n} not set")
 
 
-def face_name(f: int) -> str:
-    """Convert a face index to its canonical name."""
-    match f:
-        case 0:
-            return "front"
-        case 1:
-            return "right"
-        case 2:
-            return "back"
-        case 3:
-            return "left"
-        case 4:
-            return "top"
-        case 5:
-            return "bottom"
-        case _:
-            return "unknown"
-
-
-def color_name(c: int) -> str:
-    """Convert a color index to its canonical name."""
-    match c:
-        case 0:
-            return "white"
-        case 1:
-            return "green"
-        case 2:
-            return "yellow"
-        case 3:
-            return "blue"
-        case 4:
-            return "red"
-        case 5:
-            return "orange"
-        case _:
-            return "unknown"
-
-
-def move_name(n: int, ma: int, mi: int, md: int) -> str:
-    """Convert a move to its canonical name."""
-    if mi == n:
-        return "nothing"
-    if ma == 0:
-        if md == 0:
-            return f"quarter row {mi} left"
-        elif md == 1:
-            return f"quarter row {mi} right"
-        elif md == 2:
-            return f"half row {mi}"
-    elif ma == 1:
-        if md == 0:
-            return f"quarter column {mi} up"
-        elif md == 1:
-            return f"quarter column {mi} down"
-        elif md == 2:
-            return f"half column {mi}"
-    elif ma == 2:
-        if md == 0:
-            return f"quarter layer {mi} clockwise"
-        elif md == 1:
-            return f"quarter layer {mi} counterclockwise"
-        elif md == 2:
-            return f"half layer {mi}"
-    return "unknown"
-
-
-def extract_state(
-    n: int, model: z3.ModelRef, state: list[list[list[z3.ArithRef]]]
-) -> list[list[list[int]]]:
-    """Extract the colors in a state from a model."""
-    return [
-        [
-            [model.get_interp(state[f][y][x]).as_long() for x in range(n)]
-            for y in range(n)
-        ]
-        for f in range(6)
-    ]
-
-
-def solve(starting_state: list[list[list[int]]], k: int):
+def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible."""
-    n = len(starting_state[0])
+    prep_start = datetime.now()
     solver = z3.Optimize()
 
     def cell_idx(f: int, y: int, x: int):
         """Convert the coordinates on a cube to a flat index."""
-        return x + y * n + f * n * n
+        return x + y * puzzle.n + f * puzzle.n * puzzle.n
 
     # Variables indicating the colors of the cube cells at each state.
-    colors = [[z3.Int(f"c({s},{i})") for i in range(6 * n * n)] for s in range(k + 1)]
+    colors = [
+        [z3.Int(f"c({s},{i})") for i in range(6 * puzzle.n * puzzle.n)]
+        for s in range(k + 1)
+    ]
 
     # Variables which together indicate the move at each state.
     move_axes = [z3.Int(f"ma({s})") for s in range(len(colors) - 1)]
@@ -121,8 +46,8 @@ def solve(starting_state: list[list[list[int]]], k: int):
     # Restrict color domains to the six colors.
     for s in range(len(colors)):
         for f in range(6):
-            for y in range(n):
-                for x in range(n):
+            for y in range(puzzle.n):
+                for x in range(puzzle.n):
                     solver.add(
                         z3.And(
                             colors[s][cell_idx(f, y, x)] >= 0,
@@ -132,9 +57,9 @@ def solve(starting_state: list[list[list[int]]], k: int):
 
     # Restrict colors of first state to starting state.
     for f in range(6):
-        for y in range(n):
-            for x in range(n):
-                solver.add(colors[0][cell_idx(f, y, x)] == starting_state[f][y][x])
+        for y in range(puzzle.n):
+            for x in range(puzzle.n):
+                solver.add(colors[0][cell_idx(f, y, x)] == puzzle.get_color(f, y, x))
 
     def is_complete(s: int):
         """Return restriction on whether a state is complete."""
@@ -142,8 +67,8 @@ def solve(starting_state: list[list[list[int]]], k: int):
             [
                 colors[s][cell_idx(f, y, x)] == colors[s][cell_idx(f, 0, 0)]
                 for f in range(6)
-                for y in range(n)
-                for x in range(n)
+                for y in range(puzzle.n)
+                for x in range(puzzle.n)
             ]
         )
 
@@ -153,20 +78,20 @@ def solve(starting_state: list[list[list[int]]], k: int):
     # Restrict moves to valid moves.
     for s in range(len(colors) - 1):
         solver.add(z3.And(move_axes[s] >= 0, move_axes[s] <= 2))
-        solver.add(z3.And(move_indices[s] >= 0, move_indices[s] <= n))
+        solver.add(z3.And(move_indices[s] >= 0, move_indices[s] <= puzzle.n))
         solver.add(z3.And(move_directions[s] >= 0, move_directions[s] <= 2))
 
     # Restrict color states when move is nothing.
     for s in range(len(colors) - 1):
         solver.add(
             z3.Or(
-                move_indices[s] != n,
+                move_indices[s] != puzzle.n,
                 z3.And(
                     [
                         colors[s][cell_idx(f, y, x)] == colors[s + 1][cell_idx(f, y, x)]
                         for f in range(6)
-                        for y in range(n)
-                        for x in range(n)
+                        for y in range(puzzle.n)
+                        for x in range(puzzle.n)
                     ]
                 ),
             )
@@ -174,10 +99,10 @@ def solve(starting_state: list[list[list[int]]], k: int):
 
     # Only allow nothing move when complete.
     for s in range(len(colors) - 1):
-        solver.add(z3.Or(move_indices[s] != n, is_complete(s)))
+        solver.add(z3.Or(move_indices[s] != puzzle.n, is_complete(s)))
 
     # Restrict color states using pre-generated move mappings file.
-    mappings = move_mapping.load(n)
+    mappings = move_mapping.load(puzzle.n)
     for s in range(len(colors) - 1):
         for ma in mappings:
             for mi in mappings[ma]:
@@ -208,7 +133,7 @@ def solve(starting_state: list[list[list[int]]], k: int):
 
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
     for s in range(1, len(colors) - 1):
-        for r in range(1, min(n + 1, s + 1)):
+        for r in range(1, min(puzzle.n + 1, s + 1)):
             solver.add(
                 z3.Or(
                     move_axes[s - r] != move_axes[s],
@@ -230,7 +155,7 @@ def solve(starting_state: list[list[list[int]]], k: int):
                                 for c in range(1, b)
                             ]
                         )
-                        for b in range(n, 1, -1)
+                        for b in range(puzzle.n, 1, -1)
                     ]
                 ),
             )
@@ -246,41 +171,69 @@ def solve(starting_state: list[list[list[int]]], k: int):
                             colors[s1][cell_idx(f, y, x)]
                             == colors[s2][cell_idx(f, y, x)]
                             for f in range(6)
-                            for y in range(n)
-                            for x in range(n)
+                            for y in range(puzzle.n)
+                            for x in range(puzzle.n)
+                        ]
+                    )
+                )
+            )
+
+    # Add restrictions for pattern database.
+    patterns = pattern_database.load(puzzle.n, pattern_depth)
+    for state, minimum_remaining in patterns:
+        for s in range(max(0, len(colors) - minimum_remaining), len(colors)):
+            solver.add(
+                z3.Not(
+                    z3.And(
+                        [
+                            colors[s][cell_idx(f, y, x)] == state.get_color(f, y, x)
+                            for f in range(6)
+                            for y in range(puzzle.n)
+                            for x in range(puzzle.n)
                         ]
                     )
                 )
             )
 
     # Check model and return moves if sat.
+    prep_time = datetime.now() - prep_start
+    solve_start = datetime.now()
     res = solver.check()
+    solve_time = datetime.now() - solve_start
+    moves: list[str] | None = None
+
     if res == z3.sat:
-        moves: list[str] = []
+        moves = []
         model = solver.model()
         for s in range(len(colors) - 1):
             ma = model.get_interp(move_axes[s]).as_long()
             mi = model.get_interp(move_indices[s]).as_long()
             md = model.get_interp(move_directions[s]).as_long()
-            moves.append(move_name(n, ma, mi, md))
+            moves.append(move_name(puzzle.n, ma, mi, md))
         assert len(moves) == k
-        return moves
+
+    return moves, prep_time, solve_time
 
 
-def solve_puzzles(files: list[str], process_count: int):
+def solve(files: list[str], process_count: int):
     """Solve a list of puzzles, efficiently distributing tasks among multiple processes."""
+
+    pattern_depth = 4
+
     with Manager() as manager:
-        # List of puzzles to solve
-        puzzles: list[list[list[list[int]]]] = [
-            str_to_state(open(file, "r").read()) for file in files
-        ]
+        # List of puzzles to solve.
+        puzzles = [State(open(file, "r").read()) for file in files]
 
         # List of n values for each of the puzzles.
-        ns = [len(puzzles[i][0]) for i in range(len(puzzles))]
+        ns = [puzzles[i].n for i in range(len(puzzles))]
 
         # Generate any missing move mappings.
         for n in ns:
             move_mapping.generate(n)
+
+        # Generate any missing pattern databases.
+        for n in ns:
+            pattern_database.generate(n, pattern_depth)
 
         # List of upperbounds for k for each of the puzzles.
         k_upperbounds = [k_upperbound(ns[i]) for i in range(len(puzzles))]
@@ -288,46 +241,49 @@ def solve_puzzles(files: list[str], process_count: int):
         # Lists of prospects for k for each of the puzzles.
         k_prospects = [list(range(k_upperbounds[i] + 1)) for i in range(len(puzzles))]
 
-        # List of minimum size solutions for each of the puzzles.
+        # List of currently found minimum size solutions for each of the puzzles.
         k_minima: list[list[str] | None] = [None for _ in range(len(puzzles))]
 
-        # List of cpu times for each tried prospect for each puzzle.
-        cpu_times: list[dict[int, timedelta]] = [{} for _ in range(len(puzzles))]
+        # List of prep times for each tried prospect for each puzzle.
+        prep_times: list[dict[int, timedelta]] = [{} for _ in range(len(puzzles))]
+
+        # List of solving times for each tried prospect for each puzzle.
+        solve_times: list[dict[int, timedelta]] = [{} for _ in range(len(puzzles))]
 
         # List of processes and their current tasks.
         processes: list[tuple[int, int, Process]] = []
 
         # Queue to output results onto.
-        output: Queue[tuple[int, int, datetime, list[str] | None]] = manager.Queue()
+        output: Queue[
+            tuple[int, int, list[str] | None, timedelta, timedelta]
+        ] = manager.Queue()
 
         def spawn_new_process():
             def solve_wrapper(
-                starting_state: list[list[list[int]]],
+                puzzle: State,
                 k: int,
-                puzzle_index: int,
-                start_time: datetime,
-                output: Queue[tuple[int, int, datetime, list[str] | None]],
+                i: int,
+                output: Queue[tuple[int, int, list[str] | None, timedelta, timedelta]],
             ):
-                solution = solve(starting_state, k)
-                output.put((puzzle_index, k, start_time, solution))
+                solution, prep_time, solve_time = solve_for_k(puzzle, k, pattern_depth)
+                output.put((i, k, solution, prep_time, solve_time))
 
-            for puzzle_index in range(len(puzzles)):
-                if len(k_prospects[puzzle_index]) > 0:
+            for i in range(len(puzzles)):
+                if len(k_prospects[i]) > 0:
                     median = (
-                        len(k_prospects[puzzle_index]) // 2
+                        len(k_prospects[i]) // 2
                     )  # Take median prospect, resulting in a kind of binary search.
-                    k = k_prospects[puzzle_index].pop(median)
+                    k = k_prospects[i].pop(median)
                     process = Process(
                         target=solve_wrapper,
                         args=(
-                            puzzles[puzzle_index],
+                            puzzles[i],
                             k,
-                            puzzle_index,
-                            datetime.now(),
+                            i,
                             output,
                         ),
                     )
-                    processes.append((puzzle_index, k, process))
+                    processes.append((i, k, process))
                     process.start()
                     break
 
@@ -335,16 +291,15 @@ def solve_puzzles(files: list[str], process_count: int):
             spawn_new_process()
 
         while len(processes) > 0:
-            puzzle_index, k, start, minimum = output.get()
-            cpu_time = datetime.now() - start
-            cpu_times[puzzle_index][k] = cpu_time
-            if minimum is None:
+            i, k, solution, prep_time, solve_time = output.get()
+            prep_times[i][k] = prep_time
+            solve_times[i][k] = solve_time
+
+            if solution is None:
                 print_with_stamp(
-                    f"{files[puzzle_index]}: unsat for k = {k} found in {cpu_time}..."
+                    f"{files[i]}: unsat for k = {k} found in {solve_time} with {prep_time} prep time..."
                 )
-                k_prospects[puzzle_index] = [
-                    p for p in k_prospects[puzzle_index] if p > k
-                ]
+                k_prospects[i] = [p for p in k_prospects[i] if p > k]
                 killed = 0
                 for pi in range(len(processes) - 1, -1, -1):
                     if processes[pi][1] <= k:
@@ -354,14 +309,12 @@ def solve_puzzles(files: list[str], process_count: int):
                     spawn_new_process()
             else:
                 print_with_stamp(
-                    f"{files[puzzle_index]}: sat for k = {k} found in {cpu_time}..."
+                    f"{files[i]}: sat for k = {k} found in {solve_time} with {prep_time} prep time..."
                 )
-                current_minimum = k_minima[puzzle_index]
+                current_minimum = k_minima[i]
                 if current_minimum is None or k < len(current_minimum):
-                    k_minima[puzzle_index] = minimum
-                k_prospects[puzzle_index] = [
-                    p for p in k_prospects[puzzle_index] if p < k
-                ]
+                    k_minima[i] = solution
+                k_prospects[i] = [p for p in k_prospects[i] if p < k]
                 killed = 0
                 for pi in range(len(processes) - 1, -1, -1):
                     if processes[pi][1] >= k:
@@ -369,33 +322,40 @@ def solve_puzzles(files: list[str], process_count: int):
                         killed += 1
                 for _ in range(killed):
                     spawn_new_process()
-            if all([puzzle_index != pi for pi, _, _ in processes]):
-                minimum = k_minima[puzzle_index]
-                total_cpu_time = sum(cpu_times[puzzle_index].values(), timedelta())
+
+            if all([i != pi for pi, _, _ in processes]):
+                minimum = k_minima[i]
+                total_solve_time = sum(solve_times[i].values(), timedelta())
+                total_prep_time = sum(prep_times[i].values(), timedelta())
 
                 if minimum is None:
                     print_with_stamp(
-                        f"{files[puzzle_index]}: found no solution with k ≤ {k_upperbounds[puzzle_index]} to be possible in {total_cpu_time}"
+                        f"{files[i]}: found no solution with k ≤ {k_upperbounds[i]} to be possible in {total_solve_time} with {total_prep_time} prep time"
                     )
                 else:
                     print_with_stamp(
-                        f"{files[puzzle_index]}: minimum k = {len(minimum)} found in {total_cpu_time}"
+                        f"{files[i]}: minimum k = {len(minimum)} found in {total_solve_time} with {total_prep_time} prep time"
                     )
 
                 result = {
                     "k": len(minimum) if minimum is not None else "n/a",
+                    "pattern_depth": pattern_depth,
                     "moves": minimum if minimum is not None else "impossible",
-                    "total_cpu_time": str(total_cpu_time),
-                    "cpu_time_per_k": {
-                        k: str(d) for k, d in sorted(cpu_times[puzzle_index].items())
+                    "total_solve_time": str(total_solve_time),
+                    "total_prep_time": str(total_prep_time),
+                    "prep_time_per_k": {
+                        k: str(t) for k, t in sorted(prep_times[i].items())
                     },
-                    "k_upperbound": k_upperbounds[puzzle_index],
+                    "solve_time_per_k": {
+                        k: str(t) for k, t in sorted(solve_times[i].items())
+                    },
+                    "k_upperbound": k_upperbounds[i],
                 }
 
-                with open(files[puzzle_index] + ".solution", "w") as solution_file:
+                with open(files[i] + ".solution", "w") as solution_file:
                     solution_file.write(json.dumps(result, indent=4))
 
 
-# e.g. python solve_puzzles.py ./puzzles/n2-random10.txt ./puzzles/n3-random9.txt ...
+# e.g. python solve.py ./puzzles/n2-random10.txt ...
 if __name__ == "__main__":
-    solve_puzzles(sys.argv[1:], cpu_count())
+    solve(sys.argv[1:], cpu_count())

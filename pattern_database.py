@@ -1,8 +1,11 @@
 import os
 import sys
 from datetime import datetime
-from misc import execute_move, reverse_direction, create_parent_directory, state_to_str
-import numpy as np
+from misc import (
+    create_parent_directory,
+    print_with_stamp,
+    State,
+)
 
 
 def file_path(n: int, d: int):
@@ -15,35 +18,29 @@ def generate(n: int, d: int):
         return  # already generated, so skip
     create_parent_directory(path)
 
+    print_with_stamp(f"generating pattern database for n = {n} and d = {d}...")
+
     patterns: dict[str, int] = {}
 
-    def recurse(depth: int, state: np.ndarray):
+    def recurse(depth: int, state: State):
         if depth == d:
             return
         else:
             for mi in range(n):
                 for ma in range(3):
                     for md in range(3):
-                        execute_move(n, state, mi, ma, md)
+                        state.execute_move(mi, ma, md)
                         depth += 1
 
-                        state_str = state_to_str(state)
-                        if state_str not in patterns or depth < patterns[state_str]:
-                            patterns[state_str] = depth
+                        s = state.to_str()
+                        if s not in patterns or depth < patterns[s]:
+                            patterns[s] = depth
                         recurse(depth, state)
 
-                        execute_move(n, state, mi, ma, reverse_direction(md))
+                        state.reverse_move(mi, ma, md)
                         depth -= 1
 
-    recurse(
-        0,
-        np.array(
-            [
-                np.array([np.array([f for _ in range(n)]) for _ in range(n)])
-                for f in range(6)
-            ]
-        ),
-    )
+    recurse(0, State.finished(n))
 
     with open(path, "w") as file:
         for state, k in patterns.items():
@@ -52,8 +49,14 @@ def generate(n: int, d: int):
 
 def load(n: int, d: int):
     with open(file_path(n, d), "r") as file:
-        print(file)
-        raise Exception("TODO")
+
+        def parse_line(line: str):
+            s, r = line.split(" ")
+            state = State(s)
+            remaining = int(r)
+            return state, remaining
+
+        return list(map(parse_line, file))
 
 
 # e.g. python pattern_database.py {n} {d}

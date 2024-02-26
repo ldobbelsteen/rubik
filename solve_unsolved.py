@@ -1,8 +1,8 @@
 import os
 from multiprocessing import cpu_count
-from solve_puzzles import solve_puzzles
+from solve import solve
 
-# e.g. python solve_unsolved_puzzles.py
+# e.g. python solve_unsolved.py
 if __name__ == "__main__":
     puzzles: list[str] = []
     puzzle_dir = "./puzzles/"
@@ -14,4 +14,4 @@ if __name__ == "__main__":
             and not os.path.isfile(path + ".solution")
         ):
             puzzles.append(path)
-    solve_puzzles(sorted(puzzles), cpu_count())
+    solve(sorted(puzzles), cpu_count())
