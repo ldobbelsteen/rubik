@@ -218,7 +218,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
 def solve(files: list[str], process_count: int):
     """Solve a list of puzzles, efficiently distributing tasks among multiple processes."""
 
-    pattern_depth = 4
+    pattern_depth = 0
 
     with Manager() as manager:
         # List of puzzles to solve.
