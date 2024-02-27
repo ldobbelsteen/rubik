@@ -358,6 +358,7 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
                         k: str(t) for k, t in sorted(solve_times[i].items())
                     },
                     "k_upperbound": k_upperbounds[i],
+                    "process_count": process_count,
                 }
 
                 with open(files[i] + ".solution", "w") as solution_file:
