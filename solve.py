@@ -174,16 +174,13 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     for s1 in range(len(colors)):
         for s2 in range(s1 + 1, len(colors)):
             solver.add(
-                z3.Not(
-                    z3.And(
-                        [
-                            colors[s1][cell_idx(f, y, x)]
-                            == colors[s2][cell_idx(f, y, x)]
-                            for f in range(6)
-                            for y in range(puzzle.n)
-                            for x in range(puzzle.n)
-                        ]
-                    )
+                z3.Or(
+                    [
+                        colors[s1][cell_idx(f, y, x)] != colors[s2][cell_idx(f, y, x)]
+                        for f in range(6)
+                        for y in range(puzzle.n)
+                        for x in range(puzzle.n)
+                    ]
                 )
             )
 
@@ -192,16 +189,14 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     for state, remaining in patterns:
         for s in range(max(0, len(colors) - remaining), len(colors) - 1):
             solver.add(
-                z3.Not(
-                    z3.And(
-                        [
-                            colors[s][cell_idx(f, y, x)] == state.get_color(f, y, x)
-                            for f in range(6)
-                            for y in range(puzzle.n)
-                            for x in range(puzzle.n)
-                            if not state.is_unset(f, y, x)
-                        ]
-                    )
+                z3.Or(
+                    [
+                        colors[s][cell_idx(f, y, x)] != state.get_color(f, y, x)
+                        for f in range(6)
+                        for y in range(puzzle.n)
+                        for x in range(puzzle.n)
+                        if not state.is_unset(f, y, x)
+                    ]
                 )
             )
 
