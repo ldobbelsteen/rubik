@@ -190,7 +190,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     # Add restrictions for pattern database.
     patterns = pattern_database.load(puzzle.n, pattern_depth)
     for state, minimum_remaining in patterns:
-        for s in range(max(0, len(colors) - minimum_remaining + 1), len(colors)):
+        for s in range(max(0, len(colors) - minimum_remaining), len(colors) - 1):
             solver.add(
                 z3.Not(
                     z3.And(
