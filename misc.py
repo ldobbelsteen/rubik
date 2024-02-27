@@ -1,5 +1,4 @@
 from datetime import datetime
-import numpy as np
 import os
 import math
 from PIL import Image, ImageDraw
@@ -83,20 +82,14 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
 
 class State:
     def __init__(self, s: str):
-        face_size, rem = divmod(len(s), 6)
-        if rem != 0:
+        n_raw = math.sqrt(len(s) / 6)
+        if not n_raw.is_integer():
             raise Exception(f"invalid state string size: {s}")
 
-        self.n = int(math.sqrt(face_size))
-        if self.n**2 != face_size:
-            raise Exception(f"invalid state string size: {s}")
+        self.n = int(n_raw)
+        self.state = [None if c == "*" else int(c) for c in s]
 
-        flat = np.array([None if c == "*" else int(c) for c in s])
-        self.state = np.array(
-            [flat_face.reshape(-1, self.n) for flat_face in flat.reshape(-1, face_size)]
-        )
-
-    def to_str(self) -> str:
+    def to_str(self):
         return "".join(
             [
                 "*" if self.is_unset(f, y, x) else str(self.get_color(f, y, x))
@@ -106,7 +99,7 @@ class State:
             ]
         )
 
-    def to_str_only_corners(self) -> str:
+    def to_str_only_corners(self):
         return "".join(
             [
                 "*"
@@ -124,13 +117,17 @@ class State:
             "0" * n**2 + "1" * n**2 + "2" * n**2 + "3" * n**2 + "4" * n**2 + "5" * n**2
         )
 
+    def cell_idx(self, f: int, y: int, x: int):
+        return x + y * self.n + f * self.n * self.n
+
     def is_unset(self, f: int, y: int, x: int):
-        return self.state[f, y, x] is None
+        idx = self.cell_idx(f, y, x)
+        return self.state[idx] is None
 
     def get_color(self, f: int, y: int, x: int) -> int:
-        result = self.state[f, y, x]
-        if result is None:
-            raise Exception("got color of unset cell")
+        idx = self.cell_idx(f, y, x)
+        result = self.state[idx]
+        assert result is not None
         return result
 
     def is_corner_cell(self, f: int, y: int, x: int) -> bool:
@@ -152,114 +149,14 @@ class State:
             raise Exception("invalid move direction")
 
     def execute_move(self, mi: int, ma: int, md: int):
-        if ma == 0:
-            if md == 0:
-                front_cache = np.copy(self.state[0][mi])
-                self.state[0][mi] = self.state[1][mi]
-                self.state[1][mi] = self.state[2][mi]
-                self.state[2][mi] = self.state[3][mi]
-                self.state[3][mi] = front_cache
-                if mi == 0:
-                    self.state[4] = np.rot90(self.state[4], k=3)
-                if mi == self.n - 1:
-                    self.state[5] = np.rot90(self.state[5], k=1)
-            elif md == 1:
-                front_cache = np.copy(self.state[0][mi])
-                self.state[0][mi] = self.state[3][mi]
-                self.state[3][mi] = self.state[2][mi]
-                self.state[2][mi] = self.state[1][mi]
-                self.state[1][mi] = front_cache
-                if mi == 0:
-                    self.state[4] = np.rot90(self.state[4], k=1)
-                if mi == self.n - 1:
-                    self.state[5] = np.rot90(self.state[5], k=3)
-            elif md == 2:
-                front_cache = np.copy(self.state[0][mi])
-                self.state[0][mi] = self.state[2][mi]
-                self.state[2][mi] = front_cache
-                right_cache = np.copy(self.state[1][mi])
-                self.state[1][mi] = self.state[3][mi]
-                self.state[3][mi] = right_cache
-                if mi == 0:
-                    self.state[4] = np.rot90(self.state[4], k=2)
-                if mi == self.n - 1:
-                    self.state[5] = np.rot90(self.state[5], k=2)
-            else:
-                raise Exception("invalid move direction")
-        elif ma == 1:
-            if md == 0:
-                front_cache = np.copy(self.state[0][:, mi])
-                self.state[0][:, mi] = self.state[5][:, mi]
-                self.state[5][:, mi] = np.flip(self.state[2][:, self.n - 1 - mi])
-                self.state[2][:, self.n - 1 - mi] = np.flip(self.state[4][:, mi])
-                self.state[4][:, mi] = front_cache
-                if mi == 0:
-                    self.state[3] = np.rot90(self.state[3], k=1)
-                if mi == self.n - 1:
-                    self.state[1] = np.rot90(self.state[1], k=3)
-            elif md == 1:
-                front_cache = np.copy(self.state[0][:, mi])
-                self.state[0][:, mi] = self.state[4][:, mi]
-                self.state[4][:, mi] = np.flip(self.state[2][:, self.n - 1 - mi])
-                self.state[2][:, self.n - 1 - mi] = np.flip(self.state[5][:, mi])
-                self.state[5][:, mi] = front_cache
-                if mi == 0:
-                    self.state[3] = np.rot90(self.state[3], k=3)
-                if mi == self.n - 1:
-                    self.state[1] = np.rot90(self.state[1], k=1)
-            elif md == 2:
-                front_cache = np.copy(self.state[0][:, mi])
-                self.state[0][:, mi] = np.flip(self.state[2][:, self.n - 1 - mi])
-                self.state[2][:, self.n - 1 - mi] = np.flip(front_cache)
-                top_cache = np.copy(self.state[4][:, mi])
-                self.state[4][:, mi] = self.state[5][:, mi]
-                self.state[5][:, mi] = top_cache
-                if mi == 0:
-                    self.state[3] = np.rot90(self.state[3], k=2)
-                if mi == self.n - 1:
-                    self.state[1] = np.rot90(self.state[1], k=2)
-            else:
-                raise Exception("invalid move direction")
-        elif ma == 2:
-            if md == 0:
-                right_cache = np.copy(self.state[1][:, mi])
-                self.state[1][:, mi] = self.state[4][self.n - 1 - mi, :]
-                self.state[4][self.n - 1 - mi, :] = np.flip(
-                    self.state[3][:, self.n - 1 - mi]
-                )
-                self.state[3][:, self.n - 1 - mi] = self.state[5][mi, :]
-                self.state[5][mi, :] = np.flip(right_cache)
-                if mi == 0:
-                    self.state[0] = np.rot90(self.state[0], k=3)
-                if mi == self.n - 1:
-                    self.state[2] = np.rot90(self.state[2], k=1)
-            elif md == 1:
-                right_cache = np.copy(self.state[1][:, mi])
-                self.state[1][:, mi] = np.flip(self.state[5][mi, :])
-                self.state[5][mi, :] = self.state[3][:, self.n - 1 - mi]
-                self.state[3][:, self.n - 1 - mi] = np.flip(
-                    self.state[4][self.n - 1 - mi, :]
-                )
-                self.state[4][self.n - 1 - mi, :] = right_cache
-                if mi == 0:
-                    self.state[0] = np.rot90(self.state[0], k=1)
-                if mi == self.n - 1:
-                    self.state[2] = np.rot90(self.state[2], k=3)
-            elif md == 2:
-                right_cache = np.copy(self.state[1][:, mi])
-                self.state[1][:, mi] = np.flip(self.state[3][:, self.n - 1 - mi])
-                self.state[3][:, self.n - 1 - mi] = np.flip(right_cache)
-                top_cache = np.copy(self.state[4][self.n - 1 - mi, :])
-                self.state[4][self.n - 1 - mi, :] = np.flip(self.state[5][mi, :])
-                self.state[5][mi, :] = np.flip(top_cache)
-                if mi == 0:
-                    self.state[0] = np.rot90(self.state[0], k=2)
-                if mi == self.n - 1:
-                    self.state[2] = np.rot90(self.state[2], k=2)
-            else:
-                raise Exception("invalid move direction")
-        else:
-            raise Exception("invalid move axis")
+        prev_state = self.state.copy()
+        for f in range(6):
+            for y in range(self.n):
+                for x in range(self.n):
+                    idx = self.cell_idx(f, y, x)
+                    map_f, map_y, map_x = mapping(self.n, ma, mi, md, f, y, x)
+                    map_idx = self.cell_idx(map_f, map_y, map_x)
+                    self.state[idx] = prev_state[map_idx]
 
     def print(self):
         square_size = 48
@@ -267,7 +164,7 @@ class State:
         im = Image.new(mode="RGB", size=image_size)
         draw = ImageDraw.Draw(im)
 
-        def draw_face(start_x, start_y, face):
+        def draw_face(start_x: int, start_y: int, f: int):
             for y in range(self.n):
                 for x in range(self.n):
                     draw.rectangle(
@@ -277,19 +174,159 @@ class State:
                             start_x + ((x + 1) * square_size),
                             start_y + ((y + 1) * square_size),
                         ),
-                        fill=color_name(face[y][x]),
+                        fill=color_name(self.get_color(f, y, x)),
                         outline="black",
                         width=4,
                     )
 
-        draw_face(1 * self.n * square_size, 1 * self.n * square_size, self.state[0])
-        draw_face(2 * self.n * square_size, 1 * self.n * square_size, self.state[1])
+        draw_face(1 * self.n * square_size, 1 * self.n * square_size, 0)
+        draw_face(2 * self.n * square_size, 1 * self.n * square_size, 1)
         draw_face(
             1 * self.n * square_size,
             3 * self.n * square_size,
-            np.rot90(self.state[2], k=2),
+            2,
         )
-        draw_face(0 * self.n * square_size, 1 * self.n * square_size, self.state[3])
-        draw_face(1 * self.n * square_size, 0 * self.n * square_size, self.state[4])
-        draw_face(1 * self.n * square_size, 2 * self.n * square_size, self.state[5])
+        draw_face(0 * self.n * square_size, 1 * self.n * square_size, 3)
+        draw_face(1 * self.n * square_size, 0 * self.n * square_size, 4)
+        draw_face(1 * self.n * square_size, 2 * self.n * square_size, 5)
         im.show()
+
+
+def mapping(
+    n: int, ma: int, mi: int, md: int, f: int, y: int, x: int
+) -> tuple[int, int, int]:
+    """Get the coordinates of the location of a cell in the previous state given
+    its new location and the last move based on the physics of a Rubik's cube.
+    As for the orientation: the front, right, back and left faces face upwards,
+    and the bottom and top faces both face upwards when rotating them towards
+    you."""
+    if ma == 0:
+        if f == 4 and mi == 0:
+            if md == 0:
+                return (4, n - 1 - x, y)
+            elif md == 1:
+                return (4, x, n - 1 - y)
+            elif md == 2:
+                return (4, n - 1 - y, n - 1 - x)
+        elif f == 5 and mi == n - 1:
+            if md == 0:
+                return (5, x, n - 1 - y)
+            elif md == 1:
+                return (5, n - 1 - x, y)
+            elif md == 2:
+                return (5, n - 1 - y, n - 1 - x)
+        elif f == 0 and mi == y:
+            if md == 0:
+                return (1, y, x)
+            elif md == 1:
+                return (3, y, x)
+            elif md == 2:
+                return (2, y, x)
+        elif f == 1 and mi == y:
+            if md == 0:
+                return (2, y, x)
+            elif md == 1:
+                return (0, y, x)
+            elif md == 2:
+                return (3, y, x)
+        elif f == 2 and mi == y:
+            if md == 0:
+                return (3, y, x)
+            elif md == 1:
+                return (1, y, x)
+            elif md == 2:
+                return (0, y, x)
+        elif f == 3 and mi == y:
+            if md == 0:
+                return (0, y, x)
+            elif md == 1:
+                return (2, y, x)
+            elif md == 2:
+                return (1, y, x)
+    elif ma == 1:
+        if f == 3 and mi == 0:
+            if md == 0:
+                return (3, x, n - 1 - y)
+            elif md == 1:
+                return (3, n - 1 - x, y)
+            elif md == 2:
+                return (3, n - 1 - y, n - 1 - x)
+        elif f == 1 and mi == n - 1:
+            if md == 0:
+                return (1, n - 1 - x, y)
+            elif md == 1:
+                return (1, x, n - 1 - y)
+            elif md == 2:
+                return (1, n - 1 - y, n - 1 - x)
+        elif f == 0 and mi == x:
+            if md == 0:
+                return (5, y, x)
+            elif md == 1:
+                return (4, y, x)
+            elif md == 2:
+                return (2, n - 1 - y, n - 1 - x)
+        elif f == 5 and mi == x:
+            if md == 0:
+                return (2, n - 1 - y, n - 1 - x)
+            elif md == 1:
+                return (0, y, x)
+            elif md == 2:
+                return (4, y, x)
+        elif f == 2 and mi == n - 1 - x:
+            if md == 0:
+                return (4, n - 1 - y, n - 1 - x)
+            elif md == 1:
+                return (5, n - 1 - y, n - 1 - x)
+            elif md == 2:
+                return (0, n - 1 - y, n - 1 - x)
+        elif f == 4 and mi == x:
+            if md == 0:
+                return (0, y, x)
+            elif md == 1:
+                return (2, n - 1 - y, n - 1 - x)
+            elif md == 2:
+                return (5, y, x)
+    elif ma == 2:
+        if f == 0 and mi == 0:
+            if md == 0:
+                return (0, n - 1 - x, y)
+            elif md == 1:
+                return (0, x, n - 1 - y)
+            elif md == 2:
+                return (0, n - 1 - y, n - 1 - x)
+        elif f == 2 and mi == n - 1:
+            if md == 0:
+                return (2, x, n - 1 - y)
+            elif md == 1:
+                return (2, n - 1 - x, y)
+            elif md == 2:
+                return (2, n - 1 - y, n - 1 - x)
+        elif f == 1 and mi == x:
+            if md == 0:
+                return (4, n - 1 - x, y)
+            elif md == 1:
+                return (5, x, n - 1 - y)
+            elif md == 2:
+                return (3, n - 1 - y, n - 1 - x)
+        elif f == 4 and mi == n - 1 - y:
+            if md == 0:
+                return (3, n - 1 - x, y)
+            elif md == 1:
+                return (1, x, n - 1 - y)
+            elif md == 2:
+                return (5, n - 1 - y, n - 1 - x)
+        elif f == 3 and mi == n - 1 - x:
+            if md == 0:
+                return (5, n - 1 - x, y)
+            elif md == 1:
+                return (4, x, n - 1 - y)
+            elif md == 2:
+                return (1, n - 1 - y, n - 1 - x)
+        elif f == 5 and mi == y:
+            if md == 0:
+                return (1, n - 1 - x, y)
+            elif md == 1:
+                return (3, x, n - 1 - y)
+            elif md == 2:
+                return (4, n - 1 - y, n - 1 - x)
+    return (f, y, x)
