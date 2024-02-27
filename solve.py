@@ -189,8 +189,8 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
 
     # Add restrictions for pattern database.
     patterns = pattern_database.load(puzzle.n, pattern_depth)
-    for state, minimum_remaining in patterns:
-        for s in range(max(0, len(colors) - minimum_remaining), len(colors) - 1):
+    for state, remaining in patterns:
+        for s in range(max(0, len(colors) - remaining), len(colors) - 1):
             solver.add(
                 z3.Not(
                     z3.And(
@@ -230,7 +230,7 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
 
     with Manager() as manager:
         # List of puzzles to solve.
-        puzzles = [State(open(file, "r").read()) for file in files]
+        puzzles = [State.from_str(open(file, "r").read()) for file in files]
 
         # List of n values for each of the puzzles.
         ns = [puzzles[i].n for i in range(len(puzzles))]

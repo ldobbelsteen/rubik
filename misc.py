@@ -81,13 +81,18 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
 
 
 class State:
-    def __init__(self, s: str):
+    UNSET = 9
+
+    def __init__(self, n: int, colors: list[int]):
+        self.n = n
+        self.colors = colors
+
+    @staticmethod
+    def from_str(s: str):
         n_raw = math.sqrt(len(s) / 6)
         if not n_raw.is_integer():
             raise Exception(f"invalid state string size: {s}")
-
-        self.n = int(n_raw)
-        self.state = [None if c == "*" else int(c) for c in s]
+        return State(int(n_raw), [State.UNSET if c == "*" else int(c) for c in s])
 
     def to_str(self):
         return "".join(
@@ -103,7 +108,7 @@ class State:
         return "".join(
             [
                 "*"
-                if self.is_unset(f, y, x) or not self.is_corner_cell(f, y, x)
+                if self.is_unset(f, y, x) or not self.is_corner_cell(x, y)
                 else str(self.get_color(f, y, x))
                 for f in range(6)
                 for y in range(self.n)
@@ -114,7 +119,8 @@ class State:
     @staticmethod
     def finished(n: int):
         return State(
-            "0" * n**2 + "1" * n**2 + "2" * n**2 + "3" * n**2 + "4" * n**2 + "5" * n**2
+            n,
+            [0] * n**2 + [1] * n**2 + [2] * n**2 + [3] * n**2 + [4] * n**2 + [5] * n**2,
         )
 
     def cell_idx(self, f: int, y: int, x: int):
@@ -122,15 +128,15 @@ class State:
 
     def is_unset(self, f: int, y: int, x: int):
         idx = self.cell_idx(f, y, x)
-        return self.state[idx] is None
+        return self.colors[idx] == State.UNSET
 
     def get_color(self, f: int, y: int, x: int) -> int:
         idx = self.cell_idx(f, y, x)
-        result = self.state[idx]
-        assert result is not None
+        result = self.colors[idx]
+        assert result != State.UNSET
         return result
 
-    def is_corner_cell(self, f: int, y: int, x: int) -> bool:
+    def is_corner_cell(self, x: int, y: int) -> bool:
         return (
             (y == 0 and x == 0)
             or (y == 0 and x == self.n - 1)
@@ -138,25 +144,16 @@ class State:
             or (y == self.n - 1 and x == self.n - 1)
         )
 
-    def reverse_move(self, mi: int, ma: int, md: int):
-        if md == 0:
-            self.execute_move(mi, ma, 1)
-        elif md == 1:
-            self.execute_move(mi, ma, 0)
-        elif md == 2:
-            self.execute_move(mi, ma, 2)
-        else:
-            raise Exception("invalid move direction")
-
     def execute_move(self, mi: int, ma: int, md: int):
-        prev_state = self.state.copy()
+        new_colors = [State.UNSET] * len(self.colors)
         for f in range(6):
             for y in range(self.n):
                 for x in range(self.n):
                     idx = self.cell_idx(f, y, x)
                     map_f, map_y, map_x = mapping(self.n, ma, mi, md, f, y, x)
                     map_idx = self.cell_idx(map_f, map_y, map_x)
-                    self.state[idx] = prev_state[map_idx]
+                    new_colors[idx] = self.colors[map_idx]
+        return State(self.n, new_colors)
 
     def print(self):
         square_size = 48

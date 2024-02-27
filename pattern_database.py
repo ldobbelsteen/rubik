@@ -23,28 +23,21 @@ def generate(n: int, d: int):
     patterns: dict[str, int] = {}
 
     def recurse(depth: int, state: State):
-        if depth == d:
-            return
-        else:
+        s = state.to_str_only_corners()
+        if s not in patterns or depth < patterns[s]:
+            patterns[s] = depth
+
+        if depth < d:
             for mi in range(n):
                 for ma in range(3):
                     for md in range(3):
-                        state.execute_move(mi, ma, md)
-                        depth += 1
-
-                        s = state.to_str_only_corners()
-                        if s not in patterns or depth < patterns[s]:
-                            patterns[s] = depth
-                        recurse(depth, state)
-
-                        state.reverse_move(mi, ma, md)
-                        depth -= 1
+                        recurse(depth + 1, state.execute_move(mi, ma, md))
 
     recurse(0, State.finished(n))
 
     with open(path, "w") as file:
-        for state, minimum_remaining in patterns.items():
-            file.write(f"{state} {minimum_remaining}\n")
+        for state, remaining in patterns.items():
+            file.write(f"{state} {remaining}\n")
 
 
 def load(n: int, d: int):
@@ -52,7 +45,7 @@ def load(n: int, d: int):
 
         def parse_line(line: str):
             s, r = line.split(" ")
-            state = State(s)
+            state = State.from_str(s)
             remaining = int(r)
             return state, remaining
 
