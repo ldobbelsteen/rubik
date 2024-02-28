@@ -355,10 +355,12 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
                     "process_count": process_count,
                 }
 
-                with open(f"{files[i]}.d{pattern_depth}.solution") as solution_file:
+                with open(
+                    f"{files[i]}.d{pattern_depth}.solution", "w"
+                ) as solution_file:
                     solution_file.write(json.dumps(result, indent=4))
 
 
-# e.g. python solve.py {pattern_depth} ./puzzles/n2-random10.txt ...
+# e.g. python solve.py ./puzzles/n2-random10.txt {pattern_depth}
 if __name__ == "__main__":
-    solve(sys.argv[2:], cpu_count(), int(sys.argv[1]))
+    solve([sys.argv[1]], cpu_count(), int(sys.argv[2]))
