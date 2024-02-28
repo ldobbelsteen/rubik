@@ -1,0 +1,30 @@
+{
+    "k": 5,
+    "moves": [
+        "quarter column 0 down",
+        "quarter layer 1 clockwise",
+        "half column 1",
+        "quarter row 0 right",
+        "quarter layer 1 counterclockwise"
+    ],
+    "total_solve_time": "0:00:01.154675",
+    "total_prep_time": "0:00:01.178291",
+    "prep_time_per_k": {
+        "0": "0:00:00.022348",
+        "1": "0:00:00.083623",
+        "2": "0:00:00.158689",
+        "3": "0:00:00.234373",
+        "4": "0:00:00.305268",
+        "5": "0:00:00.373990"
+    },
+    "solve_time_per_k": {
+        "0": "0:00:00.002052",
+        "1": "0:00:00.004501",
+        "2": "0:00:00.045572",
+        "3": "0:00:00.177440",
+        "4": "0:00:00.390939",
+        "5": "0:00:00.534171"
+    },
+    "k_upperbound": 11,
+    "process_count": 12
+}
