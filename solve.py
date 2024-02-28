@@ -38,9 +38,9 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     ]
 
     # Variables which together indicate the move at each state.
-    move_axes = [z3.Int(f"ma({s})") for s in range(len(colors) - 1)]
-    move_indices = [z3.Int(f"mi({s})") for s in range(len(colors) - 1)]
-    move_directions = [z3.Int(f"md({s})") for s in range(len(colors) - 1)]
+    move_axes = [z3.Int(f"ma({s})") for s in range(k)]
+    move_indices = [z3.Int(f"mi({s})") for s in range(k)]
+    move_directions = [z3.Int(f"md({s})") for s in range(k)]
 
     # Restrict color domains to the six colors.
     for s in range(len(colors)):
