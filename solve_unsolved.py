@@ -1,6 +1,7 @@
 import os
 from multiprocessing import cpu_count
 from solve import solve
+from misc import natural_sorted
 import sys
 
 # e.g. python solve_unsolved.py {pattern_depth}
@@ -16,4 +17,4 @@ if __name__ == "__main__":
             and not os.path.isfile(f"{path}.d{pattern_depth}.solution")
         ):
             puzzles.append(path)
-    solve(sorted(puzzles), cpu_count(), pattern_depth)
+    solve(natural_sorted(puzzles), cpu_count(), pattern_depth)

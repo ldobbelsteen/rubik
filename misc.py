@@ -2,6 +2,7 @@ from datetime import datetime
 import os
 import math
 from PIL import Image, ImageDraw
+import re
 
 
 def print_with_stamp(s: str):
@@ -12,6 +13,16 @@ def create_parent_directory(file_path: str):
     dir = os.path.dirname(file_path)
     if not os.path.exists(dir):
         os.makedirs(dir)
+
+
+def natural_sorted(ls: list[str]):
+    def convert(s: str):
+        return int(s) if s.isdigit() else s.lower()
+
+    def alphanum_key(key: str):
+        return [convert(c) for c in re.split("([0-9]+)", key)]
+
+    return sorted(ls, key=alphanum_key)
 
 
 def face_name(f: int) -> str:
