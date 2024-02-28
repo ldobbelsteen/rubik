@@ -155,7 +155,7 @@ class State:
             or (y == self.n - 1 and x == self.n - 1)
         )
 
-    def execute_move(self, mi: int, ma: int, md: int):
+    def execute_move(self, ma: int, mi: int, md: int):
         new_colors = [State.UNSET] * len(self.colors)
         for f in range(6):
             for y in range(self.n):

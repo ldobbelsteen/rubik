@@ -28,10 +28,10 @@ def generate(n: int, d: int):
             patterns[s] = depth
 
         if depth < d:
-            for mi in range(n):
-                for ma in range(3):
+            for ma in range(3):
+                for mi in range(n):
                     for md in range(3):
-                        recurse(depth + 1, state.execute_move(mi, ma, md))
+                        recurse(depth + 1, state.execute_move(ma, mi, md))
 
     recurse(0, State.finished(n))
 
