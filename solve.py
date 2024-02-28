@@ -342,7 +342,6 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
 
                 result = {
                     "k": len(minimum) if minimum is not None else "n/a",
-                    "pattern_depth": pattern_depth,
                     "moves": minimum if minimum is not None else "impossible",
                     "total_solve_time": str(total_solve_time),
                     "total_prep_time": str(total_prep_time),

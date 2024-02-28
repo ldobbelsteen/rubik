@@ -1,6 +1,5 @@
 {
     "k": 8,
-    "pattern_depth": 3,
     "moves": [
         "quarter row 1 left",
         "quarter column 0 up",
