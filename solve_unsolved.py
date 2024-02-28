@@ -7,12 +7,13 @@ import sys
 if __name__ == "__main__":
     puzzles: list[str] = []
     puzzle_dir = "./puzzles/"
+    pattern_depth = int(sys.argv[1])
     for file in os.listdir(puzzle_dir):
         path = os.path.join(puzzle_dir, file)
         if (
             os.path.isfile(path)
             and path.endswith(".txt")
-            and not os.path.isfile(path + ".solution")
+            and not os.path.isfile(f"{path}.d{pattern_depth}.solution")
         ):
             puzzles.append(path)
-    solve(sorted(puzzles), cpu_count(), int(sys.argv[1]))
+    solve(sorted(puzzles), cpu_count(), pattern_depth)
