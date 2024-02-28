@@ -356,7 +356,7 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
                     "process_count": process_count,
                 }
 
-                with open(files[i] + ".solution", "w") as solution_file:
+                with open(f"{files[i]}.d{pattern_depth}.solution") as solution_file:
                     solution_file.write(json.dumps(result, indent=4))
 
 
