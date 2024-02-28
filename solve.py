@@ -276,10 +276,7 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
 
             for i in range(len(puzzles)):
                 if len(k_prospects[i]) > 0:
-                    median = (
-                        len(k_prospects[i]) // 2
-                    )  # Take median prospect, resulting in a kind of binary search.
-                    k = k_prospects[i].pop(median)
+                    k = k_prospects[i].pop(0)
                     process = Process(
                         target=solve_wrapper,
                         args=(
