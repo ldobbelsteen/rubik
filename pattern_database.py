@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from misc import (
     create_parent_directory,
-    print_with_stamp,
+    print_stamped,
     State,
 )
 
@@ -18,7 +18,7 @@ def generate(n: int, d: int):
         return  # already generated, so skip
     create_parent_directory(path)
 
-    print_with_stamp(f"generating pattern database for n = {n} and d = {d}...")
+    print_stamped(f"generating pattern database for n = {n} and d = {d}...")
 
     patterns: dict[str, int] = {}
 

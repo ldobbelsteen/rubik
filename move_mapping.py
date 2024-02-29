@@ -3,7 +3,7 @@ import sys
 from datetime import datetime
 from functools import reduce
 from dd.autoref import BDD, Function
-from misc import print_with_stamp, create_parent_directory
+from misc import print_stamped, create_parent_directory
 
 
 def mapping_tree(n: int):
@@ -334,7 +334,7 @@ def generate(n: int):
         return  # already generated, so skip
     create_parent_directory(path)
 
-    print_with_stamp(f"generating move mappings for n = {n}...")
+    print_stamped(f"generating move mappings for n = {n}...")
 
     bdd = BDD()
     root = bdd.true

@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from misc import print_with_stamp, State, move_name
+from misc import print_stamped, State, move_name
 import move_mapping
 import pattern_database
 
@@ -21,48 +21,55 @@ def k_upperbound(n: int):
             raise Exception(f"upperbound of {n} not set")
 
 
+def z3_int_with_range(solver: z3.Optimize, name: str, low: int, high: int):
+    """Create Z3 integer and add its value range to the solver. The range is
+    inclusive on low and exclusive on high."""
+    var = z3.Int(name)
+    solver.add(var >= low)
+    solver.add(var < high)
+    return var
+
+
 def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible.
     Also returns, in both cases, the time it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
     solver = z3.Optimize()
 
-    def cell_idx(f: int, y: int, x: int):
-        """Convert the coordinates on a cube to a flat index."""
-        return x + y * puzzle.n + f * puzzle.n * puzzle.n
-
-    # Variables indicating the colors of the cube cells at each state.
-    colors = [
-        [z3.Int(f"c({s},{i})") for i in range(6 * puzzle.n * puzzle.n)]
+    # Variables which together represent the state of the cube at each step.
+    corner_locations = [
+        [z3_int_with_range(solver, f"corner_loc({c}) s({s})", 0, 8) for c in range(8)]
+        for s in range(k + 1)
+    ]
+    corner_rotations = [
+        [z3_int_with_range(solver, f"corner_rot({c}) s({s})", 0, 3) for c in range(8)]
+        for s in range(k + 1)
+    ]
+    edge_locations = [
+        [z3_int_with_range(solver, f"edge_loc({e}) s({s})", 0, 12) for e in range(12)]
+        for s in range(k + 1)
+    ]
+    edge_rotations = [
+        [z3_int_with_range(solver, f"edge_rot({e}) s({s})", 0, 2) for e in range(12)]
+        for s in range(k + 1)
+    ]
+    center_locations = [
+        [z3_int_with_range(solver, f"center_loc({f}) s({s})", 0, 6) for f in range(6)]
         for s in range(k + 1)
     ]
 
-    # Variables which together indicate the move at each state.
-    move_axes = [z3.Int(f"ma({s})") for s in range(k)]
-    move_indices = [z3.Int(f"mi({s})") for s in range(k)]
-    move_directions = [z3.Int(f"md({s})") for s in range(k)]
-
-    # Restrict color domains to the six colors.
-    for s in range(len(colors)):
-        solver.add(
-            z3.And(
-                [
-                    z3.And(
-                        colors[s][cell_idx(f, y, x)] >= 0,
-                        colors[s][cell_idx(f, y, x)] < 6,
-                    )
-                    for f in range(6)
-                    for y in range(puzzle.n)
-                    for x in range(puzzle.n)
-                ]
-            )
-        )
+    # Variables which together indicate the move at each step.
+    move_axes = [z3_int_with_range(solver, f"ma({s})", 0, 2) for s in range(k)]
+    move_indices = [
+        z3_int_with_range(solver, f"mi({s})", 0, puzzle.n) for s in range(k)
+    ]
+    move_directions = [z3_int_with_range(solver, f"md({s})", 0, 2) for s in range(k)]
 
     # Restrict colors of first state to starting state.
     solver.add(
         z3.And(
             [
-                colors[0][cell_idx(f, y, x)] == puzzle.get_color(f, y, x)
+                states[0][puzzle.cell_idx(f, y, x)] == puzzle.get_color(f, y, x)
                 for f in range(6)
                 for y in range(puzzle.n)
                 for x in range(puzzle.n)
@@ -74,7 +81,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
         """Return restriction on whether a state is complete."""
         return z3.And(
             [
-                colors[s][cell_idx(f, y, x)] == f
+                states[s][puzzle.cell_idx(f, y, x)] == f
                 for f in range(6)
                 for y in range(puzzle.n)
                 for x in range(puzzle.n)
@@ -85,19 +92,20 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     solver.add(is_complete(-1))
 
     # Restrict moves to valid moves.
-    for s in range(len(colors) - 1):
+    for s in range(len(states) - 1):
         solver.add(z3.And(move_axes[s] >= 0, move_axes[s] <= 2))
         solver.add(z3.And(move_indices[s] >= 0, move_indices[s] <= puzzle.n))
         solver.add(z3.And(move_directions[s] >= 0, move_directions[s] <= 2))
 
     # Restrict color states when move is nothing.
-    for s in range(len(colors) - 1):
+    for s in range(len(states) - 1):
         solver.add(
             z3.Or(
                 move_indices[s] != puzzle.n,
                 z3.And(
                     [
-                        colors[s][cell_idx(f, y, x)] == colors[s + 1][cell_idx(f, y, x)]
+                        states[s][puzzle.cell_idx(f, y, x)]
+                        == states[s + 1][puzzle.cell_idx(f, y, x)]
                         for f in range(6)
                         for y in range(puzzle.n)
                         for x in range(puzzle.n)
@@ -107,12 +115,12 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
         )
 
     # Only allow nothing move when complete.
-    for s in range(len(colors) - 1):
+    for s in range(len(states) - 1):
         solver.add(z3.Or(move_indices[s] != puzzle.n, is_complete(s)))
 
     # Restrict color states using pre-generated move mappings file.
     mappings = move_mapping.load(puzzle.n)
-    for s in range(len(colors) - 1):
+    for s in range(len(states) - 1):
         for ma in mappings:
             for mi in mappings[ma]:
                 for md in mappings[ma][mi]:
@@ -125,8 +133,8 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
                         conditions.append(move_directions[s] == md)
 
                     consequences = [
-                        colors[s + 1][cell_idx(f_in, y_in, x_in)]
-                        == colors[s][cell_idx(f_out, y_out, x_out)]
+                        states[s + 1][puzzle.cell_idx(f_in, y_in, x_in)]
+                        == states[s][puzzle.cell_idx(f_out, y_out, x_out)]
                         for (f_in, y_in, x_in), (f_out, y_out, x_out) in mappings[ma][
                             mi
                         ][md]
@@ -141,7 +149,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
                         )
 
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
-    for s in range(1, len(colors) - 1):
+    for s in range(1, len(states) - 1):
         for r in range(1, min(puzzle.n + 1, s + 1)):
             solver.add(
                 z3.Or(
@@ -152,7 +160,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
             )
 
     # All subsequent moves in the same axis happen in ascending order of index.
-    for s in range(1, len(colors) - 1):
+    for s in range(1, len(states) - 1):
         solver.add(
             z3.Or(
                 move_axes[s - 1] != move_axes[s],
@@ -171,14 +179,14 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
         )
 
     # States cannot be repeated.
-    for s1 in range(len(colors)):
-        for s2 in range(s1 + 1, len(colors)):
+    for s1 in range(len(states)):
+        for s2 in range(s1 + 1, len(states)):
             solver.add(
                 z3.Not(
                     z3.And(
                         [
-                            colors[s1][cell_idx(f, y, x)]
-                            == colors[s2][cell_idx(f, y, x)]
+                            states[s1][puzzle.cell_idx(f, y, x)]
+                            == states[s2][puzzle.cell_idx(f, y, x)]
                             for f in range(6)
                             for y in range(puzzle.n)
                             for x in range(puzzle.n)
@@ -190,11 +198,11 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     # Add restrictions for pattern database.
     patterns = pattern_database.load(puzzle.n, pattern_depth)
     for state, remaining in patterns:
-        for s in range(max(0, len(colors) - remaining), len(colors) - 1):
+        for s in range(max(0, len(states) - remaining), len(states) - 1):
             solver.add(
                 z3.Or(
                     [
-                        colors[s][cell_idx(f, y, x)] != state.get_color(f, y, x)
+                        states[s][puzzle.cell_idx(f, y, x)] != state.get_color(f, y, x)
                         for f in range(6)
                         for y in range(puzzle.n)
                         for x in range(puzzle.n)
@@ -213,7 +221,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     if res == z3.sat:
         moves = []
         model = solver.model()
-        for s in range(len(colors) - 1):
+        for s in range(len(states) - 1):
             ma = model.get_interp(move_axes[s]).as_long()
             mi = model.get_interp(move_indices[s]).as_long()
             md = model.get_interp(move_directions[s]).as_long()
@@ -299,7 +307,7 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
             solve_times[i][k] = solve_time
 
             if solution is None:
-                print_with_stamp(
+                print_stamped(
                     f"{files[i]}: unsat for k = {k} found in {solve_time} with {prep_time} prep time..."
                 )
                 k_prospects[i] = [p for p in k_prospects[i] if p > k]
@@ -311,7 +319,7 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
                 for _ in range(killed):
                     spawn_new_process()
             else:
-                print_with_stamp(
+                print_stamped(
                     f"{files[i]}: sat for k = {k} found in {solve_time} with {prep_time} prep time..."
                 )
                 current_minimum = k_minima[i]
@@ -332,11 +340,11 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
                 total_prep_time = sum(prep_times[i].values(), timedelta())
 
                 if minimum is None:
-                    print_with_stamp(
+                    print_stamped(
                         f"{files[i]}: found no solution with k ≤ {k_upperbounds[i]} to be possible in {total_solve_time} with {total_prep_time} prep time"
                     )
                 else:
-                    print_with_stamp(
+                    print_stamped(
                         f"{files[i]}: minimum k = {len(minimum)} found in {total_solve_time} with {total_prep_time} prep time"
                     )
 
