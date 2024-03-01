@@ -1,166 +1,130 @@
 import os
 import sys
+import ast
+import inspect
+import typing
 from datetime import datetime
 from functools import reduce
 from dd.autoref import BDD, Function
-from misc import print_stamped, create_parent_directory
+from misc import (
+    print_stamped,
+    create_parent_directory,
+    corner_move_coord_mapping,
+    corner_move_rotation_mapping,
+    edge_move_coord_mapping,
+    edge_move_rotation_mapping,
+    center_move_coord_mapping,
+    cubie_type,
+)
+
+MappingTreeCondition = tuple[str, str | int]
+MappingTreeOutput = int | str | tuple[int | str, ...]
+MappingTree = dict[MappingTreeCondition | None, "MappingTree"] | MappingTreeOutput
 
 
-def mapping_tree(n: int):
-    """Tree representation of mapping function."""
-    return {
-        ("ma", 0): {
-            ("f_in", 4): {
-                ("mi", 0): {
-                    ("md", 0): ("f_in", f"{n-1}-x_in", "y_in"),
-                    ("md", 1): ("f_in", "x_in", f"{n-1}-y_in"),
-                    ("md", 2): ("f_in", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 5): {
-                ("mi", n - 1): {
-                    ("md", 0): ("f_in", "x_in", f"{n-1}-y_in"),
-                    ("md", 1): ("f_in", f"{n-1}-x_in", "y_in"),
-                    ("md", 2): ("f_in", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 0): {
-                ("mi", "y_in"): {
-                    ("md", 0): ("f_in+1", "y_in", "x_in"),
-                    ("md", 1): ("f_in+3", "y_in", "x_in"),
-                    ("md", 2): ("f_in+2", "y_in", "x_in"),
-                }
-            },
-            ("f_in", 1): {
-                ("mi", "y_in"): {
-                    ("md", 0): ("f_in+1", "y_in", "x_in"),
-                    ("md", 1): ("f_in-1", "y_in", "x_in"),
-                    ("md", 2): ("f_in+2", "y_in", "x_in"),
-                }
-            },
-            ("f_in", 2): {
-                ("mi", "y_in"): {
-                    ("md", 0): ("f_in+1", "y_in", "x_in"),
-                    ("md", 1): ("f_in-1", "y_in", "x_in"),
-                    ("md", 2): ("f_in-2", "y_in", "x_in"),
-                }
-            },
-            ("f_in", 3): {
-                ("mi", "y_in"): {
-                    ("md", 0): ("f_in-3", "y_in", "x_in"),
-                    ("md", 1): ("f_in-1", "y_in", "x_in"),
-                    ("md", 2): ("f_in-2", "y_in", "x_in"),
-                }
-            },
-        },
-        ("ma", 1): {
-            ("f_in", 3): {
-                ("mi", 0): {
-                    ("md", 0): ("f_in", "x_in", f"{n-1}-y_in"),
-                    ("md", 1): ("f_in", f"{n-1}-x_in", "y_in"),
-                    ("md", 2): ("f_in", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 1): {
-                ("mi", n - 1): {
-                    ("md", 0): ("f_in", f"{n-1}-x_in", "y_in"),
-                    ("md", 1): ("f_in", "x_in", f"{n-1}-y_in"),
-                    ("md", 2): ("f_in", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 0): {
-                ("mi", "x_in"): {
-                    ("md", 0): ("f_in+5", "y_in", "x_in"),
-                    ("md", 1): ("f_in+4", "y_in", "x_in"),
-                    ("md", 2): ("f_in+2", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 5): {
-                ("mi", "x_in"): {
-                    ("md", 0): ("f_in-3", f"{n-1}-y_in", f"{n-1}-x_in"),
-                    ("md", 1): ("f_in-5", "y_in", "x_in"),
-                    ("md", 2): ("f_in-1", "y_in", "x_in"),
-                }
-            },
-            ("f_in", 2): {
-                ("mi", f"{n-1}-x_in"): {
-                    ("md", 0): ("f_in+2", f"{n-1}-y_in", f"{n-1}-x_in"),
-                    ("md", 1): ("f_in+3", f"{n-1}-y_in", f"{n-1}-x_in"),
-                    ("md", 2): ("f_in-2", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 4): {
-                ("mi", "x_in"): {
-                    ("md", 0): ("f_in-4", "y_in", "x_in"),
-                    ("md", 1): ("f_in-2", f"{n-1}-y_in", f"{n-1}-x_in"),
-                    ("md", 2): ("f_in+1", "y_in", "x_in"),
-                }
-            },
-        },
-        ("ma", 2): {
-            ("f_in", 0): {
-                ("mi", 0): {
-                    ("md", 0): ("f_in", f"{n-1}-x_in", "y_in"),
-                    ("md", 1): ("f_in", "x_in", f"{n-1}-y_in"),
-                    ("md", 2): ("f_in", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 2): {
-                ("mi", n - 1): {
-                    ("md", 0): ("f_in", "x_in", f"{n-1}-y_in"),
-                    ("md", 1): ("f_in", f"{n-1}-x_in", "y_in"),
-                    ("md", 2): ("f_in", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 1): {
-                ("mi", "x_in"): {
-                    ("md", 0): ("f_in+3", f"{n-1}-x_in", "y_in"),
-                    ("md", 1): ("f_in+4", "x_in", f"{n-1}-y_in"),
-                    ("md", 2): ("f_in+2", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 4): {
-                ("mi", f"{n-1}-y_in"): {
-                    ("md", 0): ("f_in-1", f"{n-1}-x_in", "y_in"),
-                    ("md", 1): ("f_in-3", "x_in", f"{n-1}-y_in"),
-                    ("md", 2): ("f_in+1", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 3): {
-                ("mi", f"{n-1}-x_in"): {
-                    ("md", 0): ("f_in+2", f"{n-1}-x_in", "y_in"),
-                    ("md", 1): ("f_in+1", "x_in", f"{n-1}-y_in"),
-                    ("md", 2): ("f_in-2", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-            ("f_in", 5): {
-                ("mi", "y_in"): {
-                    ("md", 0): ("f_in-4", f"{n-1}-x_in", "y_in"),
-                    ("md", 1): ("f_in-2", "x_in", f"{n-1}-y_in"),
-                    ("md", 2): ("f_in-1", f"{n-1}-y_in", f"{n-1}-x_in"),
-                }
-            },
-        },
-    }
+def mapping_to_tree(
+    n: int, params: set[str], function: typing.Callable
+) -> tuple[MappingTreeOutput, MappingTree]:
+    """Convert a mapping function to a tree by parsing the function's AST."""
 
-
-def extract_mapping_tree_paths(
-    n: int,
-) -> set[tuple[set[tuple[str | int, str | int]], tuple[str, str, str]]]:
-    """Return all paths of conditions to the leaves in the mapping tree."""
-    results = set()
-
-    def traverse(subtree, current_conditions: frozenset[tuple[str | int, str | int]]):
-        if isinstance(subtree, tuple):
-            assert len(subtree) == 3
-            results.add((current_conditions, subtree))
+    def convert_value(v: ast.stmt | ast.expr) -> int | str:
+        if isinstance(v, ast.Name):  # variable name
+            if v.id == "n":  # n is known, so return that instead
+                return n
+            assert v.id in params  # variable should be a parameter
+            return v.id
+        elif isinstance(v, ast.Constant):  # constant integer
+            return v.value
+        elif isinstance(v, ast.BinOp):  # combination of two values with operator
+            left = convert_value(v.left)
+            right = convert_value(v.right)
+            if isinstance(v.op, ast.Add):  # addition
+                if isinstance(left, int) and isinstance(right, int):
+                    return left + right
+                return f"{left}+{right}"
+            elif isinstance(v.op, ast.Sub):  # subtraction
+                if isinstance(left, int) and isinstance(right, int):
+                    return left - right
+                return f"{left}-{right}"
+            else:
+                raise Exception(f"unsupported operator: {v.op}")
         else:
-            assert isinstance(subtree, dict)
-            for condition in list(subtree.keys()):
-                traverse(subtree[condition], current_conditions | {condition})
+            raise Exception(f"unsupported value: {v}")
 
-    traverse(mapping_tree(n), frozenset())
-    return results
+    def convert_return_to_output(r: ast.Return) -> MappingTreeOutput:
+        assert r.value is not None
+        if isinstance(r.value, ast.Tuple):
+            return tuple([convert_value(v) for v in r.value.elts])
+        return convert_value(r.value)
+
+    def compare_to_condition(c: ast.Compare) -> tuple[str, int | str]:
+        assert isinstance(c.left, ast.Name)  # left side is variable
+        assert len(c.ops) == 1  # only one operator
+        assert isinstance(c.ops[0], ast.Eq)  # operator is equals sign
+        assert len(c.comparators) == 1  # left side is compared to a single value
+        return (c.left.id, convert_value(c.comparators[0]))
+
+    def recurse_nodes(nodes: list[ast.stmt]):
+        if len(nodes) == 1 and isinstance(nodes[0], ast.Return):
+            return convert_return_to_output(nodes[0])
+
+        subtree = {}
+
+        # Check for else branch and extract it.
+        else_branch = None
+        if not isinstance(nodes[-1], ast.If):
+            else_branch_node = nodes.pop()
+            if isinstance(else_branch_node, ast.Return):
+                else_branch = else_branch_node
+            else:
+                print(f"ERROR: unexpected else branch type: {else_branch_node}")
+
+        # Recurse on all if-branches in this branch.
+        for branch in nodes:
+            assert isinstance(branch, ast.If)
+            assert isinstance(branch.test, ast.Compare)
+            compare = compare_to_condition(branch.test)
+            subtree[compare] = recurse_nodes(branch.body)
+
+        # Add else branch if it exists.
+        if else_branch is not None:
+            subtree[None] = convert_return_to_output(else_branch)
+
+        return subtree
+
+    function_def = ast.parse(inspect.getsource(function)).body[0]
+    assert isinstance(function_def, ast.FunctionDef)
+
+    default_output_node = function_def.body.pop()
+    assert isinstance(default_output_node, ast.Return)
+    default_output = convert_return_to_output(default_output_node)
+
+    return default_output, recurse_nodes(function_def.body)
+
+
+def extract_tree_paths(
+    tree: MappingTree,
+) -> list[tuple[set[MappingTreeCondition], MappingTreeOutput]]:
+    """Return all paths of conditions to the leaves in a mapping tree."""
+    result: list[tuple[set[MappingTreeCondition], MappingTreeOutput]] = []
+
+    def recurse(
+        current_tree: MappingTree,
+        current_conditions: set[MappingTreeCondition],
+    ):
+        if isinstance(current_tree, dict):
+            for condition, subtree in current_tree.items():
+                recurse(
+                    subtree,
+                    current_conditions | {condition}
+                    if condition is not None
+                    else current_conditions,
+                )
+        else:
+            result.append((current_conditions, current_tree))
+
+    recurse(tree, set())
+    return result
 
 
 def encode(var_name: str, var_value: int):
@@ -168,24 +132,13 @@ def encode(var_name: str, var_value: int):
     return f"{var_name}_{var_value}"
 
 
-def equality_condition(
-    left: str | int,
-    right: str | int,
-    bdd: BDD,
-    domains: dict[str, set[int]],
+def convert_tree_condition(
+    cond: MappingTreeCondition, bdd: BDD, domains: dict[str, set[int]]
 ) -> Function:
-    """Return condition of two values being equal. If a value is a string, it is
-    assumed to be the name of a variable in the BDD."""
-    left_is_int = isinstance(left, int)
-    right_is_int = isinstance(right, int)
-    if left_is_int and right_is_int:
-        return bdd.true if left == right else bdd.false
-    elif left_is_int and not right_is_int:
-        return bdd.var(encode(right, left))
-    elif not left_is_int and right_is_int:
+    left, right = cond
+    if isinstance(right, int):
         return bdd.var(encode(left, right))
     else:
-        assert not left_is_int and not right_is_int
         return reduce(
             lambda x, y: x | y,
             [
@@ -195,22 +148,20 @@ def equality_condition(
         )
 
 
-def add_composite_variable(
+def add_composite_var(
     name: str, bdd: BDD, root: Function, domains: dict[str, set[int]]
 ) -> Function:
-    """Add variable to the BDD consisting of two values that are added or
-    subtracted. At mostone of the values can be a string, which is interpreted
-    as a BDD variable name."""
+    """Add variable to the BDD consisting of two values with an operator."""
     assert name not in domains
+    is_subtraction = "-" in name
+    left, right = name.split("-" if is_subtraction else "+")
 
     domain: set[int] = set()
     equivalences: set[tuple[Function, int]] = set()
 
-    is_subtraction = "-" in name
-    parts = name.split("-" if is_subtraction else "+")
-    assert len(parts) == 2
-    left, right = parts[0], parts[1]
+    # Exactly one is numeric and one is a variable.
     assert left.isnumeric() != right.isnumeric()
+
     if left.isnumeric():
         for right_value in domains[right]:
             if is_subtraction:
@@ -219,6 +170,7 @@ def add_composite_variable(
                 value = int(left) + right_value
             domain.add(value)
             equivalences.add((bdd.var(encode(right, right_value)), value))
+
     if right.isnumeric():
         for left_value in domains[left]:
             if is_subtraction:
@@ -238,22 +190,20 @@ def add_composite_variable(
     return root
 
 
-def add_variable(
+def add_var(
     name: str,
     domain: set[int],
     bdd: BDD,
     root: Function,
-    domains: dict[str, set[int]],
 ) -> Function:
     """Add variable to the BDD. The variable is restricted to take exactly one
     the values of the domain."""
-    assert name not in domains
 
     variants = []
     for value in domain:
-        bdd.declare(encode(name, value))
-        variants.append(bdd.var(encode(name, value)))
-    domains[name] = domain
+        encoding = encode(name, value)
+        bdd.declare(encoding)
+        variants.append(bdd.var(encoding))
 
     # At least one variable value is true.
     root = root & reduce(lambda x, y: x | y, variants)
@@ -271,7 +221,7 @@ def minimal_substitution_subsets(
     bdd: BDD,
     root: Function,
 ):
-    """Extract all minimal subsets of the substitutions such that regardless of
+    """Extract all minimal subsets of the substitutions such that, regardless of
     which values the substitutions not in the subset take on, there is always a
     truth assignment."""
     subsets: set[frozenset[tuple[str, int]]] = set()
@@ -324,73 +274,177 @@ def minimal_substitution_subsets(
     return subsets
 
 
-def file_path(n):
-    return f"./move_mappings/n{n}.txt"
+def move_mappings(
+    n: int,
+) -> dict[
+    str,
+    tuple[
+        typing.Callable,
+        tuple[str, ...],  # parameter value names
+        set[tuple[int, ...]],  # all possible parameter tuples
+        str | tuple[str, ...],  # return value name(s)
+        set[int] | set[tuple[int, ...]],  # all possible return values/tuples
+    ],
+]:
+    corners: set[tuple[int, int, int]] = set()
+    centers: set[tuple[int, int, int]] = set()
+    edges: set[tuple[int, int, int]] = set()
+
+    for x in range(n):
+        for y in range(n):
+            for z in range(n):
+                match cubie_type(n, x, y, z):
+                    case 0:
+                        corners.add((x, y, z))
+                    case 1:
+                        centers.add((x, y, z))
+                    case 2:
+                        edges.add((x, y, z))
+
+    return {
+        "corner_coord": (
+            corner_move_coord_mapping,
+            ("x", "y", "z", "ma", "mi", "md"),
+            set(
+                corner + (ma, mi, md)
+                for corner in corners
+                for ma in range(3)
+                for mi in range(n)
+                for md in range(3)
+            ),
+            ("x_new", "y_new", "z_new"),
+            corners,
+        ),
+        "corner_rotation": (
+            corner_move_rotation_mapping,
+            ("x", "y", "z", "r", "ma", "mi", "md"),
+            set(
+                corner + (r, ma, mi, md)
+                for corner in corners
+                for r in range(3)
+                for ma in range(3)
+                for mi in range(n)
+                for md in range(3)
+            ),
+            "r_new",
+            set(range(3)),
+        ),
+        "edge_coord": (
+            edge_move_coord_mapping,
+            ("x", "y", "z", "ma", "mi", "md"),
+            set(
+                edge + (ma, mi, md)
+                for edge in edges
+                for ma in range(3)
+                for mi in range(n)
+                for md in range(3)
+            ),
+            ("x_new", "y_new", "z_new"),
+            edges,
+        ),
+        "edge_rotation": (
+            edge_move_rotation_mapping,
+            ("x", "y", "z", "r", "ma", "mi", "md"),
+            set(
+                edge + (r, ma, mi, md)
+                for edge in edges
+                for r in range(3)
+                for ma in range(3)
+                for mi in range(n)
+                for md in range(3)
+            ),
+            "r_new",
+            set(range(3)),
+        ),
+        "center_coord": (
+            center_move_coord_mapping,
+            ("x", "y", "z", "ma", "mi", "md"),
+            set(
+                center + (ma, mi, md)
+                for center in centers
+                for ma in range(3)
+                for mi in range(n)
+                for md in range(3)
+            ),
+            ("x_new", "y_new", "z_new"),
+            centers,
+        ),
+    }
+
+
+def file_path(n: int, name: str):
+    return f"./move_mappings/n{n}-{name}.txt"
 
 
 def generate(n: int):
-    path = file_path(n)
-    if os.path.isfile(path):
-        return  # already generated, so skip
-    create_parent_directory(path)
+    for name, (
+        function,
+        input_names,
+        input_domain,
+        output_names,
+        output_domain,
+    ) in move_mappings(n).items():
+        path = file_path(n, name)
+        if os.path.isfile(path):
+            return  # already generated, so skip
+        create_parent_directory(path)
+        print_stamped(f"generating move mappings '{name}' for n = {n}...")
 
-    print_stamped(f"generating move mappings for n = {n}...")
-
-    bdd = BDD()
-    root = bdd.true
-    domains: dict[str, set[int]] = {}
-
-    move_vars = {"ma": set(range(3)), "mi": set(range(n)), "md": set(range(3))}
-
-    input_vars = {
-        "f_in": set(range(6)),
-        "y_in": set(range(n)),
-        "x_in": set(range(n)),
-    }
-
-    output_vars = {
-        "f_out": set(range(6)),
-        "y_out": set(range(n)),
-        "x_out": set(range(n)),
-    }
-
-    # Add variables.
-    for name, domain in move_vars.items():
-        root = add_variable(name, domain, bdd, root, domains)
-    for name, domain in input_vars.items():
-        root = add_variable(name, domain, bdd, root, domains)
-    for name, domain in output_vars.items():
-        root = add_variable(name, domain, bdd, root, domains)
-
-    # Add all composite variables encountered in the tree.
-    for conditions, output in extract_mapping_tree_paths(n):
-        for left, right in conditions:
-            if not isinstance(left, int) and left not in domains:
-                root = add_composite_variable(left, bdd, root, domains)
-            if not isinstance(right, int) and right not in domains:
-                root = add_composite_variable(right, bdd, root, domains)
-        if output[0] not in domains:
-            root = add_composite_variable(output[0], bdd, root, domains)
-        if output[1] not in domains:
-            root = add_composite_variable(output[1], bdd, root, domains)
-        if output[2] not in domains:
-            root = add_composite_variable(output[2], bdd, root, domains)
-
-    def output_equals(output: tuple[str | int, str | int, str | int]):
-        """Return condition on the output being equal to a tuple."""
-        return (
-            equality_condition("f_out", output[0], bdd, domains)
-            & equality_condition("y_out", output[1], bdd, domains)
-            & equality_condition("x_out", output[2], bdd, domains)
+        # Compute the mapping tree for this function.
+        default_output, tree = mapping_to_tree(
+            n, set(pn for pn in input_names), function
         )
+
+        # Initialize separate domains for all inputs and outputs.
+        domains: dict[str, set[int]] = {}
+        for name in input_names:
+            domains[name] = set()
+        if isinstance(output_names, str):
+            domains[output_names] = set()
+        else:
+            for name in output_names:
+                domains[name] = set()
+
+        # Compute separate domains for all variables.
+        for input in input_domain:
+            for i, name in enumerate(input_names):
+                domains[name].add(input[i])
+        for output in output_domain:
+            if isinstance(output, tuple):
+                for i, name in enumerate(output_names):
+                    domains[name].add(output[i])
+            else:
+                assert isinstance(output_names, str)
+                domains[output_names].add(output)
+
+        # Initialize a BDD with a root.
+        bdd = BDD()
+        root = bdd.true
+
+        # Add all variables to the BDD.
+        for name, domain in domains.items():
+            root = add_var(name, domain, bdd, root)
+
+        # TODO: add all composite variables encountered in the tree
+        # If this turns out to not be necessary after finishing the mappings,
+        # remove the add_composite_var function and disallow non-n BinOp in
+        # the mapping_to_tree function.
+
+        def output_equals(output: MappingTreeOutput):
+            """Return condition on the output being equal to a specific output."""
+            return (
+                equality_condition("f_out", output[0], bdd, input_domain)
+                & equality_condition("y_out", output[1], bdd, input_domain)
+                & equality_condition("x_out", output[2], bdd, input_domain)
+            )
 
     # Add the paths as restrictions.
     one_path_holds = bdd.false
-    for conditions, output in extract_mapping_tree_paths(n):
+    for conditions, output in extract_tree_paths(n):
         one_condition_false = bdd.false
         for left, right in conditions:
             one_condition_false = one_condition_false | ~equality_condition(
-                left, right, bdd, domains
+                left, right, bdd, input_domain
             )
         root = root & (one_condition_false | output_equals(output))
         one_path_holds = one_path_holds | ~one_condition_false
