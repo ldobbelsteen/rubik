@@ -2,21 +2,18 @@ import random
 import sys
 from misc import create_parent_directory, State
 import itertools
-import os
 
 
 def generate(n: int, randomizations: int):
-    path = f"./puzzles/n{n}-random{randomizations}"
-    if os.path.isfile(path):
-        return  # already generated, so skip
+    path = f"./puzzles/n{n}-random{randomizations}.txt"
     create_parent_directory(path)
 
     state = State.finished(n)
-    moves = list(itertools.product(range(n), range(3), range(3)))
+    moves = list(itertools.product(range(3), range(n), range(3)))
 
     for _ in range(randomizations):
-        mi, ma, md = random.choice(moves)
-        state = state.execute_move(mi, ma, md)
+        ma, mi, md = random.choice(moves)
+        state = state.execute_move(ma, mi, md)
 
     with open(path, "w") as file:
         file.write(state.to_str())
