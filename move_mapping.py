@@ -38,14 +38,12 @@ def mapping_to_tree(
         elif isinstance(v, ast.BinOp):  # combination of two values with operator
             left = convert_value(v.left)
             right = convert_value(v.right)
+            assert isinstance(left, int)
+            assert isinstance(right, int)
             if isinstance(v.op, ast.Add):  # addition
-                if isinstance(left, int) and isinstance(right, int):
-                    return left + right
-                return f"{left}+{right}"
+                return left + right
             elif isinstance(v.op, ast.Sub):  # subtraction
-                if isinstance(left, int) and isinstance(right, int):
-                    return left - right
-                return f"{left}-{right}"
+                return left - right
             else:
                 raise Exception(f"unsupported operator: {v.op}")
         else:
@@ -146,48 +144,6 @@ def convert_tree_condition(
                 for overlap in domains[left].intersection(domains[right])
             ],
         )
-
-
-def add_composite_var(
-    name: str, bdd: BDD, root: Function, domains: dict[str, set[int]]
-) -> Function:
-    """Add variable to the BDD consisting of two values with an operator."""
-    assert name not in domains
-    is_subtraction = "-" in name
-    left, right = name.split("-" if is_subtraction else "+")
-
-    domain: set[int] = set()
-    equivalences: set[tuple[Function, int]] = set()
-
-    # Exactly one is numeric and one is a variable.
-    assert left.isnumeric() != right.isnumeric()
-
-    if left.isnumeric():
-        for right_value in domains[right]:
-            if is_subtraction:
-                value = int(left) - right_value
-            else:
-                value = int(left) + right_value
-            domain.add(value)
-            equivalences.add((bdd.var(encode(right, right_value)), value))
-
-    if right.isnumeric():
-        for left_value in domains[left]:
-            if is_subtraction:
-                value = left_value - int(right)
-            else:
-                value = left_value + int(right)
-            domain.add(value)
-            equivalences.add((bdd.var(encode(left, left_value)), value))
-
-    for value in domain:
-        bdd.declare(encode(name, value))
-    domains[name] = domain
-
-    for origin, value in equivalences:
-        root = root & origin.equiv(bdd.var(encode(name, value)))
-
-    return root
 
 
 def add_var(
@@ -424,11 +380,6 @@ def generate(n: int):
         # Add all variables to the BDD.
         for name, domain in domains.items():
             root = add_var(name, domain, bdd, root)
-
-        # TODO: add all composite variables encountered in the tree
-        # If this turns out to not be necessary after finishing the mappings,
-        # remove the add_composite_var function and disallow non-n BinOp in
-        # the mapping_to_tree function.
 
         def output_equals(output: MappingTreeOutput):
             """Return condition on the output being equal to a specific output."""
