@@ -6,7 +6,6 @@ from queue import Queue
 import z3
 from misc import print_stamped, State, move_name
 import move_mapping
-import end_pattern_database
 
 
 def k_upperbound(n: int):
@@ -30,7 +29,7 @@ def z3_int_with_range(solver: z3.Optimize, name: str, low: int, high: int):
     return var
 
 
-def solve_for_k(puzzle: State, k: int, pattern_depth: int):
+def solve_for_k(puzzle: State, k: int):
     """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible.
     Also returns, in both cases, the time it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
@@ -195,22 +194,6 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
                 )
             )
 
-    # Add restrictions for end pattern database.
-    patterns = end_pattern_database.load(puzzle.n, pattern_depth)
-    for state, remaining in patterns:
-        for s in range(max(0, len(states) - remaining), len(states) - 1):
-            solver.add(
-                z3.Or(
-                    [
-                        states[s][puzzle.cell_idx(f, y, x)] != state.get_color(f, y, x)
-                        for f in range(6)
-                        for y in range(puzzle.n)
-                        for x in range(puzzle.n)
-                        if not state.is_unset(f, y, x)
-                    ]
-                )
-            )
-
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
     solve_start = datetime.now()
@@ -231,7 +214,7 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
     return moves, prep_time, solve_time
 
 
-def solve(files: list[str], process_count: int, pattern_depth: int):
+def solve(files: list[str], process_count: int):
     """Solve a list of puzzles, efficiently distributing tasks among multiple processes."""
 
     with Manager() as manager:
@@ -244,10 +227,6 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
         # Generate any missing move mappings.
         for n in ns:
             move_mapping.generate(n)
-
-        # Generate any missing end pattern databases.
-        for n in ns:
-            end_pattern_database.generate(n, pattern_depth)
 
         # List of upperbounds for k for each of the puzzles.
         k_upperbounds = [k_upperbound(ns[i]) for i in range(len(puzzles))]
@@ -279,7 +258,7 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
                 i: int,
                 output: Queue[tuple[int, int, list[str] | None, timedelta, timedelta]],
             ):
-                solution, prep_time, solve_time = solve_for_k(puzzle, k, pattern_depth)
+                solution, prep_time, solve_time = solve_for_k(puzzle, k)
                 output.put((i, k, solution, prep_time, solve_time))
 
             for i in range(len(puzzles)):
@@ -363,12 +342,10 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
                     "process_count": process_count,
                 }
 
-                with open(
-                    f"{files[i]}.d{pattern_depth}.solution", "w"
-                ) as solution_file:
+                with open(f"{files[i]}.solution", "w") as solution_file:
                     solution_file.write(json.dumps(result, indent=4))
 
 
-# e.g. python solve.py ./puzzles/n2-random10.txt {pattern_depth}
+# e.g. python solve.py ./puzzles/n2-random10.txt
 if __name__ == "__main__":
-    solve([sys.argv[1]], cpu_count(), int(sys.argv[2]))
+    solve([sys.argv[1]], cpu_count())

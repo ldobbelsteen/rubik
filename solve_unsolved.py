@@ -2,19 +2,17 @@ import os
 from multiprocessing import cpu_count
 from solve import solve
 from misc import natural_sorted
-import sys
 
-# e.g. python solve_unsolved.py {pattern_depth}
+# e.g. python solve_unsolved.py
 if __name__ == "__main__":
     puzzles: list[str] = []
     puzzle_dir = "./puzzles/"
-    pattern_depth = int(sys.argv[1])
     for file in os.listdir(puzzle_dir):
         path = os.path.join(puzzle_dir, file)
         if (
             os.path.isfile(path)
             and path.endswith(".txt")
-            and not os.path.isfile(f"{path}.d{pattern_depth}.solution")
+            and not os.path.isfile(f"{path}.solution")
         ):
             puzzles.append(path)
-    solve(natural_sorted(puzzles), cpu_count(), pattern_depth)
+    solve(natural_sorted(puzzles), cpu_count())
