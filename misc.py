@@ -93,181 +93,102 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
     assert False
 
 
-class CoordIdxMap:
-    """Class to map the coordinates of a corner, edge or center cubie to a unique
-    flat index and the other way around for a specific n."""
-
-    def __init__(self, n: int):
-        self.n = n
-
-        self.corners: list[tuple[int, int, int]] = []
-        self.edges: list[tuple[int, int, int]] = []
-        self.centers: list[tuple[int, int, int]] = []
-
-        # Add the eight corner cubies.
-        for x in [0, n - 1]:
-            for y in [0, n - 1]:
-                for z in [0, n - 1]:
-                    self.corners.append((x, y, z))
-
-        # Add the bottom edge cubies.
-        for z in range(1, n - 1):
-            self.edges.append((0, 0, z))
-        for z in range(1, n - 1):
-            self.edges.append((n - 1, 0, z))
-        for x in range(1, n - 1):
-            self.edges.append((x, 0, 0))
-        for x in range(1, n - 1):
-            self.edges.append((x, 0, n - 1))
-
-        # Add the top edge cubies.
-        for z in range(1, n - 1):
-            self.edges.append((0, n - 1, z))
-        for z in range(1, n - 1):
-            self.edges.append((n - 1, n - 1, z))
-        for x in range(1, n - 1):
-            self.edges.append((x, n - 1, 0))
-        for x in range(1, n - 1):
-            self.edges.append((x, n - 1, n - 1))
-
-        # Add the edge cubies from the layer in between.
-        for y in range(1, n - 1):
-            for x in [0, n - 1]:
-                for z in [0, n - 1]:
-                    self.edges.append((x, y, z))
-
-        # Add the center cubies for each of the six sides.
-        for x in range(1, n - 1):
-            for y in range(1, n - 1):
-                for z in [0, n - 1]:
-                    self.centers.append((x, y, z))
-        for y in range(1, n - 1):
-            for z in range(1, n - 1):
-                for x in [0, n - 1]:
-                    self.centers.append((x, y, z))
-        for x in range(1, n - 1):
-            for z in range(1, n - 1):
-                for y in [0, n - 1]:
-                    self.centers.append((x, y, z))
-
-        assert len(self.corners) == 8
-        assert len(self.edges) == 12 * n - 24
-        assert len(self.centers) == 6 * (n - 2) ** 2
-
-    def corner_idx(self, x: int, y: int, z: int) -> int:
-        return self.corners.index((x, y, z))
-
-    def corner_coord(self, idx: int) -> tuple[int, int, int]:
-        return self.corners[idx]
-
-    def edge_idx(self, x: int, y: int, z: int) -> int:
-        return self.edges.index((x, y, z))
-
-    def edge_coord(self, idx: int) -> tuple[int, int, int]:
-        return self.edges[idx]
-
-    def center_idx(self, x: int, y: int, z: int) -> int:
-        return self.centers.index((x, y, z))
-
-    def center_coord(self, idx: int) -> tuple[int, int, int]:
-        return self.centers[idx]
-
-
 class State:
     def __init__(
         self,
         n: int,
-        map: CoordIdxMap,
-        corners: list[tuple[int, int]],
-        edges: list[tuple[int, int]],
-        centers: list[int],
+        coords: list[list[list[tuple[int, int, int]]]],
+        rots: list[list[list[int]]],
     ):
         self.n = n
-        self.map = map
-        self.corners = corners
-        self.edges = edges
-        self.centers = centers
+        self.coords = coords
+        self.rots = rots
 
     @staticmethod
     def from_str(s: str):
-        parts = s.split(" ")
-        n = int(parts[0])
-
-        corners: list[tuple[int, int]] = []
-        for v in parts[1].split(","):
-            loc, rot = v.split("r")
-            corners.append((int(loc), int(rot)))
-
-        edges: list[tuple[int, int]] = []
-        for v in parts[2].split(","):
-            loc, rot = v.split("r")
-            edges.append((int(loc), int(rot)))
-
-        centers = [int(v) for v in parts[3].split(",")]
-
-        return State(
-            n,
-            CoordIdxMap(n),
-            corners,
-            edges,
-            centers,
-        )
+        n_raw, coords_raw, rots_raw = s.split("\t")
+        n = int(n_raw)
+        coords = eval(coords_raw)
+        rots = eval(rots_raw)
+        return State(n, coords, rots)
 
     def to_str(self):
-        return " ".join(
+        return "\t".join((str(self.n), str(self.coords), str(self.rots)))
+
+    def copy(self):
+        return State(
+            self.n,
             [
-                str(self.n),
-                ",".join([f"{v[0]}r{v[1]}" for v in self.corners]),
-                ",".join([f"{v[0]}r{v[1]}" for v in self.edges]),
-                ",".join([str(v) for v in self.centers]),
-            ]
+                [[self.coords[x][y][z] for z in range(self.n)] for y in range(self.n)]
+                for x in range(self.n)
+            ],
+            [
+                [[self.rots[x][y][z] for z in range(self.n)] for y in range(self.n)]
+                for x in range(self.n)
+            ],
         )
 
     @staticmethod
     def finished(n: int):
-        map = CoordIdxMap(n)
-        return State(
-            n,
-            map,
-            [(map.corner_idx(x, y, z), 0) for x, y, z in map.corners],
-            [(map.edge_idx(x, y, z), 0) for x, y, z in map.edges],
-            [map.center_idx(x, y, z) for x, y, z in map.centers],
-        )
+        coords = [
+            [
+                [
+                    (x, y, z) if cubie_type(n, x, y, z) != -1 else (-1, -1, -1)
+                    for z in range(n)
+                ]
+                for y in range(n)
+            ]
+            for x in range(n)
+        ]
+        rots = [
+            [
+                [
+                    0
+                    if cubie_type(n, x, y, z) == 0 or cubie_type(n, x, y, z) == 2
+                    else -1
+                    for z in range(n)
+                ]
+                for y in range(n)
+            ]
+            for x in range(n)
+        ]
+        return State(n, coords, rots)
+
+    def execute_move(self, ma: int, mi: int, md: int):
+        new = self.copy()
+
+        for x in range(self.n):
+            for y in range(self.n):
+                for z in range(self.n):
+                    match cubie_type(self.n, x, y, z):
+                        case 0:
+                            new_x, new_y, new_z = corner_move_coord_mapping(
+                                self.n, x, y, z, ma, mi, md
+                            )
+                            new_rot = corner_move_rotation_mapping(
+                                self.rots[x][y][z], ma, md
+                            )
+                            new.coords[new_x][new_y][new_z] = self.coords[x][y][z]
+                            new.rots[new_x][new_y][new_z] = new_rot
+                        case 1:
+                            new_x, new_y, new_z = center_move_coord_mapping(
+                                self.n, x, y, z, ma, mi, md
+                            )
+                            new.coords[new_x][new_y][new_z] = self.coords[x][y][z]
+                        case 2:
+                            new_x, new_y, new_z = edge_move_coord_mapping(
+                                self.n, x, y, z, ma, mi, md
+                            )
+                            new_rot = edge_move_rotation_mapping(
+                                self.rots[x][y][z], ma, md
+                            )
+                            new.coords[new_x][new_y][new_z] = self.coords[x][y][z]
+                            new.rots[new_x][new_y][new_z] = new_rot
+
+        return new
 
     def color(self, f: int, y: int, x: int) -> int:
         return -1  # TODO
-
-    def execute_move(self, ma: int, mi: int, md: int):
-        new_corners = [(int(-1), int(-1))] * len(self.corners)
-        for i, (ci, cr) in enumerate(self.corners):
-            x, y, z = self.map.corner_coord(i)
-            new_x, new_y, new_z = corner_move_location_mapping(
-                self.n, x, y, z, ma, mi, md
-            )
-            new_i = self.map.corner_idx(new_x, new_y, new_z)
-            new_r = move_rotation_mapping(cr, ma, md)
-            new_corners[new_i] = (ci, new_r)
-
-        new_edges = [(int(-1), int(-1))] * len(self.edges)
-        for i, (ei, er) in enumerate(self.edges):
-            x, y, z = self.map.edge_coord(i)
-            new_x, new_y, new_z = edge_move_location_mapping(
-                self.n, x, y, z, ma, mi, md
-            )
-            new_i = self.map.edge_idx(new_x, new_y, new_z)
-            new_r = move_rotation_mapping(er, ma, md)
-            new_edges[new_i] = (ei, new_r)
-
-        new_centers = [0] * len(self.centers)
-        for i, ci in enumerate(self.centers):
-            x, y, z = self.map.center_coord(i)
-            new_x, new_y, new_z = center_move_location_mapping(
-                self.n, x, y, z, ma, mi, md
-            )
-            new_i = self.map.center_idx(new_x, new_y, new_z)
-            new_centers[new_i] = ci
-
-        return State(self.n, self.map, new_corners, new_edges, new_centers)
 
     def print(self):
         facelet_size = 48
@@ -299,92 +220,92 @@ class State:
         im.show()
 
 
-def corner_move_location_mapping(
+def cubie_type(n: int, x: int, y: int, z: int):
+    """Determine the type of a cubie by its coordinates. 0 = corner, 1 = center,
+    2 = edge and -1 = internal."""
+    if (x == 0 or x == n - 1) and (y == 0 or y == n - 1) and (z == 0 or z == n - 1):
+        return 0
+    if (
+        ((x == 0 or x == n - 1) and y > 0 and y < n - 1 and z > 0 and z < n - 1)
+        or ((y == 0 or y == n - 1) and x > 0 and x < n - 1 and z > 0 and z < n - 1)
+        or ((z == 0 or z == n - 1) and x > 0 and x < n - 1 and y > 0 and y < n - 1)
+    ):
+        return 1
+    if (x > 0 or x < n - 1) and (y > 0 or y < n - 1) and (z > 0 or z < n - 1):
+        return -1
+    return 2
+
+
+def corner_move_coord_mapping(
     n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
 ) -> tuple[int, int, int]:
     if ma == 0:
-        if mi == 0 and y == 0:
+        if mi == y:
             if md == 0:
                 if x == 0:
                     if z == 0:
-                        return (0, 0, n - 1)
+                        return (x, y, n - 1)
                     elif z == n - 1:
-                        return (n - 1, 0, n - 1)
+                        return (n - 1, y, z)
                 elif x == n - 1:
                     if z == 0:
-                        return (0, 0, 0)
+                        return (0, y, z)
                     elif z == n - 1:
-                        return (n - 1, 0, 0)
+                        return (x, y, 0)
             elif md == 1:
                 if x == 0:
                     if z == 0:
-                        return (0, 0, n - 1)
+                        return (n - 1, y, z)
                     elif z == n - 1:
-                        return (n - 1, 0, n - 1)
+                        return (x, y, 0)
                 elif x == n - 1:
                     if z == 0:
-                        return (0, 0, 0)
+                        return (x, y, n - 1)
                     elif z == n - 1:
-                        return (n - 1, 0, 0)
+                        return (0, y, z)
             elif md == 2:
                 if x == 0:
                     if z == 0:
-                        return (n - 1, 0, n - 1)
+                        return (n - 1, y, n - 1)
                     elif z == n - 1:
-                        return (n - 1, 0, 0)
+                        return (n - 1, y, 0)
                 elif x == n - 1:
                     if z == 0:
-                        return (0, 0, n - 1)
+                        return (0, y, n - 1)
                     elif z == n - 1:
-                        return (0, 0, 0)
-        elif mi == n - 1 and y == n - 1:
-            if md == 0:
-                if x == 0:
-                    if z == 0:
-                        return (0, n - 1, n - 1)
-                    elif z == n - 1:
-                        return (n - 1, n - 1, n - 1)
-                elif x == n - 1:
-                    if z == 0:
-                        return (0, n - 1, 0)
-                    elif z == n - 1:
-                        return (n - 1, n - 1, 0)
-            elif md == 1:
-                if x == 0:
-                    if z == 0:
-                        return (0, n - 1, n - 1)
-                    elif z == 0:
-                        return (n - 1, n - 1, n - 1)
-                elif x == n - 1:
-                    if z == 0:
-                        return (0, n - 1, 0)
-                    elif z == n - 1:
-                        return (n - 1, n - 1, 0)
-            elif md == 2:
-                if x == 0:
-                    if z == 0:
-                        return (n - 1, n - 1, n - 1)
-                    elif z == n - 1:
-                        return (n - 1, n - 1, 0)
-                elif x == n - 1:
-                    if z == 0:
-                        return (0, n - 1, n - 1)
-                    elif z == n - 1:
-                        return (0, n - 1, 0)
+                        return (0, y, 0)
     elif ma == 1:
-        if mi == 0 and x == 0:
-            pass  # TODO
-        elif mi == n - 1 and x == n - 1:
+        if mi == x:
             pass  # TODO
     elif ma == 2:
-        if mi == 0 and z == 0:
-            pass  # TODO
-        elif mi == n - 1 and z == n - 1:
+        if mi == z:
             pass  # TODO
     return (x, y, z)
 
 
-def edge_move_location_mapping(
+def corner_move_rotation_mapping(r: int, ma: int, md: int) -> int:
+    if ma == 0:
+        if md == 0 or md == 1:
+            if r == 0:
+                return 2
+            elif r == 2:
+                return 0
+    elif ma == 1:
+        if md == 0 or md == 1:
+            if r == 1:
+                return 2
+            elif r == 2:
+                return 1
+    elif ma == 2:
+        if md == 0 or md == 1:
+            if r == 0:
+                return 1
+            elif r == 1:
+                return 0
+    return r
+
+
+def edge_move_coord_mapping(
     n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
 ) -> tuple[int, int, int]:
     if ma == 0:
@@ -414,67 +335,37 @@ def edge_move_location_mapping(
     return (x, y, z)
 
 
-def center_move_location_mapping(
+def edge_move_rotation_mapping(r: int, ma: int, md: int) -> int:
+    # TODO: make this so that rotations are in {0, 1} instead of {0, 1, 2}, but
+    # we have not thought of a way to do this yet.
+    return corner_move_rotation_mapping(r, ma, md)
+
+
+def center_move_coord_mapping(
     n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
 ) -> tuple[int, int, int]:
     if ma == 0:
-        if mi == 1 and y == 1:
-            if md == 0:
-                if x == 0:
-                    return (1, 1, 2)
-                elif x == 1:
-                    if z == 0:
-                        return (0, 1, 1)
-                    elif z == 2:
-                        return (2, 1, 1)
-                elif x == 2:
-                    return (1, 1, 0)
-            elif md == 1:
-                if x == 0:
-                    return (1, 1, 0)
-                elif x == 1:
-                    if z == 0:
-                        return (2, 1, 1)
-                    elif z == 2:
-                        return (0, 1, 1)
-                elif x == 2:
-                    return (1, 1, 2)
-            elif md == 2:
-                if x == 0:
-                    return (2, 1, 1)
-                elif x == 1:
-                    if z == 0:
-                        return (1, 1, 2)
-                    else:
-                        return (1, 1, 0)
-                elif x == 2:
-                    return (0, 1, 1)
+        if mi == y:
+            if y == 0:
+                pass  # TODO
+            elif y == n - 1:
+                pass  # TODO
+            else:
+                pass  # TODO
     elif ma == 1:
-        if mi == 1 and x == 1:
-            pass  # TODO
+        if mi == x:
+            if x == 0:
+                pass  # TODO
+            elif x == n - 1:
+                pass  # TODO
+            else:
+                pass  # TODO
     elif ma == 2:
-        if mi == 1 and z == 1:
-            pass  # TODO
+        if mi == z:
+            if z == 0:
+                pass  # TODO
+            elif z == n - 1:
+                pass  # TODO
+            else:
+                pass  # TODO
     return (x, y, z)
-
-
-def move_rotation_mapping(r: int, ma: int, md: int) -> int:
-    if ma == 0:
-        if md == 0 or md == 1:
-            if r == 0:
-                return 2
-            elif r == 2:
-                return 0
-    elif ma == 1:
-        if md == 0 or md == 1:
-            if r == 1:
-                return 2
-            elif r == 2:
-                return 1
-    elif ma == 2:
-        if md == 0 or md == 1:
-            if r == 0:
-                return 1
-            elif r == 1:
-                return 0
-    return r

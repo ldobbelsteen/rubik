@@ -9,7 +9,7 @@ from misc import (
 
 
 def file_path(n: int, d: int):
-    return f"./pattern_databases/n{n}-d{d}.txt"
+    return f"./end_pattern_databases/n{n}-d{d}.txt"
 
 
 def generate(n: int, d: int):
@@ -18,7 +18,7 @@ def generate(n: int, d: int):
         return  # already generated, so skip
     create_parent_directory(path)
 
-    print_stamped(f"generating pattern database for n = {n} and d = {d}...")
+    print_stamped(f"generating end pattern database for n = {n} and d = {d}...")
 
     patterns: dict[str, int] = {}
 
@@ -52,7 +52,7 @@ def load(n: int, d: int):
         return list(map(parse_line, file))
 
 
-# e.g. python pattern_database.py {n} {d}
+# e.g. python end_pattern_database.py {n} {d}
 if __name__ == "__main__":
     start = datetime.now()
     generate(int(sys.argv[1]), int(sys.argv[2]))

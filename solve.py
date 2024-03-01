@@ -6,7 +6,7 @@ from queue import Queue
 import z3
 from misc import print_stamped, State, move_name
 import move_mapping
-import pattern_database
+import end_pattern_database
 
 
 def k_upperbound(n: int):
@@ -195,8 +195,8 @@ def solve_for_k(puzzle: State, k: int, pattern_depth: int):
                 )
             )
 
-    # Add restrictions for pattern database.
-    patterns = pattern_database.load(puzzle.n, pattern_depth)
+    # Add restrictions for end pattern database.
+    patterns = end_pattern_database.load(puzzle.n, pattern_depth)
     for state, remaining in patterns:
         for s in range(max(0, len(states) - remaining), len(states) - 1):
             solver.add(
@@ -245,9 +245,9 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
         for n in ns:
             move_mapping.generate(n)
 
-        # Generate any missing pattern databases.
+        # Generate any missing end pattern databases.
         for n in ns:
-            pattern_database.generate(n, pattern_depth)
+            end_pattern_database.generate(n, pattern_depth)
 
         # List of upperbounds for k for each of the puzzles.
         k_upperbounds = [k_upperbound(ns[i]) for i in range(len(puzzles))]
@@ -268,9 +268,9 @@ def solve(files: list[str], process_count: int, pattern_depth: int):
         processes: list[tuple[int, int, Process]] = []
 
         # Queue to output results onto.
-        output: Queue[
-            tuple[int, int, list[str] | None, timedelta, timedelta]
-        ] = manager.Queue()
+        output: Queue[tuple[int, int, list[str] | None, timedelta, timedelta]] = (
+            manager.Queue()
+        )
 
         def spawn_new_process():
             def solve_wrapper(
