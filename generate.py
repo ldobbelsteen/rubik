@@ -1,7 +1,8 @@
 import random
 import sys
 import os
-from logic import create_parent_directory, State
+from logic import State
+from misc import create_parent_directory
 import itertools
 
 

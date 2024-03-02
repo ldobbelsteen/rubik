@@ -4,7 +4,8 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from logic import print_stamped, State, move_name
+from logic import State, move_name
+from misc import print_stamped
 import move_mapping
 
 

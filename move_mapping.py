@@ -7,9 +7,8 @@ import itertools
 from datetime import datetime
 from functools import reduce
 from dd.autoref import BDD, Function
+from misc import print_stamped, create_parent_directory
 from logic import (
-    print_stamped,
-    create_parent_directory,
     corner_move_coord_mapping,
     corner_move_rotation_mapping,
     edge_move_coord_mapping,
