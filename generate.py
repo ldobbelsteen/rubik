@@ -1,11 +1,14 @@
 import random
 import sys
+import os
 from misc import create_parent_directory, State
 import itertools
 
 
-def generate(n: int, randomizations: int):
+def generate(n: int, randomizations: int, overwrite=False):
     path = f"./puzzles/n{n}-random{randomizations}.txt"
+    if not overwrite and os.path.isfile(path):
+        return
     create_parent_directory(path)
 
     state = State.finished(n)
@@ -21,4 +24,4 @@ def generate(n: int, randomizations: int):
 
 # e.g. python generate.py {n} {randomization_count}
 if __name__ == "__main__":
-    generate(int(sys.argv[1]), int(sys.argv[2]))
+    generate(int(sys.argv[1]), int(sys.argv[2]), True)

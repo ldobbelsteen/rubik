@@ -3,6 +3,7 @@ import sys
 import ast
 import inspect
 import typing
+import itertools
 from datetime import datetime
 from functools import reduce
 from dd.autoref import BDD, Function
@@ -17,21 +18,19 @@ from misc import (
     cubie_type,
 )
 
-MappingTreeCondition = tuple[str, str | int]
-MappingTreeOutput = int | str | tuple[int | str, ...]
-MappingTree = dict[MappingTreeCondition | None, "MappingTree"] | MappingTreeOutput
+MappingTreeOutput = tuple[int | str, ...]
+MappingTreeEquality = tuple[str, str | int]
+MappingTree = dict[MappingTreeEquality | None, "MappingTree"] | MappingTreeOutput
 
 
-def mapping_to_tree(
-    n: int, params: set[str], function: typing.Callable
-) -> tuple[MappingTreeOutput, MappingTree]:
+def mapping_to_tree(n: int, params: set[str], function: typing.Callable) -> MappingTree:
     """Convert a mapping function to a tree by parsing the function's AST."""
 
     def convert_value(v: ast.stmt | ast.expr) -> int | str:
         if isinstance(v, ast.Name):  # variable name
             if v.id == "n":  # n is known, so return that instead
                 return n
-            assert v.id in params  # variable should be a parameter
+            assert v.id in params  # variable should be an input
             return v.id
         elif isinstance(v, ast.Constant):  # constant integer
             return v.value
@@ -50,100 +49,96 @@ def mapping_to_tree(
             raise Exception(f"unsupported value: {v}")
 
     def convert_return_to_output(r: ast.Return) -> MappingTreeOutput:
-        assert r.value is not None
-        if isinstance(r.value, ast.Tuple):
-            return tuple([convert_value(v) for v in r.value.elts])
-        return convert_value(r.value)
+        assert isinstance(r.value, ast.Tuple)
+        return tuple([convert_value(v) for v in r.value.elts])
 
-    def compare_to_condition(c: ast.Compare) -> tuple[str, int | str]:
+    def convert_compare_to_equality(c: ast.Compare) -> tuple[str, int | str]:
         assert isinstance(c.left, ast.Name)  # left side is variable
         assert len(c.ops) == 1  # only one operator
         assert isinstance(c.ops[0], ast.Eq)  # operator is equals sign
         assert len(c.comparators) == 1  # left side is compared to a single value
         return (c.left.id, convert_value(c.comparators[0]))
 
-    def recurse_nodes(nodes: list[ast.stmt]):
+    def recurse_nodes(nodes: list[ast.stmt], default_return: MappingTreeOutput | None):
+        # Single return statement, so we always return.
         if len(nodes) == 1 and isinstance(nodes[0], ast.Return):
             return convert_return_to_output(nodes[0])
 
-        subtree = {}
+        # Extract default return if present. Else use the inherited return.
+        if len(nodes) == 2:
+            raw = nodes.pop()
+            assert isinstance(raw, ast.Return)
+            default_return = convert_return_to_output(raw)
+        assert len(nodes) == 1
 
-        # Check for else branch and extract it.
-        else_branch = None
-        if not isinstance(nodes[-1], ast.If):
-            else_branch_node = nodes.pop()
-            if isinstance(else_branch_node, ast.Return):
-                else_branch = else_branch_node
-            else:
-                print(f"ERROR: unexpected else branch type: {else_branch_node}")
+        subtree: MappingTree = {}
 
-        # Recurse on all if-branches in this branch.
-        for branch in nodes:
-            assert isinstance(branch, ast.If)
-            assert isinstance(branch.test, ast.Compare)
-            compare = compare_to_condition(branch.test)
-            subtree[compare] = recurse_nodes(branch.body)
+        def recurse_branches(b: ast.If):
+            assert isinstance(b.test, ast.Compare)
+            equality = convert_compare_to_equality(b.test)
+            subtree[equality] = recurse_nodes(b.body, default_return)
+            if len(b.orelse) > 0:
+                assert len(b.orelse) == 1
+                branch = b.orelse[0]
+                assert isinstance(branch, ast.If)
+                recurse_branches(branch)
 
-        # Add else branch if it exists.
-        if else_branch is not None:
-            subtree[None] = convert_return_to_output(else_branch)
+        # Extract all branches recursively.
+        branches = nodes.pop()
+        assert isinstance(branches, ast.If)
+        recurse_branches(branches)
+
+        # Add default return as None condition.
+        assert default_return is not None
+        subtree[None] = default_return
 
         return subtree
 
     function_def = ast.parse(inspect.getsource(function)).body[0]
     assert isinstance(function_def, ast.FunctionDef)
-
-    default_output_node = function_def.body.pop()
-    assert isinstance(default_output_node, ast.Return)
-    default_output = convert_return_to_output(default_output_node)
-
-    return default_output, recurse_nodes(function_def.body)
+    return recurse_nodes(function_def.body, None)
 
 
-def extract_tree_paths(
+def extract_mapping_tree_paths(
     tree: MappingTree,
-) -> list[tuple[set[MappingTreeCondition], MappingTreeOutput]]:
-    """Return all paths of conditions to the leaves in a mapping tree."""
-    result: list[tuple[set[MappingTreeCondition], MappingTreeOutput]] = []
+) -> dict[
+    tuple[frozenset[MappingTreeEquality], frozenset[MappingTreeEquality]],
+    MappingTreeOutput,
+]:
+    """Return all paths of equalities and inequalities that lead to leaves in
+    a mapping tree."""
+
+    result: dict[
+        tuple[frozenset[MappingTreeEquality], frozenset[MappingTreeEquality]],
+        MappingTreeOutput,
+    ] = {}
 
     def recurse(
-        current_tree: MappingTree,
-        current_conditions: set[MappingTreeCondition],
+        subtree: MappingTree,
+        equalities: frozenset[MappingTreeEquality],
     ):
-        if isinstance(current_tree, dict):
-            for condition, subtree in current_tree.items():
-                recurse(
-                    subtree,
-                    current_conditions | {condition}
-                    if condition is not None
-                    else current_conditions,
-                )
+        if isinstance(subtree, tuple):
+            result[(equalities, frozenset())] = subtree
         else:
-            result.append((current_conditions, current_tree))
+            for equality, subsubtree in subtree.items():
+                if equality is not None:
+                    recurse(
+                        subsubtree,
+                        equalities | {equality},
+                    )
 
-    recurse(tree, set())
+            default_return = subtree[None]
+            assert isinstance(default_return, tuple)
+            inequalities = frozenset(eq for eq in subtree.keys() if eq is not None)
+            result[(equalities, inequalities)] = default_return
+
+    recurse(tree, frozenset())
     return result
 
 
 def encode(var_name: str, var_value: int):
     """Encode a variable with its value in a string."""
     return f"{var_name}_{var_value}"
-
-
-def convert_tree_condition(
-    cond: MappingTreeCondition, bdd: BDD, domains: dict[str, set[int]]
-) -> Function:
-    left, right = cond
-    if isinstance(right, int):
-        return bdd.var(encode(left, right))
-    else:
-        return reduce(
-            lambda x, y: x | y,
-            [
-                bdd.var(encode(left, overlap)) & bdd.var(encode(right, overlap))
-                for overlap in domains[left].intersection(domains[right])
-            ],
-        )
 
 
 def add_var(
@@ -172,20 +167,34 @@ def add_var(
     return root
 
 
+def equality_condition(
+    left: str, right: str | int, bdd: BDD, domains: dict[str, set[int]]
+) -> Function:
+    if isinstance(right, int):
+        return bdd.var(encode(left, right))
+    else:
+        return reduce(
+            lambda x, y: x | y,
+            [
+                bdd.var(encode(left, overlap)) & bdd.var(encode(right, overlap))
+                for overlap in domains[left].intersection(domains[right])
+            ],
+        )
+
+
 def minimal_substitution_subsets(
-    substitutions: dict[str, set[int]],
+    domains: dict[str, set[int]],
     bdd: BDD,
     root: Function,
 ):
-    """Extract all minimal subsets of the substitutions such that, regardless of
-    which values the substitutions not in the subset take on, there is always a
-    truth assignment."""
+    """Extract all minimal-size substitutions for variables such that, regardless
+    of which values the unsubstituted variables take, there is always a truth assignment."""
     subsets: set[frozenset[tuple[str, int]]] = set()
 
     def all_substitutions_truth(remaining: list[str], substituted: Function):
         if len(remaining) > 0:
             name = remaining[0]
-            for value in substitutions[name]:
+            for value in domains[name]:
                 if not all_substitutions_truth(
                     remaining[1:], bdd.let({encode(name, value): bdd.true}, substituted)
                 ):
@@ -203,7 +212,7 @@ def minimal_substitution_subsets(
         if len(remaining) > 0:
             name = remaining[0]
             subset_search(remaining[1:], chosen, skipped | {name}, substituted)
-            for value in substitutions[name]:
+            for value in domains[name]:
                 subset_search(
                     remaining[1:],
                     chosen | {(name, value)},
@@ -226,7 +235,7 @@ def minimal_substitution_subsets(
                         subsets.remove(existing_subset)
                     subsets.add(chosen)
 
-    subset_search(list(substitutions.keys()), frozenset(), frozenset(), root)
+    subset_search(list(domains.keys()), frozenset(), frozenset(), root)
     return subsets
 
 
@@ -236,10 +245,10 @@ def move_mappings(
     str,
     tuple[
         typing.Callable,
-        tuple[str, ...],  # parameter value names
-        set[tuple[int, ...]],  # all possible parameter tuples
-        str | tuple[str, ...],  # return value name(s)
-        set[int] | set[tuple[int, ...]],  # all possible return values/tuples
+        tuple[str, ...],  # input names
+        set[tuple[int, ...]],  # input domain
+        tuple[str, ...],  # output names
+        set[tuple[int, ...]],  # output domain
     ],
 ]:
     corners: set[tuple[int, int, int]] = set()
@@ -282,8 +291,8 @@ def move_mappings(
                 for mi in range(n)
                 for md in range(3)
             ),
-            "r_new",
-            set(range(3)),
+            ("r_new",),
+            set([tuple([v]) for v in range(3)]),
         ),
         "edge_coord": (
             edge_move_coord_mapping,
@@ -309,8 +318,8 @@ def move_mappings(
                 for mi in range(n)
                 for md in range(3)
             ),
-            "r_new",
-            set(range(3)),
+            ("r_new",),
+            set([tuple([v]) for v in range(3)]),
         ),
         "center_coord": (
             center_move_coord_mapping,
@@ -332,7 +341,7 @@ def file_path(n: int, name: str):
     return f"./move_mappings/n{n}-{name}.txt"
 
 
-def generate(n: int):
+def generate(n: int, overwrite=False):
     for name, (
         function,
         input_names,
@@ -341,37 +350,32 @@ def generate(n: int):
         output_domain,
     ) in move_mappings(n).items():
         path = file_path(n, name)
-        if os.path.isfile(path):
-            return  # already generated, so skip
+        if not overwrite and os.path.isfile(path):
+            continue
         create_parent_directory(path)
+
+        if len(input_domain) == 0:
+            continue  # can happen for n <= 2, where there are no edges nor centers
+
         print_stamped(f"generating move mappings '{name}' for n = {n}...")
 
         # Compute the mapping tree for this function.
-        default_output, tree = mapping_to_tree(
-            n, set(pn for pn in input_names), function
-        )
+        tree = mapping_to_tree(n, set(pn for pn in input_names), function)
 
         # Initialize separate domains for all inputs and outputs.
         domains: dict[str, set[int]] = {}
         for name in input_names:
             domains[name] = set()
-        if isinstance(output_names, str):
-            domains[output_names] = set()
-        else:
-            for name in output_names:
-                domains[name] = set()
+        for name in output_names:
+            domains[name] = set()
 
         # Compute separate domains for all variables.
-        for input in input_domain:
-            for i, name in enumerate(input_names):
+        for i, name in enumerate(input_names):
+            for input in input_domain:
                 domains[name].add(input[i])
-        for output in output_domain:
-            if isinstance(output, tuple):
-                for i, name in enumerate(output_names):
-                    domains[name].add(output[i])
-            else:
-                assert isinstance(output_names, str)
-                domains[output_names].add(output)
+        for i, name in enumerate(output_names):
+            for output in output_domain:
+                domains[name].add(output[i])
 
         # Initialize a BDD with a root.
         bdd = BDD()
@@ -381,86 +385,89 @@ def generate(n: int):
         for name, domain in domains.items():
             root = add_var(name, domain, bdd, root)
 
+        def input_equals(input: tuple[int, ...]):
+            """Return condition on the input being equal to a specific input."""
+            return reduce(
+                lambda x, y: x & y,
+                [
+                    equality_condition(input_name, input[i], bdd, domains)
+                    for i, input_name in enumerate(input_names)
+                ],
+            )
+
         def output_equals(output: MappingTreeOutput):
             """Return condition on the output being equal to a specific output."""
-            return (
-                equality_condition("f_out", output[0], bdd, input_domain)
-                & equality_condition("y_out", output[1], bdd, input_domain)
-                & equality_condition("x_out", output[2], bdd, input_domain)
+            return reduce(
+                lambda x, y: x & y,
+                [
+                    equality_condition(output_name, output[i], bdd, domains)
+                    for i, output_name in enumerate(output_names)
+                ],
             )
 
-    # Add the paths as restrictions.
-    one_path_holds = bdd.false
-    for conditions, output in extract_tree_paths(n):
-        one_condition_false = bdd.false
-        for left, right in conditions:
-            one_condition_false = one_condition_false | ~equality_condition(
-                left, right, bdd, input_domain
-            )
-        root = root & (one_condition_false | output_equals(output))
-        one_path_holds = one_path_holds | ~one_condition_false
+        # Disallow inputs not from the input domain.
+        input_domains = [d for n, d in domains.items() if n in input_names]
+        for input in itertools.product(*input_domains):
+            if input not in input_domain:
+                root = root & ~input_equals(input)
 
-    # If none of the paths hold, the default output of (f, y, x) holds.
-    root = root & (one_path_holds | output_equals(("f_in", "y_in", "x_in")))
+        # Add the paths as restrictions.
+        for (eqs, ineqs), output in extract_mapping_tree_paths(tree).items():
+            path_cond = bdd.true
+            for left, right in eqs:
+                path_cond = path_cond & equality_condition(left, right, bdd, domains)
+            for left, right in ineqs:
+                path_cond = path_cond & ~equality_condition(left, right, bdd, domains)
+            root = root & (~path_cond | output_equals(output))
 
-    mappings: list[
-        tuple[
-            tuple[int | None, int | None, int | None],
-            tuple[int, int, int],
-            tuple[int, int, int],
-        ]
-    ] = []
+        mappings: list[tuple[tuple[int | None, ...], tuple[int, ...]]] = []
 
-    # Extract mappings from the diagram.
-    for subset in minimal_substitution_subsets(
-        move_vars | input_vars | output_vars, bdd, root
-    ):
-        vals = {k: v for k, v in subset}
-        mappings.append(
-            (
-                (vals.get("ma"), vals.get("mi"), vals.get("md")),
-                (vals["f_in"], vals["y_in"], vals["x_in"]),
-                (vals["f_out"], vals["y_out"], vals["x_out"]),
-            )
-        )
+        # Extract minimal mappings from the BDD.
+        for subset in minimal_substitution_subsets(domains, bdd, root):
+            vals = {k: v for k, v in subset}
+            input = tuple([vals[n] if n in vals else None for n in input_names])
+            output = tuple([vals[n] for n in output_names])
+            mappings.append((input, output))
 
-    # Sort to make result deterministic.
-    mappings.sort(key=lambda sc: str(sc))
+        # Sort to make result deterministic.
+        mappings.sort(key=lambda sc: str(sc))
 
-    with open(path, "w") as file:
-        for move, input, output in mappings:
-            move_str = "".join(["*" if c is None else str(c) for c in move])
-            input_str = "".join([str(c) for c in input])
-            output_str = "".join([str(c) for c in output])
-            file.write(f"{move_str} {input_str} {output_str}\n")
+        with open(path, "w") as file:
+            for input, output in mappings:
+                input_str = "".join(["*" if i is None else str(i) for i in input])
+                output_str = "".join([str(o) for o in output])
+                file.write(f"{input_str} {output_str}\n")
 
 
 def load(n: int):
-    with open(file_path(n), "r") as file:
-        result = {
-            ma: {
-                mi: {md: [] for md in list(range(3)) + [None]}
-                for mi in list(range(n)) + [None]
-            }
-            for ma in list(range(3)) + [None]
-        }
+    result: dict[str, list[tuple[dict[str, int], dict[str, int]]]] = {}
 
-        for line in file:
-            move_raw, input_raw, output_raw = line.split(" ")
-            move = (
-                None if move_raw[0] == "*" else int(move_raw[0]),
-                None if move_raw[1] == "*" else int(move_raw[1]),
-                None if move_raw[2] == "*" else int(move_raw[2]),
-            )
-            input = (int(input_raw[0]), int(input_raw[1]), int(input_raw[2]))
-            output = (int(output_raw[0]), int(output_raw[1]), int(output_raw[2]))
-            result[move[0]][move[1]][move[2]].append((input, output))
+    for name, (_, input_names, _, output_names, _) in move_mappings(n).items():
+        mappings: list[tuple[dict[str, int], dict[str, int]]] = []
+        with open(file_path(n, name), "r") as file:
+            for line in file:
+                input_raw, output_raw = line.split(" ")
 
-        return result
+                input_dict = {
+                    input_names[i]: v
+                    for i, v in enumerate(
+                        [None if c == "*" else int(c) for c in input_raw]
+                    )
+                    if v is not None
+                }
+
+                output_dict = {
+                    output_names[i]: v
+                    for i, v in enumerate([int(c) for c in output_raw])
+                }
+
+                mappings.append((input_dict, output_dict))
+
+        result[name] = mappings
 
 
 # e.g. python move_mapping.py {n}
 if __name__ == "__main__":
     start = datetime.now()
-    generate(int(sys.argv[1]))
+    generate(int(sys.argv[1]), True)
     print(f"took {datetime.now()-start} to complete!")

@@ -167,7 +167,7 @@ class State:
                             )
                             new_rot = corner_move_rotation_mapping(
                                 x, y, z, self.rots[x][y][z], ma, mi, md
-                            )
+                            )[0]
                             new.coords[new_x][new_y][new_z] = self.coords[x][y][z]
                             new.rots[new_x][new_y][new_z] = new_rot
                         case 1:
@@ -181,7 +181,7 @@ class State:
                             )
                             new_rot = edge_move_rotation_mapping(
                                 x, y, z, self.rots[x][y][z], ma, mi, md
-                            )
+                            )[0]
                             new.coords[new_x][new_y][new_z] = self.coords[x][y][z]
                             new.rots[new_x][new_y][new_z] = new_rot
 
@@ -238,7 +238,7 @@ def cubie_type(n: int, x: int, y: int, z: int):
         or ((z == 0 or z == n - 1) and x > 0 and x < n - 1 and y > 0 and y < n - 1)
     ):
         return 1
-    if (x > 0 or x < n - 1) and (y > 0 or y < n - 1) and (z > 0 or z < n - 1):
+    if x > 0 and x < n - 1 and y > 0 and y < n - 1 and z > 0 and z < n - 1:
         return -1
     return 2
 
@@ -252,84 +252,148 @@ def corner_move_coord_mapping(
                 if x == 0:
                     if z == 0:
                         return (x, y, n - 1)
-                    if z == n - 1:
+                    elif z == n - 1:
                         return (n - 1, y, z)
-                if x == n - 1:
+                elif x == n - 1:
                     if z == 0:
                         return (0, y, z)
-                    if z == n - 1:
+                    elif z == n - 1:
                         return (x, y, 0)
-            if md == 1:
+            elif md == 1:
                 if x == 0:
                     if z == 0:
                         return (n - 1, y, z)
-                    if z == n - 1:
+                    elif z == n - 1:
                         return (x, y, 0)
-                if x == n - 1:
+                elif x == n - 1:
                     if z == 0:
                         return (x, y, n - 1)
-                    if z == n - 1:
+                    elif z == n - 1:
                         return (0, y, z)
-            if md == 2:
+            elif md == 2:
                 if x == 0:
                     if z == 0:
                         return (n - 1, y, n - 1)
-                    if z == n - 1:
+                    elif z == n - 1:
                         return (n - 1, y, 0)
-                if x == n - 1:
+                elif x == n - 1:
                     if z == 0:
                         return (0, y, n - 1)
-                    if z == n - 1:
+                    elif z == n - 1:
                         return (0, y, 0)
-    if ma == 1:
+    elif ma == 1:
         if mi == x:
-            pass  # TODO
-    if ma == 2:
+            if md == 0:
+                if y == 0:
+                    if z == 0:
+                        return (x, n - 1, z)
+                    elif z == n - 1:
+                        return (x, y, 0)
+                elif y == n - 1:
+                    if z == 0:
+                        return (x, y, n - 1)
+                    elif z == n - 1:
+                        return (x, 0, z)
+            elif md == 1:
+                if y == 0:
+                    if z == 0:
+                        return (x, y, n - 1)
+                    elif z == n - 1:
+                        return (x, n - 1, z)
+                elif y == n - 1:
+                    if z == 0:
+                        return (x, 0, z)
+                    elif z == n - 1:
+                        return (x, y, 0)
+            elif md == 2:
+                if y == 0:
+                    if z == 0:
+                        return (x, n - 1, n - 1)
+                    elif z == n - 1:
+                        return (x, n - 1, 0)
+                elif y == n - 1:
+                    if z == 0:
+                        return (x, 0, n - 1)
+                    elif z == n - 1:
+                        return (x, 0, 0)
+    elif ma == 2:
         if mi == z:
-            pass  # TODO
+            if md == 0:
+                if x == 0:
+                    if y == 0:
+                        return (x, n - 1, z)
+                    elif y == n - 1:
+                        return (n - 1, y, z)
+                elif x == n - 1:
+                    if y == 0:
+                        return (0, y, z)
+                    elif y == n - 1:
+                        return (x, 0, z)
+            elif md == 1:
+                if x == 0:
+                    if y == 0:
+                        return (n - 1, y, z)
+                    elif y == n - 1:
+                        return (x, 0, z)
+                elif x == n - 1:
+                    if y == 0:
+                        return (x, n - 1, z)
+                    elif y == n - 1:
+                        return (0, y, z)
+            elif md == 2:
+                if x == 0:
+                    if y == 0:
+                        return (n - 1, n - 1, z)
+                    elif y == n - 1:
+                        return (n - 1, 0, z)
+                elif x == n - 1:
+                    if y == 0:
+                        return (0, n - 1, z)
+                    elif y == n - 1:
+                        return (0, 0, z)
     return (x, y, z)
 
 
 def corner_move_rotation_mapping(
     x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
-) -> int:
+) -> tuple[int]:
     if ma == 0:
         if mi == y:
             if md == 0:
                 if r == 0:
-                    return 2
-                if r == 2:
-                    return 0
-            if md == 1:
+                    return (2,)
+                elif r == 2:
+                    return (0,)
+            elif md == 1:
                 if r == 0:
-                    return 2
-                if r == 2:
-                    return 0
-    if ma == 1:
+                    return (2,)
+                elif r == 2:
+                    return (0,)
+    elif ma == 1:
         if mi == x:
             if md == 0:
                 if r == 1:
-                    return 2
-                if r == 2:
-                    return 1
-            if md == 1:
+                    return (2,)
+                elif r == 2:
+                    return (1,)
+            elif md == 1:
                 if r == 1:
-                    return 2
-                if r == 2:
-                    return 1
-    if ma == 2:
+                    return (2,)
+                elif r == 2:
+                    return (1,)
+    elif ma == 2:
         if mi == z:
             if md == 0:
                 if r == 0:
-                    return 1
-                if r == 1:
-                    return 0
-            if md == 1:
+                    return (1,)
+                elif r == 1:
+                    return (0,)
+            elif md == 1:
                 if r == 0:
-                    return 1
-                if r == 1:
-                    return 0
-    return r
+                    return (1,)
+                elif r == 1:
+                    return (0,)
+    return (r,)
 
 
 def edge_move_coord_mapping(
@@ -338,70 +402,71 @@ def edge_move_coord_mapping(
     if ma == 0:
         if mi == y:
             if mi == 0:
-                pass  # TODO
-            if mi == n - 1:
-                pass  # TODO
-            pass  # TODO
-    if ma == 1:
+                return (0, 0, 0)  # TODO
+            elif mi == n - 1:
+                return (0, 0, 0)  # TODO
+            return (0, 0, 0)  # TODO
+    elif ma == 1:
         if mi == x:
             if mi == 0:
-                pass  # TODO
-            if mi == n - 1:
-                pass  # TODO
-            pass  # TODO
-    if ma == 2:
+                return (0, 0, 0)  # TODO
+            elif mi == n - 1:
+                return (0, 0, 0)  # TODO
+            return (0, 0, 0)  # TODO
+    elif ma == 2:
         if mi == z:
             if mi == 0:
-                pass  # TODO
-            if mi == n - 1:
-                pass  # TODO
-            pass  # TODO
+                return (0, 0, 0)  # TODO
+            elif mi == n - 1:
+                return (0, 0, 0)  # TODO
+            return (0, 0, 0)  # TODO
     return (x, y, z)
 
 
 def edge_move_rotation_mapping(
     x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
-) -> int:
+) -> tuple[int]:
     # TODO: currently, this is just a copy of the corner move rotation mapping.
     # However, it should be possible to have rotation values in just domain
     # {0, 1}, while this is {0, 1, 2}. We still need to look into this.
+    # Don't forget to fix this in the domain of the move_mapping code.
     if ma == 0:
         if mi == y:
             if md == 0:
                 if r == 0:
-                    return 2
-                if r == 2:
-                    return 0
-            if md == 1:
+                    return (2,)
+                elif r == 2:
+                    return (0,)
+            elif md == 1:
                 if r == 0:
-                    return 2
-                if r == 2:
-                    return 0
-    if ma == 1:
+                    return (2,)
+                elif r == 2:
+                    return (0,)
+    elif ma == 1:
         if mi == x:
             if md == 0:
                 if r == 1:
-                    return 2
-                if r == 2:
-                    return 1
-            if md == 1:
+                    return (2,)
+                elif r == 2:
+                    return (1,)
+            elif md == 1:
                 if r == 1:
-                    return 2
-                if r == 2:
-                    return 1
-    if ma == 2:
+                    return (2,)
+                elif r == 2:
+                    return (1,)
+    elif ma == 2:
         if mi == z:
             if md == 0:
                 if r == 0:
-                    return 1
-                if r == 1:
-                    return 0
-            if md == 1:
+                    return (1,)
+                elif r == 1:
+                    return (0,)
+            elif md == 1:
                 if r == 0:
-                    return 1
-                if r == 1:
-                    return 0
-    return r
+                    return (1,)
+                elif r == 1:
+                    return (0,)
+    return (r,)
 
 
 def center_move_coord_mapping(
@@ -410,22 +475,22 @@ def center_move_coord_mapping(
     if ma == 0:
         if mi == y:
             if y == 0:
-                pass  # TODO
-            if y == n - 1:
-                pass  # TODO
-            pass  # TODO
-    if ma == 1:
+                return (0, 0, 0)  # TODO
+            elif y == n - 1:
+                return (0, 0, 0)  # TODO
+            return (0, 0, 0)  # TODO
+    elif ma == 1:
         if mi == x:
             if x == 0:
-                pass  # TODO
-            if x == n - 1:
-                pass  # TODO
-            pass  # TODO
-    if ma == 2:
+                return (0, 0, 0)  # TODO
+            elif x == n - 1:
+                return (0, 0, 0)  # TODO
+            return (0, 0, 0)  # TODO
+    elif ma == 2:
         if mi == z:
             if z == 0:
-                pass  # TODO
-            if z == n - 1:
-                pass  # TODO
-            pass  # TODO
+                return (0, 0, 0)  # TODO
+            elif z == n - 1:
+                return (0, 0, 0)  # TODO
+            return (0, 0, 0)  # TODO
     return (x, y, z)
