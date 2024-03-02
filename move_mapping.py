@@ -9,73 +9,83 @@ from functools import reduce
 from dd.autoref import BDD, Function
 from misc import print_stamped, create_parent_directory
 from logic import (
-    corner_move_coord_mapping,
-    corner_move_rotation_mapping,
-    edge_move_coord_mapping,
-    edge_move_rotation_mapping,
-    center_move_coord_mapping,
+    coord_mapping,
+    corner_rotation_mapping,
+    edge_rotation_mapping,
     cubie_type,
 )
 
 MappingTreeOutput = tuple[int | str, ...]
-MappingTreeEquality = tuple[str, str | int]
-MappingTree = dict[MappingTreeEquality | None, "MappingTree"] | MappingTreeOutput
+MappingTreeComparison = tuple[str, bool, str | int]
+MappingTree = dict[MappingTreeComparison | None, "MappingTree"] | MappingTreeOutput
 
 
-def mapping_to_tree(n: int, params: set[str], function: typing.Callable) -> MappingTree:
+def mapping_to_tree(
+    n: int, variables: set[str], mapping: typing.Callable
+) -> MappingTree:
     """Convert a mapping function to a tree by parsing the function's AST."""
 
-    def convert_value(v: ast.stmt | ast.expr) -> int | str:
+    def convert_n_minus_1_subtraction(v: ast.BinOp) -> str:
+        assert isinstance(v.op, ast.Sub)
+        assert isinstance(v.right, ast.Name)
+        assert isinstance(v.left, ast.BinOp)
+        assert isinstance(v.left.left, ast.Name)
+        assert v.left.left.id == "n"
+        assert isinstance(v.left.right, ast.Constant)
+        assert v.left.right.value == 1
+        return f"{n-1}-{v.right.id}"
+
+    def convert_expression(v: ast.stmt | ast.expr) -> int | str:
         if isinstance(v, ast.Name):  # variable name
             if v.id == "n":  # n is known, so return that instead
                 return n
-            assert v.id in params  # variable should be an input
+            assert v.id in variables
             return v.id
         elif isinstance(v, ast.Constant):  # constant integer
             return v.value
-        elif isinstance(v, ast.BinOp):  # combination of two values with operator
-            left = convert_value(v.left)
-            right = convert_value(v.right)
-            assert isinstance(left, int)
-            assert isinstance(right, int)
-            if isinstance(v.op, ast.Add):  # addition
-                return left + right
-            elif isinstance(v.op, ast.Sub):  # subtraction
-                return left - right
-            else:
-                raise Exception(f"unsupported operator: {v.op}")
+        elif isinstance(v, ast.BinOp):
+            return convert_n_minus_1_subtraction(v)
         else:
-            raise Exception(f"unsupported value: {v}")
+            raise Exception(f"unsupported expression: {v}")
 
-    def convert_return_to_output(r: ast.Return) -> MappingTreeOutput:
+    def convert_return(r: ast.Return) -> MappingTreeOutput:
         assert isinstance(r.value, ast.Tuple)
-        return tuple([convert_value(v) for v in r.value.elts])
+        return tuple([convert_expression(v) for v in r.value.elts])
 
-    def convert_compare_to_equality(c: ast.Compare) -> tuple[str, int | str]:
+    def convert_comparison(c: ast.Compare) -> tuple[str, bool, int | str]:
         assert isinstance(c.left, ast.Name)  # left side is variable
         assert len(c.ops) == 1  # only one operator
-        assert isinstance(c.ops[0], ast.Eq)  # operator is equals sign
-        assert len(c.comparators) == 1  # left side is compared to a single value
-        return (c.left.id, convert_value(c.comparators[0]))
+        assert len(c.comparators) == 1  # compared to a single value
+
+        left = c.left.id
+        operator = c.ops[0]
+        right = convert_expression(c.comparators[0])
+
+        if isinstance(operator, ast.Eq):  # equals sign
+            return (left, True, right)
+        elif isinstance(operator, ast.NotEq):  # not equals sign
+            return (left, False, right)
+        else:
+            raise Exception(f"unsupported comparison operator: {operator}")
 
     def recurse_nodes(nodes: list[ast.stmt], default_return: MappingTreeOutput | None):
         # Single return statement, so we always return.
         if len(nodes) == 1 and isinstance(nodes[0], ast.Return):
-            return convert_return_to_output(nodes[0])
+            return convert_return(nodes[0])
 
         # Extract default return if present. Else use the inherited return.
         if len(nodes) == 2:
-            raw = nodes.pop()
-            assert isinstance(raw, ast.Return)
-            default_return = convert_return_to_output(raw)
+            return_node = nodes.pop()
+            assert isinstance(return_node, ast.Return)
+            default_return = convert_return(return_node)
         assert len(nodes) == 1
 
         subtree: MappingTree = {}
 
         def recurse_branches(b: ast.If):
             assert isinstance(b.test, ast.Compare)
-            equality = convert_compare_to_equality(b.test)
-            subtree[equality] = recurse_nodes(b.body, default_return)
+            comparison = convert_comparison(b.test)
+            subtree[comparison] = recurse_nodes(b.body, default_return)
             if len(b.orelse) > 0:
                 assert len(b.orelse) == 1
                 branch = b.orelse[0]
@@ -93,43 +103,39 @@ def mapping_to_tree(n: int, params: set[str], function: typing.Callable) -> Mapp
 
         return subtree
 
-    function_def = ast.parse(inspect.getsource(function)).body[0]
+    function_def = ast.parse(inspect.getsource(mapping)).body[0]
     assert isinstance(function_def, ast.FunctionDef)
     return recurse_nodes(function_def.body, None)
 
 
 def extract_mapping_tree_paths(
     tree: MappingTree,
-) -> dict[
-    tuple[frozenset[MappingTreeEquality], frozenset[MappingTreeEquality]],
-    MappingTreeOutput,
-]:
-    """Return all paths of equalities and inequalities that lead to leaves in
-    a mapping tree."""
-
-    result: dict[
-        tuple[frozenset[MappingTreeEquality], frozenset[MappingTreeEquality]],
-        MappingTreeOutput,
-    ] = {}
+) -> dict[frozenset[MappingTreeComparison], MappingTreeOutput]:
+    """Return all paths of comparisons that lead to leaves in a mapping tree."""
+    result: dict[frozenset[MappingTreeComparison], MappingTreeOutput] = {}
 
     def recurse(
         subtree: MappingTree,
-        equalities: frozenset[MappingTreeEquality],
+        current: frozenset[MappingTreeComparison],
     ):
         if isinstance(subtree, tuple):
-            result[(equalities, frozenset())] = subtree
+            result[current] = subtree
         else:
-            for equality, subsubtree in subtree.items():
-                if equality is not None:
+            for comparison, subsubtree in subtree.items():
+                if comparison is not None:
                     recurse(
                         subsubtree,
-                        equalities | {equality},
+                        current | {comparison},
                     )
 
             default_return = subtree[None]
             assert isinstance(default_return, tuple)
-            inequalities = frozenset(eq for eq in subtree.keys() if eq is not None)
-            result[(equalities, inequalities)] = default_return
+
+            # If none of the comparisons hold, the default return should hold.
+            negated_comparisons = frozenset(
+                (eq[0], not eq[1], eq[2]) for eq in subtree.keys() if eq is not None
+            )
+            result[current | negated_comparisons] = default_return
 
     recurse(tree, frozenset())
     return result
@@ -166,19 +172,31 @@ def add_var(
     return root
 
 
-def equality_condition(
-    left: str, right: str | int, bdd: BDD, domains: dict[str, set[int]]
+def comparison_condition(
+    left: str, equals: bool, right: str | int, bdd: BDD, domains: dict[str, set[int]]
 ) -> Function:
     if isinstance(right, int):
-        return bdd.var(encode(left, right))
+        if equals:
+            return bdd.var(encode(left, right))
+        else:
+            return ~bdd.var(encode(left, right))
     else:
-        return reduce(
-            lambda x, y: x | y,
-            [
-                bdd.var(encode(left, overlap)) & bdd.var(encode(right, overlap))
-                for overlap in domains[left].intersection(domains[right])
-            ],
-        )
+        if equals:
+            return reduce(
+                lambda x, y: x | y,
+                [
+                    bdd.var(encode(left, overlap)) & bdd.var(encode(right, overlap))
+                    for overlap in domains[left].intersection(domains[right])
+                ],
+            )
+        else:
+            return reduce(
+                lambda x, y: x & y,
+                [
+                    bdd.var(encode(left, overlap)) != bdd.var(encode(right, overlap))
+                    for overlap in domains[left].intersection(domains[right])
+                ],
+            )
 
 
 def minimal_substitution_subsets(
@@ -238,6 +256,86 @@ def minimal_substitution_subsets(
     return subsets
 
 
+def compute_move_mapping(
+    n: int,
+    mapping: typing.Callable,
+    input_names: tuple[str, ...],
+    input_domain: set[tuple[int, ...]],
+    output_names: tuple[str, ...],
+    output_domain: set[tuple[int, ...]],
+) -> list[tuple[tuple[int | None, ...], tuple[int, ...]]]:
+    tree = mapping_to_tree(n, set(pn for pn in input_names), mapping)
+
+    # Initialize separate domains for all inputs and outputs.
+    domains: dict[str, set[int]] = {}
+    for name in input_names:
+        domains[name] = set()
+    for name in output_names:
+        domains[name] = set()
+
+    # Compute separate domains for all variables.
+    for i, name in enumerate(input_names):
+        for input in input_domain:
+            domains[name].add(input[i])
+    for i, name in enumerate(output_names):
+        for output in output_domain:
+            domains[name].add(output[i])
+
+    # Initialize a BDD with a root.
+    bdd = BDD()
+    root = bdd.true
+
+    # Add all variables to the BDD.
+    for name, domain in domains.items():
+        root = add_var(name, domain, bdd, root)
+
+    def input_equals(input: tuple[int, ...]):
+        """Return condition on the input being equal to a specific input."""
+        return reduce(
+            lambda x, y: x & y,
+            [
+                comparison_condition(input_name, True, input[i], bdd, domains)
+                for i, input_name in enumerate(input_names)
+            ],
+        )
+
+    def output_equals(output: MappingTreeOutput):
+        """Return condition on the output being equal to a specific output."""
+        return reduce(
+            lambda x, y: x & y,
+            [
+                comparison_condition(output_name, True, output[i], bdd, domains)
+                for i, output_name in enumerate(output_names)
+            ],
+        )
+
+    # Disallow inputs not from the input domain.
+    input_domains = [d for n, d in domains.items() if n in input_names]
+    for input in itertools.product(*input_domains):
+        if input not in input_domain:
+            root = root & ~input_equals(input)
+
+    # Add the paths as restrictions.
+    for comparisons, output in extract_mapping_tree_paths(tree).items():
+        path_cond = bdd.true
+        for left, equals, right in comparisons:
+            path_cond = path_cond & comparison_condition(
+                left, equals, right, bdd, domains
+            )
+        root = root & (~path_cond | output_equals(output))
+
+    result: list[tuple[tuple[int | None, ...], tuple[int, ...]]] = []
+
+    # Extract results from the BDD.
+    for subset in minimal_substitution_subsets(domains, bdd, root):
+        vals = {k: v for k, v in subset}
+        input = tuple([vals[n] if n in vals else None for n in input_names])
+        output = tuple([vals[n] for n in output_names])
+        result.append((input, output))
+
+    return result
+
+
 def move_mappings(
     n: int,
 ) -> dict[
@@ -267,7 +365,7 @@ def move_mappings(
 
     return {
         "corner_coord": (
-            corner_move_coord_mapping,
+            coord_mapping,
             ("x", "y", "z", "ma", "mi", "md"),
             set(
                 corner + (ma, mi, md)
@@ -280,7 +378,7 @@ def move_mappings(
             corners,
         ),
         "corner_rotation": (
-            corner_move_rotation_mapping,
+            corner_rotation_mapping,
             ("x", "y", "z", "r", "ma", "mi", "md"),
             set(
                 corner + (r, ma, mi, md)
@@ -294,7 +392,7 @@ def move_mappings(
             set([tuple([v]) for v in range(3)]),
         ),
         "edge_coord": (
-            edge_move_coord_mapping,
+            coord_mapping,
             ("x", "y", "z", "ma", "mi", "md"),
             set(
                 edge + (ma, mi, md)
@@ -307,7 +405,7 @@ def move_mappings(
             edges,
         ),
         "edge_rotation": (
-            edge_move_rotation_mapping,
+            edge_rotation_mapping,
             ("x", "y", "z", "r", "ma", "mi", "md"),
             set(
                 edge + (r, ma, mi, md)
@@ -321,7 +419,7 @@ def move_mappings(
             set([tuple([v]) for v in range(3)]),
         ),
         "center_coord": (
-            center_move_coord_mapping,
+            coord_mapping,
             ("x", "y", "z", "ma", "mi", "md"),
             set(
                 center + (ma, mi, md)
@@ -342,91 +440,24 @@ def file_path(n: int, name: str):
 
 def generate(n: int, overwrite=False):
     for name, (
-        function,
+        mapping,
         input_names,
         input_domain,
         output_names,
         output_domain,
     ) in move_mappings(n).items():
+        if len(input_domain) == 0:
+            continue  # can happen for n <= 2, where there are no edges or centers
+
         path = file_path(n, name)
         if not overwrite and os.path.isfile(path):
             continue
         create_parent_directory(path)
 
-        if len(input_domain) == 0:
-            continue  # can happen for n <= 2, where there are no edges nor centers
-
-        print_stamped(f"generating move mappings '{name}' for n = {n}...")
-
-        # Compute the mapping tree for this function.
-        tree = mapping_to_tree(n, set(pn for pn in input_names), function)
-
-        # Initialize separate domains for all inputs and outputs.
-        domains: dict[str, set[int]] = {}
-        for name in input_names:
-            domains[name] = set()
-        for name in output_names:
-            domains[name] = set()
-
-        # Compute separate domains for all variables.
-        for i, name in enumerate(input_names):
-            for input in input_domain:
-                domains[name].add(input[i])
-        for i, name in enumerate(output_names):
-            for output in output_domain:
-                domains[name].add(output[i])
-
-        # Initialize a BDD with a root.
-        bdd = BDD()
-        root = bdd.true
-
-        # Add all variables to the BDD.
-        for name, domain in domains.items():
-            root = add_var(name, domain, bdd, root)
-
-        def input_equals(input: tuple[int, ...]):
-            """Return condition on the input being equal to a specific input."""
-            return reduce(
-                lambda x, y: x & y,
-                [
-                    equality_condition(input_name, input[i], bdd, domains)
-                    for i, input_name in enumerate(input_names)
-                ],
-            )
-
-        def output_equals(output: MappingTreeOutput):
-            """Return condition on the output being equal to a specific output."""
-            return reduce(
-                lambda x, y: x & y,
-                [
-                    equality_condition(output_name, output[i], bdd, domains)
-                    for i, output_name in enumerate(output_names)
-                ],
-            )
-
-        # Disallow inputs not from the input domain.
-        input_domains = [d for n, d in domains.items() if n in input_names]
-        for input in itertools.product(*input_domains):
-            if input not in input_domain:
-                root = root & ~input_equals(input)
-
-        # Add the paths as restrictions.
-        for (eqs, ineqs), output in extract_mapping_tree_paths(tree).items():
-            path_cond = bdd.true
-            for left, right in eqs:
-                path_cond = path_cond & equality_condition(left, right, bdd, domains)
-            for left, right in ineqs:
-                path_cond = path_cond & ~equality_condition(left, right, bdd, domains)
-            root = root & (~path_cond | output_equals(output))
-
-        mappings: list[tuple[tuple[int | None, ...], tuple[int, ...]]] = []
-
-        # Extract minimal mappings from the BDD.
-        for subset in minimal_substitution_subsets(domains, bdd, root):
-            vals = {k: v for k, v in subset}
-            input = tuple([vals[n] if n in vals else None for n in input_names])
-            output = tuple([vals[n] for n in output_names])
-            mappings.append((input, output))
+        print_stamped(f"generating move mapping '{name}' for n = {n}...")
+        mappings = compute_move_mapping(
+            n, mapping, input_names, input_domain, output_names, output_domain
+        )
 
         # Sort to make result deterministic.
         mappings.sort(key=lambda sc: str(sc))
@@ -443,23 +474,17 @@ def load(n: int):
 
     for name, (_, input_names, _, output_names, _) in move_mappings(n).items():
         mappings: list[tuple[dict[str, int], dict[str, int]]] = []
+
         with open(file_path(n, name), "r") as file:
             for line in file:
                 input_raw, output_raw = line.split(" ")
+                inputs = [None if c == "*" else int(c) for c in input_raw]
+                outputs = [int(c) for c in output_raw]
 
                 input_dict = {
-                    input_names[i]: v
-                    for i, v in enumerate(
-                        [None if c == "*" else int(c) for c in input_raw]
-                    )
-                    if v is not None
+                    input_names[i]: v for i, v in enumerate(inputs) if v is not None
                 }
-
-                output_dict = {
-                    output_names[i]: v
-                    for i, v in enumerate([int(c) for c in output_raw])
-                }
-
+                output_dict = {output_names[i]: v for i, v in enumerate(outputs)}
                 mappings.append((input_dict, output_dict))
 
         result[name] = mappings
