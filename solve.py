@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from logic import State, move_name
+from logic import State, move_name, list_edges, list_centers, list_corners
 from misc import print_stamped
 import move_mapping
 
@@ -36,126 +36,142 @@ def solve_for_k(puzzle: State, k: int):
     prep_start = datetime.now()
     solver = z3.Optimize()
 
-    # Variables which together represent the state of the cube at each step.
-    corner_locations = [
-        [z3_int_with_range(solver, f"corner_loc({c}) s({s})", 0, 8) for c in range(8)]
-        for s in range(k + 1)
+    # Nested list of shape n x n x n for every step. Internal cubies are represented by None, center
+    # cubies by a single variable indicating which center is located there and corner/edge cubies by
+    # a tuple of two variables: one indicating which corner/edge is located there and one indicating
+    # the rotation.
+    states: list[
+        list[list[list[tuple[z3.ArithRef, z3.ArithRef] | z3.ArithRef | None]]]
+    ] = [
+        [
+            [[None for _ in range(puzzle.n)] for _ in range(puzzle.n)]
+            for _ in range(puzzle.n)
+        ]
+        for _ in range(k + 1)
     ]
-    corner_rotations = [
-        [z3_int_with_range(solver, f"corner_rot({c}) s({s})", 0, 3) for c in range(8)]
-        for s in range(k + 1)
-    ]
-    edge_locations = [
-        [z3_int_with_range(solver, f"edge_loc({e}) s({s})", 0, 12) for e in range(12)]
-        for s in range(k + 1)
-    ]
-    edge_rotations = [
-        [z3_int_with_range(solver, f"edge_rot({e}) s({s})", 0, 2) for e in range(12)]
-        for s in range(k + 1)
-    ]
-    center_locations = [
-        [z3_int_with_range(solver, f"center_loc({f}) s({s})", 0, 6) for f in range(6)]
-        for s in range(k + 1)
-    ]
+
+    # Populate the states with Z3 variables.
+    corners = list_corners(puzzle.n)
+    centers = list_centers(puzzle.n)
+    edges = list_edges(puzzle.n)
+    for s in range(k + 1):
+        for x, y, z in corners:
+            states[s][x][y][z] = (
+                z3_int_with_range(solver, f"corner({x}{y}{z}) s({s})", 0, len(corners)),
+                z3_int_with_range(solver, f"corner_rotation({x}{y}{z}) s({s})", 0, 3),
+            )
+        for x, y, z in centers:
+            states[s][x][y][z] = z3_int_with_range(
+                solver, f"center({x}{y}{z}) s({s})", 0, len(centers)
+            )
+        for x, y, z in edges:
+            states[s][x][y][z] = (
+                z3_int_with_range(solver, f"edge({x}{y}{z}) s({s})", 0, len(edges)),
+                z3_int_with_range(solver, f"edge_rotation({x}{y}{z}) s({s})", 0, 3),
+            )
 
     # Variables which together indicate the move at each step.
-    move_axes = [z3_int_with_range(solver, f"ma({s})", 0, 2) for s in range(k)]
-    move_indices = [
-        z3_int_with_range(solver, f"mi({s})", 0, puzzle.n) for s in range(k)
-    ]
-    move_directions = [z3_int_with_range(solver, f"md({s})", 0, 2) for s in range(k)]
+    ma = [z3_int_with_range(solver, f"ma s({s})", 0, 2) for s in range(k)]
+    mi = [z3_int_with_range(solver, f"mi s({s})", 0, puzzle.n + 1) for s in range(k)]
+    md = [z3_int_with_range(solver, f"md s({s})", 0, 2) for s in range(k)]
 
-    # Restrict colors of first state to starting state.
-    solver.add(
-        z3.And(
-            [
-                states[0][puzzle.cell_idx(f, y, x)] == puzzle.get_color(f, y, x)
-                for f in range(6)
-                for y in range(puzzle.n)
-                for x in range(puzzle.n)
-            ]
-        )
-    )
+    def fix_state(s: int, state: State):
+        """Force a state to be equal to a state."""
+        conditions = []
+        for x, y, z in corners:
+            vs = states[s][x][y][z]
+            assert isinstance(vs, tuple)
+            conditions.append(vs[0] == corners.index(state.coords[x][y][z]))
+            conditions.append(vs[1] == state.rots[x][y][z])
+        for x, y, z in centers:
+            v = states[s][x][y][z]
+            assert isinstance(v, z3.ArithRef)
+            conditions.append(v == centers.index(state.coords[x][y][z]))
+        for x, y, z in edges:
+            vs = states[s][x][y][z]
+            assert isinstance(vs, tuple)
+            conditions.append(vs[0] == edges.index(state.coords[x][y][z]))
+            conditions.append(vs[1] == state.rots[x][y][z])
+        return conditions
 
-    def is_complete(s: int):
-        """Return restriction on whether a state is complete."""
-        return z3.And(
-            [
-                states[s][puzzle.cell_idx(f, y, x)] == f
-                for f in range(6)
-                for y in range(puzzle.n)
-                for x in range(puzzle.n)
-            ]
-        )
+    # Fix the first state to the puzzle state.
+    solver.add(fix_state(0, puzzle))
 
-    # Restrict cube to be complete at the end.
-    solver.add(is_complete(-1))
+    # Fix the last state to a finished state.
+    finished = State.finished(puzzle.n)
+    solver.add(fix_state(0, finished))
 
-    # Restrict moves to valid moves.
-    for s in range(len(states) - 1):
-        solver.add(z3.And(move_axes[s] >= 0, move_axes[s] <= 2))
-        solver.add(z3.And(move_indices[s] >= 0, move_indices[s] <= puzzle.n))
-        solver.add(z3.And(move_directions[s] >= 0, move_directions[s] <= 2))
+    def unchanged_state(s: int):
+        """Force the successor of a state to be identical to the previous."""
+        conditions = []
+        for x, y, z in corners:
+            vs1 = states[s][x][y][z]
+            vs2 = states[s + 1][x][y][z]
+            assert isinstance(vs1, tuple)
+            assert isinstance(vs2, tuple)
+            conditions.append(vs1[0] == vs2[0])
+            conditions.append(vs1[1] == vs2[1])
+        for x, y, z in centers:
+            v1 = states[s][x][y][z]
+            v2 = states[s + 1][x][y][z]
+            assert isinstance(v1, z3.ArithRef)
+            assert isinstance(v2, z3.ArithRef)
+            conditions.append(v1 == v2)
+        for x, y, z in edges:
+            vs1 = states[s][x][y][z]
+            vs2 = states[s + 1][x][y][z]
+            assert isinstance(vs1, tuple)
+            assert isinstance(vs2, tuple)
+            conditions.append(vs1[0] == vs2[0])
+            conditions.append(vs1[1] == vs2[1])
+        return conditions
 
     # Restrict color states when move is nothing.
-    for s in range(len(states) - 1):
-        solver.add(
-            z3.Or(
-                move_indices[s] != puzzle.n,
-                z3.And(
-                    [
-                        states[s][puzzle.cell_idx(f, y, x)]
-                        == states[s + 1][puzzle.cell_idx(f, y, x)]
-                        for f in range(6)
-                        for y in range(puzzle.n)
-                        for x in range(puzzle.n)
-                    ]
-                ),
-            )
-        )
+    for s in range(k):
+        solver.add(z3.Or(mi[s] != puzzle.n, unchanged_state(s)))
 
     # Only allow nothing move when complete.
     for s in range(len(states) - 1):
-        solver.add(z3.Or(move_indices[s] != puzzle.n, is_complete(s)))
+        solver.add(z3.Or(mi[s] != puzzle.n, fix_state(s, finished)))
 
-    # Restrict color states using pre-generated move mappings file.
-    mappings = move_mapping.load(puzzle.n)
-    for s in range(len(states) - 1):
-        for ma in mappings:
-            for mi in mappings[ma]:
-                for md in mappings[ma][mi]:
-                    conditions = []
-                    if ma is not None:
-                        conditions.append(move_axes[s] == ma)
-                    if mi is not None:
-                        conditions.append(move_indices[s] == mi)
-                    if md is not None:
-                        conditions.append(move_directions[s] == md)
+    # # Restrict color states using pre-generated move mappings file.
+    # mappings = move_mapping.load(puzzle.n)
+    # for s in range(len(states) - 1):
+    #     for ma in mappings:
+    #         for mi in mappings[ma]:
+    #             for md in mappings[ma][mi]:
+    #                 conditions = []
+    #                 if ma is not None:
+    #                     conditions.append(ma[s] == ma)
+    #                 if mi is not None:
+    #                     conditions.append(mi[s] == mi)
+    #                 if md is not None:
+    #                     conditions.append(md[s] == md)
 
-                    consequences = [
-                        states[s + 1][puzzle.cell_idx(f_in, y_in, x_in)]
-                        == states[s][puzzle.cell_idx(f_out, y_out, x_out)]
-                        for (f_in, y_in, x_in), (f_out, y_out, x_out) in mappings[ma][
-                            mi
-                        ][md]
-                    ]
+    #                 consequences = [
+    #                     states[s + 1][puzzle.cell_idx(f_in, y_in, x_in)]
+    #                     == states[s][puzzle.cell_idx(f_out, y_out, x_out)]
+    #                     for (f_in, y_in, x_in), (f_out, y_out, x_out) in mappings[ma][
+    #                         mi
+    #                     ][md]
+    #                 ]
 
-                    if len(consequences) > 0:
-                        solver.add(
-                            z3.Or(
-                                z3.Or([z3.Not(cond) for cond in conditions]),
-                                z3.And(consequences),
-                            )
-                        )
+    #                 if len(consequences) > 0:
+    #                     solver.add(
+    #                         z3.Or(
+    #                             z3.Or([z3.Not(cond) for cond in conditions]),
+    #                             z3.And(consequences),
+    #                         )
+    #                     )
 
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
     for s in range(1, len(states) - 1):
         for r in range(1, min(puzzle.n + 1, s + 1)):
             solver.add(
                 z3.Or(
-                    move_axes[s - r] != move_axes[s],
-                    move_indices[s - r] != move_indices[s],
-                    z3.Or([move_axes[s] != move_axes[p] for p in range(s - r + 1, s)]),
+                    ma[s - r] != ma[s],
+                    mi[s - r] != mi[s],
+                    z3.Or([ma[s] != ma[p] for p in range(s - r + 1, s)]),
                 )
             )
 
@@ -163,15 +179,10 @@ def solve_for_k(puzzle: State, k: int):
     for s in range(1, len(states) - 1):
         solver.add(
             z3.Or(
-                move_axes[s - 1] != move_axes[s],
+                ma[s - 1] != ma[s],
                 z3.And(
                     [
-                        z3.And(
-                            [
-                                z3.Or(move_indices[s - 1] != b, move_indices[s] != c)
-                                for c in range(1, b)
-                            ]
-                        )
+                        z3.And([z3.Or(mi[s - 1] != b, mi[s] != c) for c in range(1, b)])
                         for b in range(puzzle.n, 1, -1)
                     ]
                 ),
@@ -206,9 +217,9 @@ def solve_for_k(puzzle: State, k: int):
         moves = []
         model = solver.model()
         for s in range(len(states) - 1):
-            ma = model.get_interp(move_axes[s]).as_long()
-            mi = model.get_interp(move_indices[s]).as_long()
-            md = model.get_interp(move_directions[s]).as_long()
+            ma = model.get_interp(ma[s]).as_long()
+            mi = model.get_interp(mi[s]).as_long()
+            md = model.get_interp(md[s]).as_long()
             moves.append(move_name(puzzle.n, ma, mi, md))
         assert len(moves) == k
 

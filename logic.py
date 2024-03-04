@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw
+import ast
 
 
 def face_name(f: int) -> str:
@@ -65,127 +66,6 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
     assert False
 
 
-class State:
-    def __init__(
-        self,
-        n: int,
-        coords: list[list[list[tuple[int, int, int]]]],
-        rots: list[list[list[int]]],
-    ):
-        self.n = n
-        self.coords = coords
-        self.rots = rots
-
-    @staticmethod
-    def from_str(s: str):
-        n_raw, coords_raw, rots_raw = s.split("\t")
-        n = int(n_raw)
-        coords = eval(coords_raw)
-        rots = eval(rots_raw)
-        return State(n, coords, rots)
-
-    def to_str(self):
-        return "\t".join((str(self.n), str(self.coords), str(self.rots)))
-
-    def copy(self):
-        return State(
-            self.n,
-            [
-                [[self.coords[x][y][z] for z in range(self.n)] for y in range(self.n)]
-                for x in range(self.n)
-            ],
-            [
-                [[self.rots[x][y][z] for z in range(self.n)] for y in range(self.n)]
-                for x in range(self.n)
-            ],
-        )
-
-    @staticmethod
-    def finished(n: int):
-        coords = [
-            [
-                [
-                    (x, y, z) if cubie_type(n, x, y, z) != -1 else (-1, -1, -1)
-                    for z in range(n)
-                ]
-                for y in range(n)
-            ]
-            for x in range(n)
-        ]
-        rots = [
-            [
-                [
-                    0
-                    if cubie_type(n, x, y, z) == 0 or cubie_type(n, x, y, z) == 2
-                    else -1
-                    for z in range(n)
-                ]
-                for y in range(n)
-            ]
-            for x in range(n)
-        ]
-        return State(n, coords, rots)
-
-    def execute_move(self, ma: int, mi: int, md: int):
-        new = self.copy()
-
-        for x in range(self.n):
-            for y in range(self.n):
-                for z in range(self.n):
-                    new_x, new_y, new_z = coord_mapping(self.n, x, y, z, ma, mi, md)
-                    new.coords[new_x][new_y][new_z] = self.coords[x][y][z]
-                    match cubie_type(self.n, x, y, z):
-                        case 0:
-                            rot = self.rots[x][y][z]
-                            new_rot = corner_rotation_mapping(x, y, z, rot, ma, mi, md)
-                            new.rots[new_x][new_y][new_z] = new_rot[0]
-                        case 2:
-                            rot = self.rots[x][y][z]
-                            new_rot = edge_rotation_mapping(x, y, z, rot, ma, mi, md)
-                            new.rots[new_x][new_y][new_z] = new_rot[0]
-
-        return new
-
-    def color(self, f: int, y: int, x: int) -> int:
-        return -1  # TODO
-
-    @staticmethod
-    def from_compact_str(s: str):
-        return State(0, [], [])  # TODO
-
-    def to_compact_str(self):
-        return ""  # TODO
-
-    def print(self):
-        facelet_size = 48
-        image_size = (3 * self.n * facelet_size, 4 * self.n * facelet_size)
-        im = Image.new(mode="RGB", size=image_size)
-        draw = ImageDraw.Draw(im)
-
-        def draw_face(start_x: int, start_y: int, f: int):
-            for y in range(self.n):
-                for x in range(self.n):
-                    draw.rectangle(
-                        (
-                            start_x + (x * facelet_size),
-                            start_y + (y * facelet_size),
-                            start_x + ((x + 1) * facelet_size),
-                            start_y + ((y + 1) * facelet_size),
-                        ),
-                        fill=color_name(self.color(f, y, x)),
-                        outline="black",
-                        width=4,
-                    )
-
-        draw_face(1 * self.n * facelet_size, 1 * self.n * facelet_size, 0)
-        draw_face(2 * self.n * facelet_size, 1 * self.n * facelet_size, 1)
-        draw_face(1 * self.n * facelet_size, 3 * self.n * facelet_size, 2)
-        draw_face(0 * self.n * facelet_size, 1 * self.n * facelet_size, 3)
-        draw_face(1 * self.n * facelet_size, 0 * self.n * facelet_size, 4)
-        draw_face(1 * self.n * facelet_size, 2 * self.n * facelet_size, 5)
-        im.show()
-
-
 def cubie_type(n: int, x: int, y: int, z: int):
     """Determine the type of a cubie by its coordinates. 0 = corner, 1 = center,
     2 = edge and -1 = internal."""
@@ -200,6 +80,36 @@ def cubie_type(n: int, x: int, y: int, z: int):
     if x > 0 and x < n - 1 and y > 0 and y < n - 1 and z > 0 and z < n - 1:
         return -1
     return 2
+
+
+def list_corners(n: int) -> list[tuple[int, int, int]]:
+    return [
+        (x, y, z)
+        for x in range(n)
+        for y in range(n)
+        for z in range(n)
+        if cubie_type(n, x, y, z) == 0
+    ]
+
+
+def list_centers(n: int) -> list[tuple[int, int, int]]:
+    return [
+        (x, y, z)
+        for x in range(n)
+        for y in range(n)
+        for z in range(n)
+        if cubie_type(n, x, y, z) == 1
+    ]
+
+
+def list_edges(n: int) -> list[tuple[int, int, int]]:
+    return [
+        (x, y, z)
+        for x in range(n)
+        for y in range(n)
+        for z in range(n)
+        if cubie_type(n, x, y, z) == 2
+    ]
 
 
 def coord_mapping(
@@ -286,3 +196,122 @@ def edge_rotation_mapping(
                 elif r == 1:
                     return (0,)
     return (r,)
+
+
+class State:
+    def __init__(
+        self,
+        n: int,
+        coords: list[list[list[tuple[int, int, int]]]],
+        rots: list[list[list[int]]],
+    ):
+        self.n = n
+        self.coords = coords
+        self.rots = rots
+
+    @staticmethod
+    def from_str(s: str):
+        n_raw, coords_raw, rots_raw = s.split("\t")
+        n = int(n_raw)
+        coords = ast.literal_eval(coords_raw)
+        rots = ast.literal_eval(rots_raw)
+        return State(n, coords, rots)
+
+    def to_str(self):
+        return "\t".join((str(self.n), str(self.coords), str(self.rots)))
+
+    def copy(self):
+        return State(
+            self.n,
+            [
+                [[self.coords[x][y][z] for z in range(self.n)] for y in range(self.n)]
+                for x in range(self.n)
+            ],
+            [
+                [[self.rots[x][y][z] for z in range(self.n)] for y in range(self.n)]
+                for x in range(self.n)
+            ],
+        )
+
+    @staticmethod
+    def finished(n: int):
+        coords = [
+            [
+                [
+                    (x, y, z) if cubie_type(n, x, y, z) != -1 else (-1, -1, -1)
+                    for z in range(n)
+                ]
+                for y in range(n)
+            ]
+            for x in range(n)
+        ]
+        rots = [
+            [
+                [
+                    0
+                    if cubie_type(n, x, y, z) == 0 or cubie_type(n, x, y, z) == 2
+                    else -1
+                    for z in range(n)
+                ]
+                for y in range(n)
+            ]
+            for x in range(n)
+        ]
+        return State(n, coords, rots)
+
+    def execute_move(self, ma: int, mi: int, md: int):
+        new = self.copy()
+        for x in range(self.n):
+            for y in range(self.n):
+                for z in range(self.n):
+                    new_x, new_y, new_z = coord_mapping(self.n, x, y, z, ma, mi, md)
+                    new.coords[new_x][new_y][new_z] = self.coords[x][y][z]
+                    match cubie_type(self.n, x, y, z):
+                        case 0:
+                            rot = self.rots[x][y][z]
+                            new_rot = corner_rotation_mapping(x, y, z, rot, ma, mi, md)
+                            new.rots[new_x][new_y][new_z] = new_rot[0]
+                        case 2:
+                            rot = self.rots[x][y][z]
+                            new_rot = edge_rotation_mapping(x, y, z, rot, ma, mi, md)
+                            new.rots[new_x][new_y][new_z] = new_rot[0]
+        return new
+
+    @staticmethod
+    def from_compact_str(s: str):
+        return State(0, [], [])  # TODO
+
+    def to_compact_str(self):
+        return ""  # TODO
+
+    def color(self, f: int, y: int, x: int) -> int:
+        return -1  # TODO
+
+    def print(self):
+        facelet_size = 48
+        image_size = (3 * self.n * facelet_size, 4 * self.n * facelet_size)
+        im = Image.new(mode="RGB", size=image_size)
+        draw = ImageDraw.Draw(im)
+
+        def draw_face(start_x: int, start_y: int, f: int):
+            for y in range(self.n):
+                for x in range(self.n):
+                    draw.rectangle(
+                        (
+                            start_x + (x * facelet_size),
+                            start_y + (y * facelet_size),
+                            start_x + ((x + 1) * facelet_size),
+                            start_y + ((y + 1) * facelet_size),
+                        ),
+                        fill=color_name(self.color(f, y, x)),
+                        outline="black",
+                        width=4,
+                    )
+
+        draw_face(1 * self.n * facelet_size, 1 * self.n * facelet_size, 0)
+        draw_face(2 * self.n * facelet_size, 1 * self.n * facelet_size, 1)
+        draw_face(1 * self.n * facelet_size, 3 * self.n * facelet_size, 2)
+        draw_face(0 * self.n * facelet_size, 1 * self.n * facelet_size, 3)
+        draw_face(1 * self.n * facelet_size, 0 * self.n * facelet_size, 4)
+        draw_face(1 * self.n * facelet_size, 2 * self.n * facelet_size, 5)
+        im.show()
