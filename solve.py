@@ -43,7 +43,9 @@ def solve_for_k(puzzle: State, k: int):
             list[
                 list[
                     tuple[
-                        tuple[z3.ArithRef, z3.ArithRef, z3.ArithRef],  # coordinate
+                        z3.ArithRef,  # x-coordinate
+                        z3.ArithRef,  # y-coordinate
+                        z3.ArithRef,  # z-coordinate
                         z3.ArithRef | None,  # rotation
                     ]
                     | None  # internal cubie
@@ -58,59 +60,97 @@ def solve_for_k(puzzle: State, k: int):
         for _ in range(k + 1)
     ]
 
-    # Populate the states with Z3 variables.
     corners = list_corners(puzzle.n)
     centers = list_centers(puzzle.n)
     edges = list_edges(puzzle.n)
+
+    # Populate the states with Z3 variables.
     for s in range(k + 1):
-        for x, y, z in corners:
-            states[s][x][y][z] = (
-                (
-                    z3_int(solver, f"corner({x},{y},{z}) s({s}) x", 0, puzzle.n),
-                    z3_int(solver, f"corner({x},{y},{z}) s({s}) y", 0, puzzle.n),
-                    z3_int(solver, f"corner({x},{y},{z}) s({s}) z", 0, puzzle.n),
-                ),
-                z3_int(solver, f"corner({x}{y}{z}) s({s}) r", 0, 3),
+        for cx, cy, cz in corners:
+            states[s][cx][cy][cz] = (
+                z3_int(solver, f"corner({cx},{cy},{cz}) s({s}) x", 0, puzzle.n),
+                z3_int(solver, f"corner({cx},{cy},{cz}) s({s}) y", 0, puzzle.n),
+                z3_int(solver, f"corner({cx},{cy},{cz}) s({s}) z", 0, puzzle.n),
+                z3_int(solver, f"corner({cx},{cy},{cz}) s({s}) r", 0, 3),
             )
-        for x, y, z in centers:
-            states[s][x][y][z] = (
-                (
-                    z3_int(solver, f"center({x},{y},{z}) s({s}) x", 0, puzzle.n),
-                    z3_int(solver, f"center({x},{y},{z}) s({s}) y", 0, puzzle.n),
-                    z3_int(solver, f"center({x},{y},{z}) s({s}) z", 0, puzzle.n),
-                ),
+        for cx, cy, cz in centers:
+            states[s][cx][cy][cz] = (
+                z3_int(solver, f"center({cx},{cy},{cz}) s({s}) x", 0, puzzle.n),
+                z3_int(solver, f"center({cx},{cy},{cz}) s({s}) y", 0, puzzle.n),
+                z3_int(solver, f"center({cx},{cy},{cz}) s({s}) z", 0, puzzle.n),
                 None,
             )
-        for x, y, z in edges:
-            states[s][x][y][z] = (
-                (
-                    z3_int(solver, f"edge({x},{y},{z}) s({s}) x", 0, puzzle.n),
-                    z3_int(solver, f"edge({x},{y},{z}) s({s}) y", 0, puzzle.n),
-                    z3_int(solver, f"edge({x},{y},{z}) s({s}) z", 0, puzzle.n),
-                ),
-                z3_int(solver, f"edge({x}{y}{z}) s({s}) r", 0, 3),
+        for cx, cy, cz in edges:
+            states[s][cx][cy][cz] = (
+                z3_int(solver, f"edge({cx},{cy},{cz}) s({s}) x", 0, puzzle.n),
+                z3_int(solver, f"edge({cx},{cy},{cz}) s({s}) y", 0, puzzle.n),
+                z3_int(solver, f"edge({cx},{cy},{cz}) s({s}) z", 0, puzzle.n),
+                z3_int(solver, f"edge({cx},{cy},{cz}) s({s}) r", 0, 3),
             )
 
     # Variables which together indicate the move at each step.
-    ma = [z3_int(solver, f"s({s}) ma", 0, 2) for s in range(k)]
-    mi = [z3_int(solver, f"s({s}) mi", 0, puzzle.n + 1) for s in range(k)]
-    md = [z3_int(solver, f"s({s}) md", 0, 2) for s in range(k)]
+    mas = [z3_int(solver, f"s({s}) ma", 0, 2) for s in range(k)]
+    mis = [z3_int(solver, f"s({s}) mi", 0, puzzle.n + 1) for s in range(k)]
+    mds = [z3_int(solver, f"s({s}) md", 0, 2) for s in range(k)]
+
+    def cubie(s: int, x: int, y: int, z: int):
+        """Fetch a cubie from the states list."""
+        cubie = states[s][x][y][z]
+        assert cubie is not None
+        return cubie
 
     def fix_state(s: int, state: State):
         """Return condition of a state being equal to a state object."""
         conditions = []
 
-        for x in range(puzzle.n):
-            for y in range(puzzle.n):
-                for z in range(puzzle.n):
-                    v = states[s][x][y][z]
-                    if v is not None:
-                        coords, rot = v
-                        conditions.append(coords[0] == state.coords[x][y][z][0])
-                        conditions.append(coords[1] == state.coords[x][y][z][1])
-                        conditions.append(coords[2] == state.coords[x][y][z][2])
-                        if rot is not None:
-                            conditions.append(rot == state.rots[x][y][z])
+        for cx, cy, cz in corners:
+            x, y, z, r = cubie(s, cx, cy, cz)
+            conditions.append(x == state.coords[cx][cy][cz][0])
+            conditions.append(y == state.coords[cx][cy][cz][1])
+            conditions.append(z == state.coords[cx][cy][cz][2])
+            conditions.append(r == state.rots[cx][cy][cz])
+
+        for cx, cy, cz in centers:
+            x, y, z, r = cubie(s, cx, cy, cz)
+            conditions.append(x == state.coords[cx][cy][cz][0])
+            conditions.append(y == state.coords[cx][cy][cz][1])
+            conditions.append(z == state.coords[cx][cy][cz][2])
+
+        for cx, cy, cz in edges:
+            x, y, z, r = cubie(s, cx, cy, cz)
+            conditions.append(x == state.coords[cx][cy][cz][0])
+            conditions.append(y == state.coords[cx][cy][cz][1])
+            conditions.append(z == state.coords[cx][cy][cz][2])
+            conditions.append(r == state.rots[cx][cy][cz])
+
+        return z3.And(conditions)
+
+    def identical_states(s1: int, s2: int):
+        """Return condition of two states being equal."""
+        conditions = []
+
+        for cx, cy, cz in corners:
+            x1, y1, z1, r1 = cubie(s1, cx, cy, cz)
+            x2, y2, z2, r2 = cubie(s2, cx, cy, cz)
+            conditions.append(x1 == x2)
+            conditions.append(y1 == y2)
+            conditions.append(z1 == z2)
+            conditions.append(r1 == r2)
+
+        for cx, cy, cz in centers:
+            x1, y1, z1, r1 = cubie(s1, cx, cy, cz)
+            x2, y2, z2, r2 = cubie(s2, cx, cy, cz)
+            conditions.append(x1 == x2)
+            conditions.append(y1 == y2)
+            conditions.append(z1 == z2)
+
+        for cx, cy, cz in edges:
+            x1, y1, z1, r1 = cubie(s1, cx, cy, cz)
+            x2, y2, z2, r2 = cubie(s2, cx, cy, cz)
+            conditions.append(x1 == x2)
+            conditions.append(y1 == y2)
+            conditions.append(z1 == z2)
+            conditions.append(r1 == r2)
 
         return z3.And(conditions)
 
@@ -119,87 +159,233 @@ def solve_for_k(puzzle: State, k: int):
 
     # Fix the last state to a finished state.
     finished = State.finished(puzzle.n)
-    solver.add(fix_state(0, finished))
-
-    def identical_states(s1: int, s2: int):
-        """Return condition of two states being equal."""
-        conditions = []
-
-        for x in range(puzzle.n):
-            for y in range(puzzle.n):
-                for z in range(puzzle.n):
-                    v1 = states[s1][x][y][z]
-                    v2 = states[s2][x][y][z]
-                    if v1 is not None:
-                        assert v2 is not None
-                        coords1, rot1 = v1
-                        coords2, rot2 = v2
-                        conditions.append(coords1[0] == coords2[0])
-                        conditions.append(coords1[1] == coords2[1])
-                        conditions.append(coords1[2] == coords2[2])
-                        if rot1 is not None:
-                            assert rot2 is not None
-                            conditions.append(rot1 == rot2)
-
-        return z3.And(conditions)
+    solver.add(fix_state(-1, finished))
 
     # Restrict color states when move is nothing.
     for s in range(k):
-        solver.add(z3.Or(mi[s] != puzzle.n, identical_states(s, s + 1)))
+        solver.add(z3.Or(mis[s] != puzzle.n, identical_states(s, s + 1)))
 
     # Only allow nothing move when complete.
-    for s in range(len(states) - 1):
-        solver.add(z3.Or(mi[s] != puzzle.n, fix_state(s, finished)))
+    for s in range(k):
+        solver.add(z3.Or(mis[s] != puzzle.n, fix_state(s, finished)))
 
-    # # Restrict color states using pre-generated move mappings file.
-    # mappings = move_mapping.load(puzzle.n)
-    # for s in range(len(states) - 1):
-    #     for ma in mappings:
-    #         for mi in mappings[ma]:
-    #             for md in mappings[ma][mi]:
-    #                 conditions = []
-    #                 if ma is not None:
-    #                     conditions.append(ma[s] == ma)
-    #                 if mi is not None:
-    #                     conditions.append(mi[s] == mi)
-    #                 if md is not None:
-    #                     conditions.append(md[s] == md)
+    # Restrict color states using pre-generated move mappings file.
+    mappings = move_mapping.load(puzzle.n)
+    for s in range(k):
+        ma, mi, md = mas[s], mis[s], mds[s]
 
-    #                 consequences = [
-    #                     states[s + 1][puzzle.cell_idx(f_in, y_in, x_in)]
-    #                     == states[s][puzzle.cell_idx(f_out, y_out, x_out)]
-    #                     for (f_in, y_in, x_in), (f_out, y_out, x_out) in mappings[ma][
-    #                         mi
-    #                     ][md]
-    #                 ]
+        def convert_expression(exp: int | str):
+            if isinstance(exp, int):
+                return exp
 
-    #                 if len(consequences) > 0:
-    #                     solver.add(
-    #                         z3.Or(
-    #                             z3.Or([z3.Not(cond) for cond in conditions]),
-    #                             z3.And(consequences),
-    #                         )
-    #                     )
+            # TODO: handle int|str +|- int|str
+            return z3.Not(z3.Not(True))  # TODO
+
+        def input_to_condition(inp: str, eq: bool, val: int | str):
+            assert r is not None
+            left: z3.ArithRef
+            match inp:
+                case "x":
+                    left = x
+                case "y":
+                    left = y
+                case "z":
+                    left = z
+                case "r":
+                    left = r
+                case "ma":
+                    left = ma
+                case "mi":
+                    left = mi
+                case "md":
+                    left = md
+                case _:
+                    raise Exception(f"invalid input: {inp}")
+            right = convert_expression(val)
+            if eq:
+                return left == right
+            else:
+                return left != right
+
+        # Add restrictions for all corners.
+        for cx, cy, cz in corners:
+            x, y, z, r = cubie(s, cx, cy, cz)
+            new_x, new_y, new_z, new_r = cubie(s + 1, cx, cy, cz)
+
+            # Mappings for x-coordinates.
+            for inputs, output in mappings["corner_coord"]["x_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_x == convert_expression(output),
+                    )
+                )
+
+            # Mappings for y-coordinates.
+            for inputs, output in mappings["corner_coord"]["y_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_y == convert_expression(output),
+                    )
+                )
+
+            # Mappings for z-coordinates.
+            for inputs, output in mappings["corner_coord"]["z_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_z == convert_expression(output),
+                    )
+                )
+
+            # Mappings for rotation.
+            for inputs, output in mappings["corner_rotation"]["r_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_r == convert_expression(output),
+                    )
+                )
+
+        # Add restrictions for all centers.
+        for cx, cy, cz in centers:
+            x, y, z, _ = cubie(s, cx, cy, cz)
+            new_x, new_y, new_z, _ = cubie(s + 1, cx, cy, cz)
+
+            # Mappings for x-coordinates.
+            for inputs, output in mappings["center_coord"]["x_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_x == convert_expression(output),
+                    )
+                )
+
+            # Mappings for y-coordinates.
+            for inputs, output in mappings["center_coord"]["y_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_y == convert_expression(output),
+                    )
+                )
+
+            # Mappings for z-coordinates.
+            for inputs, output in mappings["center_coord"]["z_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_z == convert_expression(output),
+                    )
+                )
+
+        # Add restrictions for all edges.
+        for cx, cy, cz in edges:
+            x, y, z, r = cubie(s, cx, cy, cz)
+            new_x, new_y, new_z, new_r = cubie(s + 1, cx, cy, cz)
+
+            # Mappings for x-coordinates.
+            for inputs, output in mappings["edge_coord"]["x_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_x == convert_expression(output),
+                    )
+                )
+
+            # Mappings for y-coordinates.
+            for inputs, output in mappings["edge_coord"]["y_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_y == convert_expression(output),
+                    )
+                )
+
+            # Mappings for z-coordinates.
+            for inputs, output in mappings["edge_coord"]["z_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_z == convert_expression(output),
+                    )
+                )
+
+            # Mappings for rotation.
+            for inputs, output in mappings["edge_rotation"]["r_new"]:
+                conditions = [
+                    input_to_condition(input, eq, val)
+                    for input, (eq, val) in inputs.items()
+                ]
+                solver.add(
+                    z3.Or(
+                        z3.Or([z3.Not(cond) for cond in conditions]),
+                        new_r == convert_expression(output),
+                    )
+                )
 
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
-    for s in range(1, len(states) - 1):
-        for r in range(1, min(puzzle.n + 1, s + 1)):
+    for s in range(1, k):
+        for rs in range(1, min(puzzle.n + 1, s + 1)):
             solver.add(
                 z3.Or(
-                    ma[s - r] != ma[s],
-                    mi[s - r] != mi[s],
-                    z3.Or([ma[s] != ma[p] for p in range(s - r + 1, s)]),
+                    mas[s - rs] != mas[s],
+                    mis[s - rs] != mis[s],
+                    z3.Or([mas[s] != mas[p] for p in range(s - rs + 1, s)]),
                 )
             )
 
     # All subsequent moves in the same axis happen in ascending order of index.
-    for s in range(1, len(states) - 1):
+    for s in range(1, k):
         solver.add(
             z3.Or(
-                ma[s - 1] != ma[s],
+                mas[s - 1] != mas[s],
                 z3.And(
                     [
-                        z3.And([z3.Or(mi[s - 1] != b, mi[s] != c) for c in range(1, b)])
+                        z3.And(
+                            [z3.Or(mis[s - 1] != b, mis[s] != c) for c in range(1, b)]
+                        )
                         for b in range(puzzle.n, 1, -1)
                     ]
                 ),
@@ -207,8 +393,8 @@ def solve_for_k(puzzle: State, k: int):
         )
 
     # States cannot be repeated.
-    for s1 in range(len(states)):
-        for s2 in range(s1 + 1, len(states)):
+    for s1 in range(k + 1):
+        for s2 in range(s1 + 1, k + 1):
             solver.add(z3.Not(identical_states(s1, s2)))
 
     # Check model and return moves if sat.
@@ -221,10 +407,10 @@ def solve_for_k(puzzle: State, k: int):
     if res == z3.sat:
         moves = []
         model = solver.model()
-        for s in range(len(states) - 1):
-            ma = model.get_interp(ma[s]).as_long()
-            mi = model.get_interp(mi[s]).as_long()
-            md = model.get_interp(md[s]).as_long()
+        for s in range(k):
+            ma = model.get_interp(mas[s]).as_long()
+            mi = model.get_interp(mis[s]).as_long()
+            md = model.get_interp(mds[s]).as_long()
             moves.append(move_name(puzzle.n, ma, mi, md))
         assert len(moves) == k
 

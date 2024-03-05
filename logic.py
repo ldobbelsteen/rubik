@@ -314,12 +314,12 @@ class State:
                             assert len(colors) > 0
 
                             if len(colors) == 1:
-                                return (ox, ox, oz), None
+                                return (ox, oy, oz), None
 
                             ff, fy, fx = first_cubie_facelet(n, x, y, z)
-                            for r in range(len(colors)):
+                            for r in range(len(origin_colors)):
                                 if origin_colors[0] == facelet_colors[ff][fy][fx]:
-                                    return (ox, ox, oz), r
+                                    return (ox, oy, oz), r
                                 rotate_list(origin_colors)
 
                             raise Exception(f"invalid color set permutation: {colors}")

@@ -495,13 +495,15 @@ def generate(n: int, overwrite=False):
 
             with open(path, "w") as file:
                 for input, output in result:
-                    values = ["*" if v is None else str(v[1]) for v in input]
+                    inputs = ["*" if v is None else str(v[1]) for v in input]
                     ops = ["*" if v is None else "=" if v[0] else "≠" for v in input]
-                    file.write(f"{''.join(values)} {''.join(ops)} {output}\n")
+                    file.write(f"{''.join(inputs)}\t{''.join(ops)}\t{output}\n")
 
 
 def load(n: int):
-    result: dict[str, dict[str, list[tuple[dict[str, int], int | str]]]] = {}
+    result: dict[
+        str, dict[str, list[tuple[dict[str, tuple[bool, int | str]], int | str]]]
+    ] = {}
 
     for type, (_, input_names, _, output_names) in types(n).items():
         for output_name in output_names:
@@ -512,17 +514,21 @@ def load(n: int):
             mappings = []
             with open(path, "r") as file:
                 for line in file:
-                    raw_input, raw_output = line.split(" ")
-                    mappings.append(
-                        (
-                            {
-                                input_names[i]: int(v)
-                                for i, v in enumerate(ast.literal_eval(raw_input))
-                                if v != "*"
-                            },
-                            ast.literal_eval(raw_output),
-                        )
-                    )
+                    raw_inputs, raw_ops, output = line.rstrip("\n").split("\t")
+
+                    inputs = {}
+                    for i, input_name in enumerate(input_names):
+                        input = raw_inputs[i] if raw_inputs[i] != "*" else None
+                        if input is not None and input.isnumeric():
+                            input = int(input)
+                        equality = raw_ops[i] != "≠"
+                        if input is not None:
+                            inputs[input_name] = (equality, input)
+
+                    if output.isnumeric():
+                        output = int(output)
+
+                    mappings.append((inputs, output))
 
             if type not in result:
                 result[type] = {}
