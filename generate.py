@@ -17,7 +17,7 @@ def generate(n: int, randomizations: int, overwrite=False):
 
     for _ in range(randomizations):
         ma, mi, md = random.choice(moves)
-        state = state.execute_move(ma, mi, md)
+        state.execute_move(ma, mi, md)
 
     with open(path, "w") as file:
         file.write(state.to_str())

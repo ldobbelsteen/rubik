@@ -136,7 +136,7 @@ def encode(var_name: str, var_value: int | str):
     return f"{var_name}_{var_value}"
 
 
-def declare_var(name: str, domain: set[int | str], bdd: BDD):
+def declare_var(name: str, domain: frozenset[int | str], bdd: BDD):
     """Add a variable to the BDD by declaring it."""
     for value in domain:
         bdd.declare(encode(name, value))
@@ -144,9 +144,9 @@ def declare_var(name: str, domain: set[int | str], bdd: BDD):
 
 def restrict_var_domain(
     name: str,
-    domain: set[int | str],
-    input_domains: dict[str, set[int | str]],
-    output_domain: set[int | str],
+    domain: frozenset[int | str],
+    input_domains: dict[str, frozenset[int | str]],
+    output_domain: frozenset[int | str],
     root: Function,
     bdd: BDD,
 ) -> Function:
@@ -182,8 +182,8 @@ def restrict_var_domain(
 def equality_condition(
     left: str | int,
     right: str | int,
-    input_domains: dict[str, set[int | str]],
-    output_domain: set[int | str],
+    input_domains: dict[str, frozenset[int | str]],
+    output_domain: frozenset[int | str],
     bdd: BDD,
 ) -> Function:
     """Return a condition on a variable being equal to a constant or other variable."""
@@ -218,101 +218,96 @@ def equality_condition(
         )  # exactly one of the overlap between their domains should be true.
 
 
-def minimal_subsets(
-    input_domains: dict[str, set[int | str]],
-    output_domain: set[int | str],
+Input = tuple[tuple[bool, str | int] | None, ...]
+
+
+def minimal_inputs(
+    input_names: tuple[str, ...],
+    input_domains: dict[str, frozenset[int | str]],
+    output_domain: frozenset[int | str],
     root: Function,
     bdd: BDD,
 ):
-    """Extract all minimal-size substitutions sets for the inputs such that the
-    output is deterministic."""
-    subsets: list[tuple[dict[str, tuple[bool, int | str]], int | str]] = []
+    """Extract all minimal-size inputs such that the output is deterministic."""
+    result: list[tuple[Input, int | str]] = []
 
-    def extract_deterministic_output(
-        remaining: list[str], substituted: Function
-    ) -> None | int | str:
-        # If there are no assignments, there is no use in continuing.
-        if substituted.count() == 0:
-            return None
+    def is_subset(inp1: Input, inp2: Input):
+        for i in range(len(inp2)):
+            if inp2[i] is None:
+                if inp1[i] is not None:
+                    return False
+            elif inp1[i] is not None and inp1[i] != inp2[i]:
+                return False
+        return True
 
-        if len(remaining) > 0:
-            name = remaining[0]
-            encountered = None
-            for v in input_domains[name]:
-                output = extract_deterministic_output(
-                    remaining[1:], bdd.let({encode(name, v): bdd.true}, substituted)
-                )
-                if output is None:
-                    return None  # if one branch has no output, not deterministic
-                if encountered is None:
-                    encountered = output
-                elif encountered != output:
-                    return None  # output is not unique, not deterministic
-        else:
-            output = None
-            for v in output_domain:
-                if bdd.let({encode("output", v): bdd.true}, substituted).count() > 0:
-                    if output is not None:
-                        # There are at least two output values resulting in a satisfiable BDD,
-                        # so output is not deterministic.
-                        return None
-                    output = v
-            return output
+    def search_subsets(i: int, inp: Input, substituted: Function):
+        if i < len(input_names):
+            name = input_names[i]
 
-    def search(
-        remaining: list[str],
-        chosen: dict[str, tuple[bool, int | str]],
-        skipped: frozenset[str],
-        substituted: Function,
-    ):
-        if len(remaining) > 0:
-            name = remaining[0]
-            search(remaining[1:], chosen, skipped | {name}, substituted)
+            # Try skipping this input index.
+            search_subsets(i + 1, inp + (None,), substituted)
+
             for value in input_domains[name]:
+                # Try equality for this value of this input index.
                 equal = bdd.let({encode(name, value): bdd.true}, substituted)
-                not_equal = bdd.let({encode(name, value): bdd.false}, substituted)
+                if equal.count() > 0:  # else no use in continuing
+                    search_subsets(i + 1, inp + ((True, value),), equal)
 
-                if equal.count() > 0:
-                    search(
-                        remaining[1:], chosen | {name: (True, value)}, skipped, equal
-                    )
+                # NOTE: commented out due to performance issues
+                # # Try inequality for this value of this input.
+                # inequal = bdd.let({encode(name, value): bdd.false}, substituted)
+                # if inequal.count() > 0:  # else no use in continuing
+                #     search_subsets(i + 1, inp + ((False, value),), inequal)
 
-                if not_equal.count() > 0:
-                    search(
-                        remaining[1:],
-                        chosen | {name: (False, value)},
-                        skipped,
-                        not_equal,
-                    )
         else:
-            # Only consider is no previously found set is a subset.
-            if all([not ex.items() <= chosen.items() for ex, _ in subsets]):
-                output = extract_deterministic_output(list(skipped), substituted)
-                if output is not None:
-                    # No previously found set is a superset.
-                    assert all([not chosen.items() <= ex.items() for ex, _ in subsets])
-                    subsets.append((chosen, output))
+            # Only consider if no existing set is a subset.
+            if all([not is_subset(ex, inp) for ex, _ in result]):
+                outputs = None
+                for assignment in bdd.pick_iter(substituted):
+                    assignment_outputs = set()
+                    for v in output_domain:
+                        encoded = encode("output", v)
+                        if encoded in assignment:
+                            if assignment[encoded]:
+                                assignment_outputs.add(v)
 
-    search(list(input_domains.keys()), {}, frozenset(), root)
-    return subsets
+                    # Should hold by BDD construction.
+                    assert len(assignment_outputs) > 0
+
+                    if outputs is None:
+                        outputs = assignment_outputs  # first iteration
+                    elif outputs != assignment_outputs:
+                        return None  # not deterministic
+
+                # No. assignments is more than 0, so cannot be none.
+                assert outputs is not None
+
+                # All existing sets should not be supersets.
+                assert all([not is_subset(inp, ex) for ex, _ in result])
+
+                # NOTE: not sure whether this is correct
+                assert len(outputs) == 1
+
+                result.append((inp, list(outputs)[0]))
+
+    search_subsets(0, tuple(), root)
+    return result
 
 
 def minimal_inputs_by_output(
     n: int,
     mapping: typing.Callable,
     input_names: tuple[str, ...],
-    input_domain: set[tuple[int, ...]],
+    input_domain: frozenset[tuple[int, ...]],
     output_index: int,
 ):
     tree = mapping_to_tree(n, mapping)
     paths = extract_paths(tree)
 
     # Initialize separate domains for all inputs.
-    input_domains: dict[str, set[int | str]] = {}
+    input_domains: dict[str, frozenset[int | str]] = {}
     for i, name in enumerate(input_names):
-        input_domains[name] = set()
-        for inp in input_domain:
-            input_domains[name].add(inp[i])
+        input_domains[name] = frozenset([inp[i] for inp in input_domain])
 
     # List the inputs that are allowed by the separate domains, but not by the
     # domain of all inputs together.
@@ -322,15 +317,14 @@ def minimal_inputs_by_output(
         if inp not in input_domain
     ]
 
-    # Add symbolic domains between inputs with overlapping domains.
-    for name1, name2 in itertools.combinations(input_domains, 2):
-        if len(input_domains[name1].intersection(input_domains[name2])) > 0:
-            input_domains[name1].add(name2)
+    # NOTE: commented out due to performance issues
+    # # Add symbolic domains between inputs with overlapping domains.
+    # for name1, name2 in itertools.combinations(input_domains, 2):
+    #     if len(input_domains[name1].intersection(input_domains[name2])) > 0:
+    #         input_domains[name1] |= {name2}
 
     # Initialize the output domain.
-    output_domain: set[int | str] = set()
-    for output in paths.values():
-        output_domain.add(output[output_index])
+    output_domain = frozenset([output[output_index] for output in paths.values()])
 
     # Initialize a BDD with a root.
     bdd = BDD()
@@ -393,7 +387,7 @@ def minimal_inputs_by_output(
             )
         )
 
-    return minimal_subsets(input_domains, output_domain, root, bdd)
+    return minimal_inputs(input_names, input_domains, output_domain, root, bdd)
 
 
 def types(
@@ -403,7 +397,7 @@ def types(
     tuple[
         typing.Callable,
         tuple[str, ...],  # input names
-        set[tuple[int, ...]],  # input domain
+        frozenset[tuple[int, ...]],  # input domain
         tuple[str, ...],  # output names
     ],
 ]:
@@ -415,7 +409,7 @@ def types(
         "corner_coord": (
             coord_mapping,
             ("x", "y", "z", "ma", "mi", "md"),
-            set(
+            frozenset(
                 corner + (ma, mi, md)
                 for corner in corners
                 for ma in range(3)
@@ -427,7 +421,7 @@ def types(
         "corner_rotation": (
             corner_rotation_mapping,
             ("x", "y", "z", "r", "ma", "mi", "md"),
-            set(
+            frozenset(
                 corner + (r, ma, mi, md)
                 for corner in corners
                 for r in range(3)
@@ -440,7 +434,7 @@ def types(
         "center_coord": (
             coord_mapping,
             ("x", "y", "z", "ma", "mi", "md"),
-            set(
+            frozenset(
                 center + (ma, mi, md)
                 for center in centers
                 for ma in range(3)
@@ -452,7 +446,7 @@ def types(
         "edge_coord": (
             coord_mapping,
             ("x", "y", "z", "ma", "mi", "md"),
-            set(
+            frozenset(
                 edge + (ma, mi, md)
                 for edge in edges
                 for ma in range(3)
@@ -464,7 +458,7 @@ def types(
         "edge_rotation": (
             edge_rotation_mapping,
             ("x", "y", "z", "r", "ma", "mi", "md"),
-            set(
+            frozenset(
                 edge + (r, ma, mi, md)
                 for edge in edges
                 for r in range(3)
@@ -501,9 +495,8 @@ def generate(n: int, overwrite=False):
 
             with open(path, "w") as file:
                 for input, output in result:
-                    input = [input[n] if n in input else None for n in input_names]
-                    values = ["*" if i is None else str(i[1]) for i in input]
-                    ops = ["*" if i is None else "=" if i[0] else "≠" for i in input]
+                    values = ["*" if v is None else str(v[1]) for v in input]
+                    ops = ["*" if v is None else "=" if v[0] else "≠" for v in input]
                     file.write(f"{''.join(values)} {''.join(ops)} {output}\n")
 
 
