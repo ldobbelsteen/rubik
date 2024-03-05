@@ -359,28 +359,6 @@ class State:
     def finished(n: int):
         coords = [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)]
         rots = [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)]
-
-        for x in range(n):
-            for y in range(n):
-                for z in range(n):
-                    ff, _, _ = first_cubie_facelet(n, x, y, z)
-                    assert rots[x][y][z]
-
-                    colors = list(cubie_colors_finished(n, x, y, z))
-                    colors.sort()
-
-                    ff, _, _ = first_cubie_facelet(n, x, y, z)
-                    for r in range(len(colors)):
-                        if colors[0] == ff:
-                            rots[x][y][z] = r
-                            break
-                        rotate_list(colors)
-
-                    if rots[x][y][z] == -1:
-                        raise Exception(f"no possible rotation found: {colors}")
-
-        print(rots)
-
         return State(n, coords, rots)
 
     def execute_move(self, ma: int, mi: int, md: int):
