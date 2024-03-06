@@ -390,85 +390,84 @@ def minimal_inputs_by_output(
     return minimal_inputs(input_names, input_domains, output_domain, root, bdd)
 
 
-def types(
-    n: int,
-) -> dict[
-    str,
-    tuple[
-        typing.Callable,
-        tuple[str, ...],  # input names
-        frozenset[tuple[int, ...]],  # input domain
-        tuple[str, ...],  # output names
-    ],
-]:
-    corners = list_corners(n)
-    centers = list_centers(n)
-    edges = list_edges(n)
+types: list[str] = [
+    "corner_coords",
+    "corner_rotation",
+    "center_coords",
+    "edge_coords",
+    "edge_rotation",
+]
 
-    return {
-        "corner_coord": (
-            coord_mapping,
-            ("x", "y", "z", "ma", "mi", "md"),
-            frozenset(
-                corner + (ma, mi, md)
-                for corner in corners
+functions: dict[str, typing.Callable] = {
+    "corner_coords": coord_mapping,
+    "corner_rotation": corner_rotation_mapping,
+    "center_coords": coord_mapping,
+    "edge_coords": coord_mapping,
+    "edge_rotation": edge_rotation_mapping,
+}
+
+input_names: dict[str, tuple[str, ...]] = {
+    "corner_coords": ("x", "y", "z", "ma", "mi", "md"),
+    "corner_rotation": ("x", "z", "r", "ma", "mi", "md"),
+    "center_coords": ("x", "y", "z", "ma", "mi", "md"),
+    "edge_coords": ("x", "y", "z", "ma", "mi", "md"),
+    "edge_rotation": ("z", "r", "ma", "mi", "md"),
+}
+
+output_names: dict[str, tuple[str, ...]] = {
+    "corner_coords": ("next_x", "next_y", "next_z"),
+    "corner_rotation": ("next_r",),
+    "center_coords": ("next_x", "next_y", "next_z"),
+    "edge_coords": ("next_x", "next_y", "next_z"),
+    "edge_rotation": ("next_r",),
+}
+
+
+def compute_input_domain(n: int, type: str):
+    match type:
+        case "corner_coords":
+            return frozenset(
+                (x, y, z, ma, mi, md)
+                for x, y, z in list_corners(n)
                 for ma in range(3)
                 for mi in range(n)
                 for md in range(3)
-            ),
-            ("x_new", "y_new", "z_new"),
-        ),
-        "corner_rotation": (
-            corner_rotation_mapping,
-            ("x", "y", "z", "r", "ma", "mi", "md"),
-            frozenset(
-                corner + (r, ma, mi, md)
-                for corner in corners
+            )
+        case "corner_rotation":
+            return frozenset(
+                (x, z, r, ma, mi, md)
+                for x, _, z in list_corners(n)
                 for r in range(3)
                 for ma in range(3)
                 for mi in range(n)
                 for md in range(3)
-            ),
-            ("r_new",),
-        ),
-        "center_coord": (
-            coord_mapping,
-            ("x", "y", "z", "ma", "mi", "md"),
-            frozenset(
-                center + (ma, mi, md)
-                for center in centers
+            )
+        case "center_coords":
+            return frozenset(
+                (x, y, z, ma, mi, md)
+                for x, y, z in list_centers(n)
                 for ma in range(3)
                 for mi in range(n)
                 for md in range(3)
-            ),
-            ("x_new", "y_new", "z_new"),
-        ),
-        "edge_coord": (
-            coord_mapping,
-            ("x", "y", "z", "ma", "mi", "md"),
-            frozenset(
-                edge + (ma, mi, md)
-                for edge in edges
+            )
+        case "edge_coords":
+            return frozenset(
+                (x, y, z, ma, mi, md)
+                for x, y, z in list_edges(n)
                 for ma in range(3)
                 for mi in range(n)
                 for md in range(3)
-            ),
-            ("x_new", "y_new", "z_new"),
-        ),
-        "edge_rotation": (
-            edge_rotation_mapping,
-            ("x", "y", "z", "r", "ma", "mi", "md"),
-            frozenset(
-                edge + (r, ma, mi, md)
-                for edge in edges
-                for r in range(3)  # NOTE: for now
+            )
+        case "edge_rotation":
+            return frozenset(
+                (z, r, ma, mi, md)
+                for _, _, z in list_edges(n)
+                for r in range(2)
                 for ma in range(3)
                 for mi in range(n)
                 for md in range(3)
-            ),
-            ("r_new",),
-        ),
-    }
+            )
+    raise Exception(f"invalid mapping type: {type}")
 
 
 def file_path(n: int, type: str, output_name: str):
@@ -476,11 +475,12 @@ def file_path(n: int, type: str, output_name: str):
 
 
 def generate(n: int, overwrite=False):
-    for type, (mapping, input_names, input_domain, output_names) in types(n).items():
+    for type in types:
+        input_domain = compute_input_domain(n, type)
         if len(input_domain) == 0:
             continue  # can happen for n <= 2, where there are no edges or centers
 
-        for i, output_name in enumerate(output_names):
+        for i, output_name in enumerate(output_names[type]):
             path = file_path(n, type, output_name)
             if not overwrite and os.path.isfile(path):
                 continue
@@ -490,7 +490,9 @@ def generate(n: int, overwrite=False):
                 f"computing move mapping for '{output_name}' for '{type}' with n = {n}..."
             )
 
-            result = minimal_inputs_by_output(n, mapping, input_names, input_domain, i)
+            result = minimal_inputs_by_output(
+                n, functions[type], input_names[type], input_domain, i
+            )
             result.sort(key=lambda x: str(x))
 
             with open(path, "w") as file:
@@ -500,41 +502,26 @@ def generate(n: int, overwrite=False):
                     file.write(f"{''.join(inputs)}\t{''.join(ops)}\t{output}\n")
 
 
-def load(n: int):
-    result: dict[
-        str, dict[str, list[tuple[dict[str, tuple[bool, int | str]], int | str]]]
-    ] = {}
+def load(n: int, type: str, output_name: str):
+    path = file_path(n, type, output_name)
+    mappings: list[tuple[dict[str, tuple[bool, int | str]], int | str]] = []
+    with open(path, "r") as file:
+        for line in file:
+            raw_inputs, raw_ops, output = line.rstrip("\n").split("\t")
 
-    for type, (_, input_names, _, output_names) in types(n).items():
-        for output_name in output_names:
-            path = file_path(n, type, output_name)
-            if not os.path.isfile(path):
-                continue  # assume it is intentionally missing
+            inputs = {}
+            for i, input_name in enumerate(input_names[type]):
+                input = raw_inputs[i] if raw_inputs[i] != "*" else None
+                if input is not None and input.isnumeric():
+                    input = int(input)
+                equality = raw_ops[i] != "≠"
+                if input is not None:
+                    inputs[input_name] = (equality, input)
 
-            mappings = []
-            with open(path, "r") as file:
-                for line in file:
-                    raw_inputs, raw_ops, output = line.rstrip("\n").split("\t")
+            if output.isnumeric():
+                output = int(output)
 
-                    inputs = {}
-                    for i, input_name in enumerate(input_names):
-                        input = raw_inputs[i] if raw_inputs[i] != "*" else None
-                        if input is not None and input.isnumeric():
-                            input = int(input)
-                        equality = raw_ops[i] != "≠"
-                        if input is not None:
-                            inputs[input_name] = (equality, input)
-
-                    if output.isnumeric():
-                        output = int(output)
-
-                    mappings.append((inputs, output))
-
-            if type not in result:
-                result[type] = {}
-            result[type][output_name] = mappings
-
-    return result
+            mappings.append((inputs, output))
 
 
 # e.g. python move_mapping.py {n}

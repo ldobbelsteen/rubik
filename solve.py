@@ -83,7 +83,7 @@ def solve_for_k(puzzle: State, k: int):
                 z3_int(solver, f"edge({x},{y},{z}) s({s}) x", 0, n),
                 z3_int(solver, f"edge({x},{y},{z}) s({s}) y", 0, n),
                 z3_int(solver, f"edge({x},{y},{z}) s({s}) z", 0, n),
-                z3_int(solver, f"edge({x},{y},{z}) s({s}) r", 0, 3),  # NOTE: for now
+                z3_int(solver, f"edge({x},{y},{z}) s({s}) r", 0, 2),
             )
 
     # Variables which together indicate the move at each state.
