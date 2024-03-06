@@ -155,12 +155,6 @@ def finished_indicator(n: int, x: int, y: int, z: int) -> tuple[int, int]:
     return face_axis(ff), ff
 
 
-def rotate_list(ls: list[int]):
-    """Rotate a list by appending its last element to the front."""
-    last = ls.pop()
-    ls.insert(0, last)
-
-
 def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
     """Convert facelet colors of a cube to our coord and rotation encoding."""
 
@@ -282,51 +276,56 @@ def coord_mapping(
 
 
 def corner_rotation_mapping(
-    x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
+    n: int, x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
 ) -> tuple[int]:
-    if ma == 0:
-        if mi == y:
-            if md != 2:
-                if r == 0:
-                    return (2,)
-                elif r == 2:
-                    return (0,)
-    elif ma == 1:
+    if ma == 1:
         if mi == x:
             if md != 2:
-                if r == 1:
-                    return (2,)
-                elif r == 2:
-                    return (1,)
+                if x == 0:
+                    if (y == 0 and z == 0) or (y == n - 1 and z == n - 1):
+                        if r == 0:
+                            return (2,)
+                        elif r == 1:
+                            return (0,)
+                        elif r == 2:
+                            return (1,)
+                    elif (y == 0 and z == n - 1) or (y == n - 1 and z == 0):
+                        if r == 0:
+                            return (1,)
+                        elif r == 1:
+                            return (2,)
+                        elif r == 2:
+                            return (0,)
+                elif x == n - 1:
+                    if (y == 0 and z == 0) or (y == n - 1 and z == n - 1):
+                        if r == 0:
+                            return (1,)
+                        elif r == 1:
+                            return (2,)
+                        elif r == 2:
+                            return (0,)
+                    elif (y == 0 and z == n - 1) or (y == n - 1 and z == 0):
+                        if r == 0:
+                            return (2,)
+                        elif r == 1:
+                            return (0,)
+                        elif r == 2:
+                            return (1,)
+
     elif ma == 2:
         if mi == z:
             if md != 2:
                 if r == 0:
                     return (1,)
                 elif r == 1:
+                    return (2,)
+                elif r == 2:
                     return (0,)
     return (r,)
 
 
-def edge_rotation_mapping(
-    x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
-) -> tuple[int]:
-    # NOTE: identical to corner rotation for now
-    if ma == 0:
-        if mi == y:
-            if md != 2:
-                if r == 0:
-                    return (2,)
-                elif r == 2:
-                    return (0,)
-    elif ma == 1:
-        if mi == x:
-            if md != 2:
-                if r == 1:
-                    return (2,)
-                elif r == 2:
-                    return (1,)
-    elif ma == 2:
+def edge_rotation_mapping(z: int, r: int, ma: int, mi: int, md: int) -> tuple[int]:
+    if ma == 2:
         if mi == z:
             if md != 2:
                 if r == 0:
