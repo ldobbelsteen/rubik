@@ -174,38 +174,42 @@ def solve_for_k(puzzle: State, k: int):
     for s in range(k):
         ma, mi, md = mas[s], mis[s], mds[s]
 
-        def convert_expression(exp: int | str):
+        def convert_exp(exp: int | str) -> int | z3.ArithRef:
             if isinstance(exp, int):
                 return exp
-
-            # TODO: handle int|str +|- int|str
-            return z3.Not(z3.Not(True))  # TODO
-
-        def input_to_condition(inp: str, eq: bool, val: int | str):
-            assert r is not None
-            left: z3.ArithRef
-            match inp:
-                case "x":
-                    left = x
-                case "y":
-                    left = y
-                case "z":
-                    left = z
-                case "r":
-                    left = r
-                case "ma":
-                    left = ma
-                case "mi":
-                    left = mi
-                case "md":
-                    left = md
-                case _:
-                    raise Exception(f"invalid input: {inp}")
-            right = convert_expression(val)
-            if eq:
-                return left == right
+            elif exp.isnumeric():
+                return int(exp)
+            elif "-" in exp:
+                left, right = exp.split("-")
+                return convert_exp(left.strip()) - convert_exp(right.strip())
+            elif "+" in exp:
+                left, right = exp.split("+")
+                return convert_exp(left.strip()) + convert_exp(right.strip())
             else:
-                return left != right
+                match exp:
+                    case "x":
+                        return x
+                    case "y":
+                        return y
+                    case "z":
+                        return z
+                    case "r":
+                        assert r is not None
+                        return r
+                    case "ma":
+                        return ma
+                    case "mi":
+                        return mi
+                    case "md":
+                        return md
+                    case _:
+                        raise Exception(f"invalid variable: {exp}")
+
+        def convert_eq(left: str, eq: bool, right: int | str) -> bool | z3.BoolRef:
+            if eq:
+                return convert_exp(left) == convert_exp(right)
+            else:
+                return convert_exp(left) != convert_exp(right)
 
         # Add restrictions for all corners.
         for cx, cy, cz in corners:
@@ -215,52 +219,48 @@ def solve_for_k(puzzle: State, k: int):
             # Mappings for x-coordinates.
             for inputs, output in mappings["corner_coord"]["x_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_x == convert_expression(output),
+                        new_x == convert_exp(output),
                     )
                 )
 
             # Mappings for y-coordinates.
             for inputs, output in mappings["corner_coord"]["y_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_y == convert_expression(output),
+                        new_y == convert_exp(output),
                     )
                 )
 
             # Mappings for z-coordinates.
             for inputs, output in mappings["corner_coord"]["z_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_z == convert_expression(output),
+                        new_z == convert_exp(output),
                     )
                 )
 
             # Mappings for rotation.
             for inputs, output in mappings["corner_rotation"]["r_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_r == convert_expression(output),
+                        new_r == convert_exp(output),
                     )
                 )
 
@@ -272,39 +272,36 @@ def solve_for_k(puzzle: State, k: int):
             # Mappings for x-coordinates.
             for inputs, output in mappings["center_coord"]["x_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_x == convert_expression(output),
+                        new_x == convert_exp(output),
                     )
                 )
 
             # Mappings for y-coordinates.
             for inputs, output in mappings["center_coord"]["y_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_y == convert_expression(output),
+                        new_y == convert_exp(output),
                     )
                 )
 
             # Mappings for z-coordinates.
             for inputs, output in mappings["center_coord"]["z_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_z == convert_expression(output),
+                        new_z == convert_exp(output),
                     )
                 )
 
@@ -316,52 +313,48 @@ def solve_for_k(puzzle: State, k: int):
             # Mappings for x-coordinates.
             for inputs, output in mappings["edge_coord"]["x_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_x == convert_expression(output),
+                        new_x == convert_exp(output),
                     )
                 )
 
             # Mappings for y-coordinates.
             for inputs, output in mappings["edge_coord"]["y_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_y == convert_expression(output),
+                        new_y == convert_exp(output),
                     )
                 )
 
             # Mappings for z-coordinates.
             for inputs, output in mappings["edge_coord"]["z_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_z == convert_expression(output),
+                        new_z == convert_exp(output),
                     )
                 )
 
             # Mappings for rotation.
             for inputs, output in mappings["edge_rotation"]["r_new"]:
                 conditions = [
-                    input_to_condition(input, eq, val)
-                    for input, (eq, val) in inputs.items()
+                    convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
                 ]
                 solver.add(
                     z3.Or(
                         z3.Or([z3.Not(cond) for cond in conditions]),
-                        new_r == convert_expression(output),
+                        new_r == convert_exp(output),
                     )
                 )
 
@@ -408,10 +401,14 @@ def solve_for_k(puzzle: State, k: int):
         moves = []
         model = solver.model()
         for s in range(k):
-            ma = model.get_interp(mas[s]).as_long()
-            mi = model.get_interp(mis[s]).as_long()
-            md = model.get_interp(mds[s]).as_long()
-            moves.append(move_name(puzzle.n, ma, mi, md))
+            moves.append(
+                move_name(
+                    puzzle.n,
+                    model.get_interp(mas[s]).as_long(),
+                    model.get_interp(mis[s]).as_long(),
+                    model.get_interp(mds[s]).as_long(),
+                )
+            )
         assert len(moves) == k
 
     return moves, prep_time, solve_time
