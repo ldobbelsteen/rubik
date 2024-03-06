@@ -253,7 +253,7 @@ def minimal_inputs(
                 if equal.count() > 0:  # else no use in continuing
                     search_subsets(i + 1, inp + ((True, value),), equal)
 
-                # NOTE: commented out due to performance issues
+                # NOTE: commented out for now due to performance issues
                 # # Try inequality for this value of this input.
                 # inequal = bdd.let({encode(name, value): bdd.false}, substituted)
                 # if inequal.count() > 0:  # else no use in continuing
@@ -317,7 +317,7 @@ def minimal_inputs_by_output(
         if inp not in input_domain
     ]
 
-    # NOTE: commented out due to performance issues
+    # NOTE: commented out for now due to performance issues
     # # Add symbolic domains between inputs with overlapping domains.
     # for name1, name2 in itertools.combinations(input_domains, 2):
     #     if len(input_domains[name1].intersection(input_domains[name2])) > 0:
@@ -461,7 +461,7 @@ def types(
             frozenset(
                 edge + (r, ma, mi, md)
                 for edge in edges
-                for r in range(3)
+                for r in range(3)  # NOTE: for now
                 for ma in range(3)
                 for mi in range(n)
                 for md in range(3)

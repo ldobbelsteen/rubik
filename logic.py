@@ -99,17 +99,39 @@ def facelet_cubie(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
     raise Exception(f"invalid face: {f}")
 
 
-def first_cubie_facelet(n: int, cx: int, cy: int, cz: int) -> tuple[int, int, int]:
+def first_cubie_facelet(n: int, x: int, y: int, z: int) -> tuple[int, int, int]:
     """Deterministically get the first facelet of a cubie."""
-    for f in range(6):
-        for y in range(n):
-            for x in range(n):
-                if facelet_cubie(n, f, y, x) == (cx, cy, cz):
-                    return (f, y, x)
-    raise Exception(f"invalid cubie: ({cx},{cy},{cz})")
+    for ff in range(6):
+        for fy in range(n):
+            for fx in range(n):
+                if facelet_cubie(n, ff, fy, fx) == (x, y, z):
+                    return (ff, fy, fx)
+    raise Exception(f"invalid cubie: ({x},{y},{z})")
 
 
-def cubie_colors_finished(n: int, x: int, y: int, z: int) -> set[int]:
+def cubie_facelets(n: int, x: int, y: int, z: int) -> set[tuple[int, int, int]]:
+    """Get the set of facelets of a cubie."""
+    facelets = set()
+    for ff in range(6):
+        for fy in range(n):
+            for fx in range(n):
+                if facelet_cubie(n, ff, fy, fx) == (x, y, z):
+                    facelets.add((ff, fy, fx))
+    return facelets
+
+
+def face_axis(f: int) -> int:
+    """Return the axis of a face. 0 = x, 1 = y and 2 = z."""
+    if f == 0 or f == 2:
+        return 2
+    elif f == 1 or f == 3:
+        return 0
+    elif f == 4 or f == 5:
+        return 1
+    raise Exception(f"invalid face: {f}")
+
+
+def finished_cubie_colors(n: int, x: int, y: int, z: int) -> set[int]:
     """Get the set of colors of a cubie in a finished cube."""
     result = set()
     if x == 0:
@@ -125,6 +147,12 @@ def cubie_colors_finished(n: int, x: int, y: int, z: int) -> set[int]:
     if z == n - 1:
         result.add(2)
     return result
+
+
+def finished_indicator(n: int, x: int, y: int, z: int) -> tuple[int, int]:
+    """Get the axis and color of the indicator facelet of a cubie in a finished cube."""
+    ff, _, _ = first_cubie_facelet(n, x, y, z)
+    return face_axis(ff), ff
 
 
 def rotate_list(ls: list[int]):
@@ -226,6 +254,7 @@ def corner_rotation_mapping(
 def edge_rotation_mapping(
     x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
 ) -> tuple[int]:
+    # NOTE: identical to corner rotation for now
     if ma == 0:
         if mi == y:
             if md != 2:
@@ -264,21 +293,6 @@ class State:
     def facelet_color(self, f: int, y: int, x: int) -> int:
         return -1  # TODO
 
-    def cubie_colors(self, x: int, y: int, z: int) -> list[int]:
-        for ox in range(self.n):
-            for oy in range(self.n):
-                for oz in range(self.n):
-                    if self.coords[ox][oy][oz] == (x, y, z):
-                        colors = sorted(cubie_colors_finished(self.n, ox, oy, oz))
-
-                        if self.rots[ox][oy][oz] != -1:
-                            for _ in range(self.rots[ox][oy][oz]):
-                                rotate_list(colors)
-
-                        return colors
-
-        raise Exception(f"invalid cubie coords: ({x},{y},{z})")
-
     @staticmethod
     def from_str(s: str):
         n = int((len(s) / 6) ** 0.5)
@@ -295,54 +309,54 @@ class State:
 
         # Extract the cubie colors from the facelet representation.
         cubie_colors = [[[set() for _ in range(n)] for _ in range(n)] for _ in range(n)]
-        for f in range(6):
-            for y in range(n):
-                for x in range(n):
-                    cx, cy, cz = facelet_cubie(n, f, y, x)
-                    cubie_colors[cx][cy][cz].add(facelet_colors[f][y][x])
+        for ff in range(6):
+            for fy in range(n):
+                for fx in range(n):
+                    x, y, z = facelet_cubie(n, ff, fy, fx)
+                    cubie_colors[x][y][z].add(facelet_colors[ff][fy][fx])
 
-        finished = State.finished(n)
-
-        def find_origin_cubie(
-            x: int, y: int, z: int, colors: set[int]
-        ) -> tuple[tuple[int, int, int], int | None]:
+        def find_origin_cubie(colors: set[int]) -> tuple[int, int, int]:
             for ox in range(n):
                 for oy in range(n):
                     for oz in range(n):
-                        origin_colors = finished.cubie_colors(ox, oy, oz)
-                        if colors == set(origin_colors):
-                            assert len(colors) > 0
-
-                            if len(colors) == 1:
-                                return (ox, oy, oz), None
-
-                            ff, fy, fx = first_cubie_facelet(n, x, y, z)
-                            for r in range(len(origin_colors)):
-                                if origin_colors[0] == facelet_colors[ff][fy][fx]:
-                                    return (ox, oy, oz), r
-                                rotate_list(origin_colors)
-
-                            raise Exception(f"invalid color set permutation: {colors}")
-
+                        if colors == finished_cubie_colors(n, ox, oy, oz):
+                            return (ox, oy, oz)
             raise Exception(f"invalid color set: {colors}")
 
         # Extract cubie coords and rotations by finding the color sets in a finished cube.
         coords: list[list[list[tuple[int, int, int]]]] = [
-            [[(-1, -1, -1) for z in range(n)] for y in range(n)] for x in range(n)
+            [[(-1, -1, -1) for _ in range(n)] for _ in range(n)] for _ in range(n)
         ]
-        rots: list[list[list[int]]] = [
-            [[-1 for _ in range(n)] for _ in range(n)] for _ in range(n)
-        ]
+        rots = [[[-1 for _ in range(n)] for _ in range(n)] for _ in range(n)]
         for x in range(n):
             for y in range(n):
                 for z in range(n):
                     colors = cubie_colors[x][y][z]
                     if len(colors) == 0:
                         continue
-                    (cx, cy, cz), r = find_origin_cubie(x, y, z, colors)
-                    coords[cx][cy][cz] = (x, y, z)
-                    if r is not None:
-                        rots[cx][cy][cz] = r
+
+                    # Determine the original cubie coords.
+                    ox, oy, oz = find_origin_cubie(colors)
+                    coords[ox][oy][oz] = (x, y, z)
+
+                    # Determine the cubie rotation.
+                    type = cubie_type(n, x, y, z)
+                    if type == 0:
+                        _, indicator_color = finished_indicator(n, ox, oy, oz)
+                        for ff, fy, fx in cubie_facelets(n, x, y, z):
+                            if facelet_colors[ff][fy][fx] == indicator_color:
+                                assert rots[ox][oy][oz] == -1
+                                rots[ox][oy][oz] = face_axis(ff)
+                                break
+                        assert rots[ox][oy][oz] != -1
+                    elif type == 2:  # NOTE: same as corner for now
+                        _, indicator_color = finished_indicator(n, ox, oy, oz)
+                        for ff, fy, fx in cubie_facelets(n, x, y, z):
+                            if facelet_colors[ff][fy][fx] == indicator_color:
+                                assert rots[ox][oy][oz] == -1
+                                rots[ox][oy][oz] = face_axis(ff)
+                                break
+                        assert rots[ox][oy][oz] != -1
 
         return State(n, coords, rots)
 
@@ -357,8 +371,27 @@ class State:
 
     @staticmethod
     def finished(n: int):
-        coords = [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)]
-        rots = [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)]
+        coords = [
+            [
+                [
+                    (x, y, z) if cubie_type(n, x, y, z) != -1 else (-1, -1, -1)
+                    for z in range(n)
+                ]
+                for y in range(n)
+            ]
+            for x in range(n)
+        ]
+
+        rots = [[[-1 for _ in range(n)] for _ in range(n)] for _ in range(n)]
+        for x in range(n):
+            for y in range(n):
+                for z in range(n):
+                    type = cubie_type(n, x, y, z)
+                    if type == 0:
+                        rots[x][y][z], _ = finished_indicator(n, x, y, z)
+                    elif type == 2:
+                        rots[x][y][z], _ = finished_indicator(n, x, y, z)
+
         return State(n, coords, rots)
 
     def execute_move(self, ma: int, mi: int, md: int):
