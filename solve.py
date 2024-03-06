@@ -107,7 +107,7 @@ def solve_for_k(puzzle: State, k: int):
             conditions.append(xv == state.coords[x][y][z][0])
             conditions.append(yv == state.coords[x][y][z][1])
             conditions.append(zv == state.coords[x][y][z][2])
-            conditions.append(rv == state.rs[x][y][z])
+            conditions.append(rv == state.rotations[x][y][z])
         for x, y, z in centers:
             xv, yv, zv, rv = cubicle(s, x, y, z)
             conditions.append(xv == state.coords[x][y][z][0])
@@ -118,7 +118,7 @@ def solve_for_k(puzzle: State, k: int):
             conditions.append(xv == state.coords[x][y][z][0])
             conditions.append(yv == state.coords[x][y][z][1])
             conditions.append(zv == state.coords[x][y][z][2])
-            conditions.append(rv == state.rs[x][y][z])
+            conditions.append(rv == state.rotations[x][y][z])
 
         return z3.And(conditions)
 

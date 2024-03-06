@@ -19,6 +19,11 @@ def face_name(f: int) -> str:
     raise Exception(f"invalid face: {f}")
 
 
+# Global face ordering to guarantee rotation ordering.
+# FIRST top/bottom, SECOND front/back, THIRD left/right.
+FACE_ORDERING = [4, 5, 0, 2, 3, 1]
+
+
 def color_name(c: int) -> str:
     """Convert a color index to its canonical name."""
     match c:
@@ -81,6 +86,37 @@ def cubicle_type(n: int, x: int, y: int, z: int):
     return 2
 
 
+def cubicle_colors(n: int, x: int, y: int, z: int) -> list[int]:
+    """Get the list of colors of a cubicle in a finished cube. The list is
+    sorted by the global face ordering."""
+    colors = set()
+    if x == 0:
+        colors.add(3)
+    if x == n - 1:
+        colors.add(1)
+    if y == 0:
+        colors.add(5)
+    if y == n - 1:
+        colors.add(4)
+    if z == 0:
+        colors.add(0)
+    if z == n - 1:
+        colors.add(2)
+    return [f for f in FACE_ORDERING if f in colors]
+
+
+def cubicle_facelets(n: int, x: int, y: int, z: int) -> list[tuple[int, int, int]]:
+    """Get the list of facelets of a cubicle. The list is sorted by the global
+    face ordering."""
+    facelets = []
+    for ff in FACE_ORDERING:
+        for fy in range(n):
+            for fx in range(n):
+                if facelet_cubicle(n, ff, fy, fx) == (x, y, z):
+                    facelets.append((ff, fy, fx))
+    return facelets
+
+
 def facelet_cubicle(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
     """Get the cubicle on which a facelet is located."""
     match f:
@@ -99,117 +135,46 @@ def facelet_cubicle(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
     raise Exception(f"invalid face: {f}")
 
 
-def first_cubicle_facelet(n: int, x: int, y: int, z: int) -> tuple[int, int, int]:
-    """Deterministically get the first facelet of a cubicle."""
-    for ff in range(6):
-        for fy in range(n):
-            for fx in range(n):
-                if facelet_cubicle(n, ff, fy, fx) == (x, y, z):
-                    return (ff, fy, fx)
-    raise Exception(f"invalid cubicle: ({x},{y},{z})")
-
-
-def cubicle_facelets(n: int, x: int, y: int, z: int) -> set[tuple[int, int, int]]:
-    """Get the set of facelets of a cubicle."""
-    facelets = set()
-    for ff in range(6):
-        for fy in range(n):
-            for fx in range(n):
-                if facelet_cubicle(n, ff, fy, fx) == (x, y, z):
-                    facelets.add((ff, fy, fx))
-    return facelets
-
-
-def face_axis(f: int) -> int:
-    """Return the axis of a face. 0 = x, 1 = y and 2 = z."""
-    if f == 0 or f == 2:
-        return 2
-    elif f == 1 or f == 3:
-        return 0
-    elif f == 4 or f == 5:
-        return 1
-    raise Exception(f"invalid face: {f}")
-
-
-def finished_cubicle_colors(n: int, x: int, y: int, z: int) -> set[int]:
-    """Get the set of colors of a cubicle in a finished cube."""
-    result = set()
-    if x == 0:
-        result.add(3)
-    if x == n - 1:
-        result.add(1)
-    if y == 0:
-        result.add(5)
-    if y == n - 1:
-        result.add(4)
-    if z == 0:
-        result.add(0)
-    if z == n - 1:
-        result.add(2)
-    return result
-
-
-def finished_indicator(n: int, x: int, y: int, z: int) -> tuple[int, int]:
-    """Get the axis and color of the indicator facelet of a cubicle in a finished cube."""
-    ff, _, _ = first_cubicle_facelet(n, x, y, z)
-    return face_axis(ff), ff
-
-
 def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
     """Convert facelet colors of a cube to our coord and rotation encoding."""
 
     # Extract the cubie colors from the facelet representation.
-    cubie_colors = [[[set() for _ in range(n)] for _ in range(n)] for _ in range(n)]
-    for ff in range(6):
+    cubie_colors = [[[[] for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    for ff in FACE_ORDERING:
         for fy in range(n):
             for fx in range(n):
                 x, y, z = facelet_cubicle(n, ff, fy, fx)
-                cubie_colors[x][y][z].add(facelet_colors[ff][fy][fx])
+                cubie_colors[x][y][z].append(facelet_colors[ff][fy][fx])
 
-    def find_origin_cubie(colors: set[int]) -> tuple[int, int, int]:
-        for ox in range(n):
-            for oy in range(n):
-                for oz in range(n):
-                    if colors == finished_cubicle_colors(n, ox, oy, oz):
-                        return (ox, oy, oz)
-        raise Exception(f"invalid color set: {colors}")
+    def find_cubicle(colors: list[int]) -> tuple[int, int, int, int]:
+        for cx in range(n):
+            for cy in range(n):
+                for cz in range(n):
+                    labeling = cubicle_colors(n, cx, cy, cz)
+                    if set(colors) == set(labeling):
+                        return cx, cy, cz, labeling.index(colors[0])
+        raise Exception(f"invalid color list: {colors}")
 
-    # Extract cubie coords and rotations by finding the color sets in a finished cube.
+    # Extract cubie coords and rotations by finding the color sets.
     coords: list[list[list[tuple[int, int, int]]]] = [
         [[(-1, -1, -1) for _ in range(n)] for _ in range(n)] for _ in range(n)
     ]
-    rs = [[[-1 for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    rotations = [[[-1 for _ in range(n)] for _ in range(n)] for _ in range(n)]
     for x in range(n):
         for y in range(n):
             for z in range(n):
-                colors = cubie_colors[x][y][z]
-                if len(colors) == 0:
+                type = cubicle_type(n, x, y, z)
+                if type == -1:
                     continue
 
-                # Determine the original cubie coords.
-                ox, oy, oz = find_origin_cubie(colors)
-                coords[ox][oy][oz] = (x, y, z)
+                colors = cubie_colors[x][y][z]
+                cx, cy, cz, r = find_cubicle(colors)
+                coords[cx][cy][cz] = (x, y, z)
 
-                # Determine the cubie rotation.
-                type = cubicle_type(n, x, y, z)
-                if type == 0:
-                    _, indicator_color = finished_indicator(n, ox, oy, oz)
-                    for ff, fy, fx in cubicle_facelets(n, x, y, z):
-                        if facelet_colors[ff][fy][fx] == indicator_color:
-                            assert rs[ox][oy][oz] == -1
-                            rs[ox][oy][oz] = face_axis(ff)
-                            break
-                    assert rs[ox][oy][oz] != -1
-                elif type == 2:  # NOTE: same as corner for now
-                    _, indicator_color = finished_indicator(n, ox, oy, oz)
-                    for ff, fy, fx in cubicle_facelets(n, x, y, z):
-                        if facelet_colors[ff][fy][fx] == indicator_color:
-                            assert rs[ox][oy][oz] == -1
-                            rs[ox][oy][oz] = face_axis(ff)
-                            break
-                    assert rs[ox][oy][oz] != -1
+                if type == 0 or type == 2:
+                    rotations[cx][cy][cz] = r
 
-    return coords, rs
+    return coords, rotations
 
 
 def list_corners(n: int) -> list[tuple[int, int, int]]:
@@ -276,44 +241,10 @@ def coord_mapping(
 
 
 def corner_rotation_mapping(
-    n: int, x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
+    x: int, z: int, r: int, ma: int, mi: int, md: int
 ) -> tuple[int]:
     if ma == 1:
         if mi == x:
-            if md != 2:
-                if x == 0:
-                    if (y == 0 and z == 0) or (y == n - 1 and z == n - 1):
-                        if r == 0:
-                            return (2,)
-                        elif r == 1:
-                            return (0,)
-                        elif r == 2:
-                            return (1,)
-                    elif (y == 0 and z == n - 1) or (y == n - 1 and z == 0):
-                        if r == 0:
-                            return (1,)
-                        elif r == 1:
-                            return (2,)
-                        elif r == 2:
-                            return (0,)
-                elif x == n - 1:
-                    if (y == 0 and z == 0) or (y == n - 1 and z == n - 1):
-                        if r == 0:
-                            return (1,)
-                        elif r == 1:
-                            return (2,)
-                        elif r == 2:
-                            return (0,)
-                    elif (y == 0 and z == n - 1) or (y == n - 1 and z == 0):
-                        if r == 0:
-                            return (2,)
-                        elif r == 1:
-                            return (0,)
-                        elif r == 2:
-                            return (1,)
-
-    elif ma == 2:
-        if mi == z:
             if md != 2:
                 if r == 0:
                     return (1,)
@@ -321,6 +252,15 @@ def corner_rotation_mapping(
                     return (2,)
                 elif r == 2:
                     return (0,)
+    elif ma == 2:
+        if mi == z:
+            if md != 2:
+                if r == 0:
+                    return (2,)
+                elif r == 1:
+                    return (0,)
+                elif r == 2:
+                    return (1,)
     return (r,)
 
 
@@ -340,14 +280,30 @@ class State:
         self,
         n: int,
         coords: list[list[list[tuple[int, int, int]]]],
-        rs: list[list[list[int]]],
+        rotations: list[list[list[int]]],
     ):
         self.n = n
         self.coords = coords
-        self.rs = rs
+        self.rotations = rotations
 
-    def facelet_color(self, f: int, y: int, x: int) -> int:
-        return -1  # TODO
+    def facelet_color(self, ff: int, fy: int, fx: int) -> int:
+        x, y, z = facelet_cubicle(self.n, ff, fy, fx)
+        for cx in range(self.n):
+            for cy in range(self.n):
+                for cz in range(self.n):
+                    if self.coords[cx][cy][cz] == (x, y, z):
+                        colors = cubicle_colors(self.n, cx, cy, cz)
+                        type = cubicle_type(self.n, cx, cy, cz)
+
+                        if type == 1:
+                            return colors[0]
+                        else:
+                            assert type != -1
+                            r = self.rotations[cx][cy][cz]
+                            fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
+                            ci = (fi + colors[r]) % len(colors)
+                            return colors[ci]
+        raise Exception(f"invalid facelet: ({ff},{fy},{fx})")
 
     @staticmethod
     def from_str(s: str):
@@ -357,48 +313,52 @@ class State:
         # Extract the facelet colors from the string.
         facelet_colors = [
             [
-                [int(s[f * n * n + (n - 1 - y) * n + x]) for x in range(n)]
-                for y in range(n)
+                [int(s[f * n * n + y * n + x]) for x in range(n)]
+                for y in reversed(range(n))
             ]
             for f in range(6)
         ]
 
-        coords, rs = facelet_colors_to_encoding(n, facelet_colors)
-        return State(n, coords, rs)
+        coords, rotations = facelet_colors_to_encoding(n, facelet_colors)
+        return State(n, coords, rotations)
 
     def to_str(self):
         colors = [
             self.facelet_color(f, y, x)
             for f in range(6)
-            for y in range(self.n)
+            for y in reversed(range(self.n))
             for x in range(self.n)
         ]
         return "".join(map(str, colors))
 
     @staticmethod
     def finished(n: int):
-        coords = [
+        return State(
+            n,
             [
                 [
-                    (x, y, z) if cubicle_type(n, x, y, z) != -1 else (-1, -1, -1)
-                    for z in range(n)
+                    [
+                        (x, y, z) if cubicle_type(n, x, y, z) != -1 else (-1, -1, -1)
+                        for z in range(n)
+                    ]
+                    for y in range(n)
                 ]
-                for y in range(n)
-            ]
-            for x in range(n)
-        ]
-
-        rs = [[[-1 for _ in range(n)] for _ in range(n)] for _ in range(n)]
-        for x in range(n):
-            for y in range(n):
-                for z in range(n):
-                    type = cubicle_type(n, x, y, z)
-                    if type == 0:
-                        rs[x][y][z], _ = finished_indicator(n, x, y, z)
-                    elif type == 2:
-                        rs[x][y][z], _ = finished_indicator(n, x, y, z)
-
-        return State(n, coords, rs)
+                for x in range(n)
+            ],
+            [
+                [
+                    [
+                        0
+                        if cubicle_type(n, x, y, z) == 0
+                        or cubicle_type(n, x, y, z) == 2
+                        else -1
+                        for z in range(n)
+                    ]
+                    for y in range(n)
+                ]
+                for x in range(n)
+            ],
+        )
 
     def execute_move(self, ma: int, mi: int, md: int):
         for x in range(self.n):
@@ -420,21 +380,18 @@ class State:
 
                     # Map the rotation.
                     if type == 0:
-                        self.rs[x][y][z] = corner_rotation_mapping(
+                        self.rotations[x][y][z] = corner_rotation_mapping(
                             self.coords[x][y][z][0],
-                            self.coords[x][y][z][1],
                             self.coords[x][y][z][2],
-                            self.rs[x][y][z],
+                            self.rotations[x][y][z],
                             ma,
                             mi,
                             md,
                         )[0]
                     elif type == 2:
-                        self.rs[x][y][z] = edge_rotation_mapping(
-                            self.coords[x][y][z][0],
-                            self.coords[x][y][z][1],
+                        self.rotations[x][y][z] = edge_rotation_mapping(
                             self.coords[x][y][z][2],
-                            self.rs[x][y][z],
+                            self.rotations[x][y][z],
                             ma,
                             mi,
                             md,
