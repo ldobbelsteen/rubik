@@ -107,7 +107,7 @@ def solve_for_k(puzzle: State, k: int):
             conditions.append(xv == state.coords[x][y][z][0])
             conditions.append(yv == state.coords[x][y][z][1])
             conditions.append(zv == state.coords[x][y][z][2])
-            conditions.append(rv == state.rots[x][y][z])
+            conditions.append(rv == state.rs[x][y][z])
         for x, y, z in centers:
             xv, yv, zv, rv = cubicle(s, x, y, z)
             conditions.append(xv == state.coords[x][y][z][0])
@@ -118,7 +118,7 @@ def solve_for_k(puzzle: State, k: int):
             conditions.append(xv == state.coords[x][y][z][0])
             conditions.append(yv == state.coords[x][y][z][1])
             conditions.append(zv == state.coords[x][y][z][2])
-            conditions.append(rv == state.rots[x][y][z])
+            conditions.append(rv == state.rs[x][y][z])
 
         return z3.And(conditions)
 
@@ -167,56 +167,56 @@ def solve_for_k(puzzle: State, k: int):
     # Restrict cubicle states according to moves.
     # NOTE: naive reference implementation
     for s in range(k):
-        ma, mi, md = mas[s], mis[s], mds[s]
+        mav, miv, mdv = mas[s], mis[s], mds[s]
 
         for x, y, z in itertools.chain(corners, centers, edges):
-            xv, xy, xz, _ = cubicle(s, x, y, z)
+            xv, yv, zv, _ = cubicle(s, x, y, z)
             next_xv, next_yv, next_zv, _ = cubicle(s + 1, x, y, z)
 
             # Restrictions for next x.
             solver.add(
                 z3.If(
-                    ma == 0,
+                    mav == 0,
                     z3.If(
-                        mi == xy,
+                        miv == yv,
                         z3.If(
-                            md == 0,
-                            next_xv == xz,
+                            mdv == 0,
+                            next_xv == zv,
                             z3.If(
-                                md == 1,
-                                next_xv == n - 1 - xz,
-                                z3.If(md == 2, next_xv == n - 1 - xv, next_xv == xv),
+                                mdv == 1,
+                                next_xv == n - 1 - zv,
+                                z3.If(mdv == 2, next_xv == n - 1 - xv, next_xv == xv),
                             ),
                         ),
                         next_xv == xv,
                     ),
                     z3.If(
-                        ma == 1,
+                        mav == 1,
                         z3.If(
-                            mi == xv,
+                            miv == xv,
                             z3.If(
-                                md == 0,
+                                mdv == 0,
                                 next_xv == xv,
                                 z3.If(
-                                    md == 1,
+                                    mdv == 1,
                                     next_xv == xv,
-                                    z3.If(md == 2, next_xv == xv, next_xv == xv),
+                                    z3.If(mdv == 2, next_xv == xv, next_xv == xv),
                                 ),
                             ),
                             next_xv == xv,
                         ),
                         z3.If(
-                            ma == 2,
+                            mav == 2,
                             z3.If(
-                                mi == xz,
+                                miv == zv,
                                 z3.If(
-                                    md == 0,
-                                    next_xv == xy,
+                                    mdv == 0,
+                                    next_xv == yv,
                                     z3.If(
-                                        md == 1,
-                                        next_xv == n - 1 - xy,
+                                        mdv == 1,
+                                        next_xv == n - 1 - yv,
                                         z3.If(
-                                            md == 2,
+                                            mdv == 2,
                                             next_xv == n - 1 - xv,
                                             next_xv == xv,
                                         ),
@@ -233,57 +233,57 @@ def solve_for_k(puzzle: State, k: int):
             # Restrictions for next y.
             solver.add(
                 z3.If(
-                    ma == 0,
+                    mav == 0,
                     z3.If(
-                        mi == xy,
+                        miv == yv,
                         z3.If(
-                            md == 0,
-                            next_yv == xy,
+                            mdv == 0,
+                            next_yv == yv,
                             z3.If(
-                                md == 1,
-                                next_yv == xy,
-                                z3.If(md == 2, next_yv == xy, next_yv == xy),
+                                mdv == 1,
+                                next_yv == yv,
+                                z3.If(mdv == 2, next_yv == yv, next_yv == yv),
                             ),
                         ),
-                        next_yv == xy,
+                        next_yv == yv,
                     ),
                     z3.If(
-                        ma == 1,
+                        mav == 1,
                         z3.If(
-                            mi == xv,
+                            miv == xv,
                             z3.If(
-                                md == 0,
-                                next_yv == n - 1 - xz,
+                                mdv == 0,
+                                next_yv == n - 1 - zv,
                                 z3.If(
-                                    md == 1,
-                                    next_yv == xz,
+                                    mdv == 1,
+                                    next_yv == zv,
                                     z3.If(
-                                        md == 2, next_yv == n - 1 - xv, next_yv == xy
+                                        mdv == 2, next_yv == n - 1 - xv, next_yv == yv
                                     ),
                                 ),
                             ),
-                            next_yv == xy,
+                            next_yv == yv,
                         ),
                         z3.If(
-                            ma == 2,
+                            mav == 2,
                             z3.If(
-                                mi == xz,
+                                miv == zv,
                                 z3.If(
-                                    md == 0,
+                                    mdv == 0,
                                     next_yv == n - 1 - xv,
                                     z3.If(
-                                        md == 1,
+                                        mdv == 1,
                                         next_yv == xv,
                                         z3.If(
-                                            md == 2,
-                                            next_yv == n - 1 - xy,
-                                            next_yv == xy,
+                                            mdv == 2,
+                                            next_yv == n - 1 - yv,
+                                            next_yv == yv,
                                         ),
                                     ),
                                 ),
-                                next_yv == xy,
+                                next_yv == yv,
                             ),
-                            next_yv == xy,
+                            next_yv == yv,
                         ),
                     ),
                 )
@@ -292,111 +292,111 @@ def solve_for_k(puzzle: State, k: int):
             # Restrictions for next z.
             solver.add(
                 z3.If(
-                    ma == 0,
+                    mav == 0,
                     z3.If(
-                        mi == xy,
+                        miv == yv,
                         z3.If(
-                            md == 0,
+                            mdv == 0,
                             next_zv == n - 1 - xv,
                             z3.If(
-                                md == 1,
+                                mdv == 1,
                                 next_zv == xv,
-                                z3.If(md == 2, next_zv == n - 1 - xz, next_zv == xz),
+                                z3.If(mdv == 2, next_zv == n - 1 - zv, next_zv == zv),
                             ),
                         ),
-                        next_zv == xz,
+                        next_zv == zv,
                     ),
                     z3.If(
-                        ma == 1,
+                        mav == 1,
                         z3.If(
-                            mi == xv,
+                            miv == xv,
                             z3.If(
-                                md == 0,
-                                next_zv == xy,
+                                mdv == 0,
+                                next_zv == yv,
                                 z3.If(
-                                    md == 1,
-                                    next_zv == n - 1 - xy,
+                                    mdv == 1,
+                                    next_zv == n - 1 - yv,
                                     z3.If(
-                                        md == 2, next_zv == n - 1 - xz, next_zv == xz
+                                        mdv == 2, next_zv == n - 1 - zv, next_zv == zv
                                     ),
                                 ),
                             ),
-                            next_zv == xz,
+                            next_zv == zv,
                         ),
                         z3.If(
-                            ma == 2,
+                            mav == 2,
                             z3.If(
-                                mi == xz,
+                                miv == zv,
                                 z3.If(
-                                    md == 0,
-                                    next_zv == xz,
+                                    mdv == 0,
+                                    next_zv == zv,
                                     z3.If(
-                                        md == 1,
-                                        next_zv == xz,
-                                        z3.If(md == 2, next_zv == xz, next_zv == xz),
+                                        mdv == 1,
+                                        next_zv == zv,
+                                        z3.If(mdv == 2, next_zv == zv, next_zv == zv),
                                     ),
                                 ),
-                                next_zv == xz,
+                                next_zv == zv,
                             ),
-                            next_zv == xz,
+                            next_zv == zv,
                         ),
                     ),
                 )
             )
 
         for x, y, z in itertools.chain(corners, edges):
-            xv, xy, xz, r = cubicle(s, x, y, z)
-            next_xv, next_yv, next_zv, new_r = cubicle(s + 1, x, y, z)
-            assert r is not None and new_r is not None
+            xv, yv, zv, rv = cubicle(s, x, y, z)
+            next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
+            assert rv is not None and next_rv is not None
 
             # Restrictions for next r.
             solver.add(
                 z3.If(
-                    ma == 0,
+                    mav == 0,
                     z3.If(
-                        mi == xy,
+                        miv == yv,
                         z3.If(
-                            md != 2,
+                            mdv != 2,
                             z3.If(
-                                r == 0,
-                                new_r == 2,
-                                z3.If(r == 2, new_r == 0, new_r == r),
+                                rv == 0,
+                                next_rv == 2,
+                                z3.If(rv == 2, next_rv == 0, next_rv == rv),
                             ),
-                            new_r == r,
+                            next_rv == rv,
                         ),
-                        new_r == r,
+                        next_rv == rv,
                     ),
                     z3.If(
-                        ma == 1,
+                        mav == 1,
                         z3.If(
-                            mi == xv,
+                            miv == xv,
                             z3.If(
-                                md != 2,
+                                mdv != 2,
                                 z3.If(
-                                    r == 1,
-                                    new_r == 2,
-                                    z3.If(r == 2, new_r == 1, new_r == r),
+                                    rv == 1,
+                                    next_rv == 2,
+                                    z3.If(rv == 2, next_rv == 1, next_rv == rv),
                                 ),
-                                new_r == r,
+                                next_rv == rv,
                             ),
-                            new_r == r,
+                            next_rv == rv,
                         ),
                         z3.If(
-                            ma == 2,
+                            mav == 2,
                             z3.If(
-                                mi == xz,
+                                miv == zv,
                                 z3.If(
-                                    md != 2,
+                                    mdv != 2,
                                     z3.If(
-                                        r == 0,
-                                        new_r == 1,
-                                        z3.If(r == 1, new_r == 0, new_r == r),
+                                        rv == 0,
+                                        next_rv == 1,
+                                        z3.If(rv == 1, next_rv == 0, next_rv == rv),
                                     ),
-                                    new_r == r,
+                                    next_rv == rv,
                                 ),
-                                new_r == r,
+                                next_rv == rv,
                             ),
-                            new_r == r,
+                            next_rv == rv,
                         ),
                     ),
                 )
@@ -406,7 +406,7 @@ def solve_for_k(puzzle: State, k: int):
     # NOTE: optimized implementation
     # mappings = move_mapping.load(n)
     # for s in range(k):
-    #     ma, mi, md = mas[s], mis[s], mds[s]
+    #     mav, miv, mdv = mas[s], mis[s], mds[s]
 
     #     def convert_exp(exp: int | str) -> int | z3.ArithRef:
     #         if isinstance(exp, int):
@@ -422,20 +422,20 @@ def solve_for_k(puzzle: State, k: int):
     #         else:
     #             match exp:
     #                 case "x":
-    #                     return x
+    #                     return xv
     #                 case "y":
-    #                     return y
+    #                     return yv
     #                 case "z":
-    #                     return z
+    #                     return zv
     #                 case "r":
-    #                     assert r is not None
-    #                     return r
+    #                     assert rv is not None
+    #                     return rv
     #                 case "ma":
-    #                     return ma
+    #                     return mav
     #                 case "mi":
-    #                     return mi
+    #                     return miv
     #                 case "md":
-    #                     return md
+    #                     return mdv
     #                 case _:
     #                     raise Exception(f"invalid variable: {exp}")
 
@@ -446,9 +446,9 @@ def solve_for_k(puzzle: State, k: int):
     #             return convert_exp(left) != convert_exp(right)
 
     #     # Add restrictions for all corners.
-    #     for cx, cy, cz in corners:
-    #         x, y, z, r = cubie(s, cx, cy, cz)
-    #         new_x, new_y, new_z, new_r = cubie(s + 1, cx, cy, cz)
+    #     for x, y, z in corners:
+    #         xv, yv, zv, rv = cubicle(s, x, y, z)
+    #         next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
 
     #         # Mappings for x-coordinates.
     #         for inputs, output in mappings["corner_coord"]["x_new"]:
@@ -458,7 +458,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_x == convert_exp(output),
+    #                     next_xv == convert_exp(output),
     #                 )
     #             )
 
@@ -470,7 +470,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_y == convert_exp(output),
+    #                     next_yv == convert_exp(output),
     #                 )
     #             )
 
@@ -482,7 +482,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_z == convert_exp(output),
+    #                     next_zv == convert_exp(output),
     #                 )
     #             )
 
@@ -494,14 +494,14 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_r == convert_exp(output),
+    #                     next_rv == convert_exp(output),
     #                 )
     #             )
 
     #     # Add restrictions for all centers.
-    #     for cx, cy, cz in centers:
-    #         x, y, z, _ = cubie(s, cx, cy, cz)
-    #         new_x, new_y, new_z, _ = cubie(s + 1, cx, cy, cz)
+    #     for x, y, z in centers:
+    #         xv, yv, zv, rv = cubicle(s, x, y, z)
+    #         next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
 
     #         # Mappings for x-coordinates.
     #         for inputs, output in mappings["center_coord"]["x_new"]:
@@ -511,7 +511,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_x == convert_exp(output),
+    #                     next_xv == convert_exp(output),
     #                 )
     #             )
 
@@ -523,7 +523,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_y == convert_exp(output),
+    #                     next_yv == convert_exp(output),
     #                 )
     #             )
 
@@ -535,14 +535,14 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_z == convert_exp(output),
+    #                     next_zv == convert_exp(output),
     #                 )
     #             )
 
     #     # Add restrictions for all edges.
-    #     for cx, cy, cz in edges:
-    #         x, y, z, r = cubie(s, cx, cy, cz)
-    #         new_x, new_y, new_z, new_r = cubie(s + 1, cx, cy, cz)
+    #     for x, y, z in edges:
+    #         xv, yv, zv, rv = cubicle(s, x, y, z)
+    #         next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
 
     #         # Mappings for x-coordinates.
     #         for inputs, output in mappings["edge_coord"]["x_new"]:
@@ -552,7 +552,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_x == convert_exp(output),
+    #                     next_xv == convert_exp(output),
     #                 )
     #             )
 
@@ -564,7 +564,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_y == convert_exp(output),
+    #                     next_yv == convert_exp(output),
     #                 )
     #             )
 
@@ -576,7 +576,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_z == convert_exp(output),
+    #                     next_zv == convert_exp(output),
     #                 )
     #             )
 
@@ -588,7 +588,7 @@ def solve_for_k(puzzle: State, k: int):
     #             solver.add(
     #                 z3.Or(
     #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     new_r == convert_exp(output),
+    #                     next_rv == convert_exp(output),
     #                 )
     #             )
 
@@ -780,6 +780,6 @@ def solve(files: list[str], process_count: int):
                     solution_file.write(json.dumps(result, indent=4))
 
 
-# e.g. python solve.py ./puzzles/n2-random10.txt
+# e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
     solve([sys.argv[1]], cpu_count())
