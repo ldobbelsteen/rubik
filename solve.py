@@ -92,7 +92,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
     mds = [z3_int(solver, f"s({s}) md", 0, 3) for s in range(k)]
 
     def cubicle(s: int, x: int, y: int, z: int):
-        """Get a cubicle, assuming it exists."""
+        """Get a cubicle assuming it exists."""
         cubicle = cubicle_states[s][x][y][z]
         if cubicle is None:
             raise Exception(f"invalid cubicle: {({x},{y},{z})}")
@@ -109,7 +109,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
             conditions.append(zv == puzzle.coords[x][y][z][2])
             conditions.append(rv == puzzle.rotations[x][y][z])
         for x, y, z in centers:
-            xv, yv, zv, rv = cubicle(s, x, y, z)
+            xv, yv, zv, _ = cubicle(s, x, y, z)
             conditions.append(xv == puzzle.coords[x][y][z][0])
             conditions.append(yv == puzzle.coords[x][y][z][1])
             conditions.append(zv == puzzle.coords[x][y][z][2])
