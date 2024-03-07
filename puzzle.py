@@ -366,6 +366,12 @@ class Puzzle:
         raise Exception(f"invalid facelet: ({ff},{fy},{fx})")
 
     @staticmethod
+    def from_file(path: str):
+        with open(path, "r") as file:
+            content = file.read()
+            return Puzzle.from_str(content)
+
+    @staticmethod
     def from_str(s: str):
         n = int((len(s) / 6) ** 0.5)
         assert len(s) == 6 * n * n

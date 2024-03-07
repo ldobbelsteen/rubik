@@ -671,7 +671,7 @@ def solve(files: list[str], process_count: int):
 
     with Manager() as manager:
         # List of puzzles to solve.
-        puzzles = [Puzzle.from_str(open(file, "r").read()) for file in files]
+        puzzles = [Puzzle.from_file(file) for file in files]
 
         # List of n values for each of the puzzles.
         ns = [puzzles[i].n for i in range(len(puzzles))]
