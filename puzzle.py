@@ -444,36 +444,23 @@ class Puzzle:
             for y in range(self.n):
                 for z in range(self.n):
                     type = cubicle_type(self.n, x, y, z)
+                    prev_x, prev_y, prev_z = self.coords[x][y][z]
+                    prev_r = self.rotations[x][y][z]
 
                     # Map the coordinates.
                     if type != -1:
                         self.coords[x][y][z] = coord_mapping(
-                            self.n,
-                            self.coords[x][y][z][0],
-                            self.coords[x][y][z][1],
-                            self.coords[x][y][z][2],
-                            ma,
-                            mi,
-                            md,
+                            self.n, prev_x, prev_y, prev_z, ma, mi, md
                         )
 
                     # Map the rotation.
                     if type == 0:
                         self.rotations[x][y][z] = corner_rotation_mapping(
-                            self.coords[x][y][z][0],
-                            self.coords[x][y][z][2],
-                            self.rotations[x][y][z],
-                            ma,
-                            mi,
-                            md,
+                            prev_x, prev_z, prev_r, ma, mi, md
                         )[0]
                     elif type == 2:
                         self.rotations[x][y][z] = edge_rotation_mapping(
-                            self.coords[x][y][z][2],
-                            self.rotations[x][y][z],
-                            ma,
-                            mi,
-                            md,
+                            prev_z, prev_r, ma, mi, md
                         )[0]
 
     def print(self):
