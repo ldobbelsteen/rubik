@@ -192,7 +192,7 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
                     rotations[cx][cy][cz] = r
 
     # Check whether the coords are unique.
-    encountered = set()
+    encountered: set[tuple[int, int, int]] = set()
     for cx in range(n):
         for cy in range(n):
             for cz in range(n):
@@ -469,24 +469,28 @@ class Puzzle:
         im = Image.new(mode="RGB", size=image_size)
         draw = ImageDraw.Draw(im)
 
-        def draw_face(start_x: int, start_y: int, f: int):
+        def draw_face(start_x: int, start_y: int, f: int, rotate=False):
             for y in range(self.n):
                 for x in range(self.n):
+                    if rotate:
+                        color = self.facelet_color(f, self.n - 1 - y, self.n - 1 - x)
+                    else:
+                        color = self.facelet_color(f, y, x)
                     draw.rectangle(
                         (
                             start_x + (x * facelet_size),
-                            start_y + (y * facelet_size),
+                            start_y + ((self.n - 1 - y) * facelet_size),
                             start_x + ((x + 1) * facelet_size),
-                            start_y + ((y + 1) * facelet_size),
+                            start_y + ((self.n - y) * facelet_size),
                         ),
-                        fill=color_name(self.facelet_color(f, y, x)),
+                        fill=color_name(color),
                         outline="black",
                         width=4,
                     )
 
         draw_face(1 * self.n * facelet_size, 1 * self.n * facelet_size, 0)
         draw_face(2 * self.n * facelet_size, 1 * self.n * facelet_size, 1)
-        draw_face(1 * self.n * facelet_size, 3 * self.n * facelet_size, 2)
+        draw_face(1 * self.n * facelet_size, 3 * self.n * facelet_size, 2, True)
         draw_face(0 * self.n * facelet_size, 1 * self.n * facelet_size, 3)
         draw_face(1 * self.n * facelet_size, 0 * self.n * facelet_size, 4)
         draw_face(1 * self.n * facelet_size, 2 * self.n * facelet_size, 5)
