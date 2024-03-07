@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from logic import State, move_name, list_edges, list_centers, list_corners
+from puzzle import Puzzle, move_name, list_edges, list_centers, list_corners
 from misc import print_stamped
 import move_mapping
 import itertools
@@ -31,7 +31,7 @@ def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
     return var
 
 
-def solve_for_k(puzzle: State, k: int):
+def solve_for_k(puzzle: Puzzle, k: int):
     """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible.
     Also returns, in both cases, the time it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
@@ -98,27 +98,27 @@ def solve_for_k(puzzle: State, k: int):
             raise Exception(f"invalid cubicle: {({x},{y},{z})}")
         return cubicle
 
-    def fix_state(s: int, state: State):
-        """Return condition of a state being equal to a state object."""
+    def fix_state(s: int, puzzle: Puzzle):
+        """Return condition of a state being equal to a puzzle object."""
         conditions = []
 
         for x, y, z in corners:
             xv, yv, zv, rv = cubicle(s, x, y, z)
-            conditions.append(xv == state.coords[x][y][z][0])
-            conditions.append(yv == state.coords[x][y][z][1])
-            conditions.append(zv == state.coords[x][y][z][2])
-            conditions.append(rv == state.rotations[x][y][z])
+            conditions.append(xv == puzzle.coords[x][y][z][0])
+            conditions.append(yv == puzzle.coords[x][y][z][1])
+            conditions.append(zv == puzzle.coords[x][y][z][2])
+            conditions.append(rv == puzzle.rotations[x][y][z])
         for x, y, z in centers:
             xv, yv, zv, rv = cubicle(s, x, y, z)
-            conditions.append(xv == state.coords[x][y][z][0])
-            conditions.append(yv == state.coords[x][y][z][1])
-            conditions.append(zv == state.coords[x][y][z][2])
+            conditions.append(xv == puzzle.coords[x][y][z][0])
+            conditions.append(yv == puzzle.coords[x][y][z][1])
+            conditions.append(zv == puzzle.coords[x][y][z][2])
         for x, y, z in edges:
             xv, yv, zv, rv = cubicle(s, x, y, z)
-            conditions.append(xv == state.coords[x][y][z][0])
-            conditions.append(yv == state.coords[x][y][z][1])
-            conditions.append(zv == state.coords[x][y][z][2])
-            conditions.append(rv == state.rotations[x][y][z])
+            conditions.append(xv == puzzle.coords[x][y][z][0])
+            conditions.append(yv == puzzle.coords[x][y][z][1])
+            conditions.append(zv == puzzle.coords[x][y][z][2])
+            conditions.append(rv == puzzle.rotations[x][y][z])
 
         return z3.And(conditions)
 
@@ -153,7 +153,7 @@ def solve_for_k(puzzle: State, k: int):
     solver.add(fix_state(0, puzzle))
 
     # Fix the last state to the finished state.
-    finished = State.finished(n)
+    finished = Puzzle.finished(n)
     solver.add(fix_state(-1, finished))
 
     # Restrict color states when move is nothing.
@@ -653,7 +653,7 @@ def solve(files: list[str], process_count: int):
 
     with Manager() as manager:
         # List of puzzles to solve.
-        puzzles = [State.from_str(open(file, "r").read()) for file in files]
+        puzzles = [Puzzle.from_str(open(file, "r").read()) for file in files]
 
         # List of n values for each of the puzzles.
         ns = [puzzles[i].n for i in range(len(puzzles))]
@@ -687,7 +687,7 @@ def solve(files: list[str], process_count: int):
 
         def spawn_new_process():
             def solve_wrapper(
-                puzzle: State,
+                puzzle: Puzzle,
                 k: int,
                 i: int,
                 output: Queue[tuple[int, int, list[str] | None, timedelta, timedelta]],

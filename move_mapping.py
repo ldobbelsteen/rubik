@@ -8,7 +8,7 @@ from datetime import datetime
 from functools import reduce
 from dd.cudd import BDD, Function
 from misc import print_stamped, create_parent_directory
-from logic import (
+from puzzle import (
     coord_mapping,
     corner_rotation_mapping,
     edge_rotation_mapping,

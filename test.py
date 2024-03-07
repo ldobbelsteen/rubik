@@ -1,5 +1,6 @@
 import unittest
-from logic import cubicle_type, cubicle_colors, facelet_cubicle
+import os
+from puzzle import cubicle_type, cubicle_colors, facelet_cubicle, Puzzle
 
 
 class Testing(unittest.TestCase):
@@ -22,6 +23,15 @@ class Testing(unittest.TestCase):
         self.assertEqual(facelet_cubicle(3, 2, 2, 1), (1, 2, 2))
         self.assertEqual(facelet_cubicle(3, 4, 2, 2), (2, 2, 2))
         self.assertEqual(facelet_cubicle(3, 5, 2, 1), (1, 0, 0))
+
+    def test_puzzle_parsing(self):
+        dir = "./puzzles"
+        for filename in os.listdir(dir):
+            path = os.path.join(dir, filename)
+            with open(path, "r") as file:
+                print(path)
+                puzzle = file.read()
+                self.assertEqual(Puzzle.from_str(puzzle).to_str(), puzzle)
 
 
 if __name__ == "__main__":

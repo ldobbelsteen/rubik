@@ -275,7 +275,7 @@ def edge_rotation_mapping(z: int, r: int, ma: int, mi: int, md: int) -> tuple[in
     return (r,)
 
 
-class State:
+class Puzzle:
     def __init__(
         self,
         n: int,
@@ -295,13 +295,26 @@ class State:
                         colors = cubicle_colors(self.n, cx, cy, cz)
                         type = cubicle_type(self.n, cx, cy, cz)
 
+                        if ff == 0 and fy == 0 and fx == 1:
+                            print(f"x,y,z {(x, y, z)}")
+                            print(f"cx,cy,cz {(cx, cy, cz)}")
+                            print(f"type {type}")
+                            print(colors)
+
                         if type == 1:
                             return colors[0]
                         else:
                             assert type != -1
                             r = self.rotations[cx][cy][cz]
                             fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
-                            ci = (fi + colors[r]) % len(colors)
+                            ci = (fi + r) % len(colors)
+
+                            if ff == 0 and fy == 0 and fx == 1:
+                                print(f"r {r}")
+                                print(f"fi {fi}")
+                                print(f"ci {ci}")
+                                print(f"cci {colors[ci]}")
+
                             return colors[ci]
         raise Exception(f"invalid facelet: ({ff},{fy},{fx})")
 
@@ -318,22 +331,34 @@ class State:
             ]
             for f in range(6)
         ]
+        print(facelet_colors)
 
         coords, rotations = facelet_colors_to_encoding(n, facelet_colors)
-        return State(n, coords, rotations)
+        return Puzzle(n, coords, rotations)
 
     def to_str(self):
+        facelet_colors = [
+            [
+                [self.facelet_color(f, y, x) for x in range(self.n)]
+                for y in range(self.n)
+            ]
+            for f in range(6)
+        ]
+
         colors = [
             self.facelet_color(f, y, x)
             for f in range(6)
             for y in reversed(range(self.n))
             for x in range(self.n)
         ]
+
+        print(facelet_colors)
+        print(colors)
         return "".join(map(str, colors))
 
     @staticmethod
     def finished(n: int):
-        return State(
+        return Puzzle(
             n,
             [
                 [

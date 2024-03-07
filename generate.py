@@ -1,7 +1,7 @@
 import random
 import sys
 import os
-from logic import State
+from puzzle import Puzzle
 from misc import create_parent_directory
 import itertools
 
@@ -12,7 +12,7 @@ def generate(n: int, randomizations: int, overwrite=False):
         return
     create_parent_directory(path)
 
-    state = State.finished(n)
+    state = Puzzle.finished(n)
     moves = list(itertools.product(range(3), range(n), range(3)))
 
     for _ in range(randomizations):
