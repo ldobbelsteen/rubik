@@ -344,7 +344,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
                 )
             )
 
-        for x, y, z in itertools.chain(corners, edges):
+        for x, y, z in corners:
             xv, yv, zv, rv = cubicle(s, x, y, z)
             next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
             assert rv is not None and next_rv is not None
@@ -352,53 +352,71 @@ def solve_for_k(puzzle: Puzzle, k: int):
             # Restrictions for next r.
             solver.add(
                 z3.If(
-                    mav == 0,
+                    mav == 1,
                     z3.If(
-                        miv == yv,
+                        miv == xv,
                         z3.If(
                             mdv != 2,
                             z3.If(
                                 rv == 0,
-                                next_rv == 2,
-                                z3.If(rv == 2, next_rv == 0, next_rv == rv),
+                                next_rv == 1,
+                                z3.If(
+                                    rv == 1,
+                                    next_rv == 2,
+                                    z3.If(rv == 2, next_rv == 0, next_rv == rv),
+                                ),
                             ),
                             next_rv == rv,
                         ),
                         next_rv == rv,
                     ),
                     z3.If(
-                        mav == 1,
+                        mav == 2,
                         z3.If(
-                            miv == xv,
+                            miv == zv,
                             z3.If(
                                 mdv != 2,
                                 z3.If(
-                                    rv == 1,
+                                    rv == 0,
                                     next_rv == 2,
-                                    z3.If(rv == 2, next_rv == 1, next_rv == rv),
-                                ),
-                                next_rv == rv,
-                            ),
-                            next_rv == rv,
-                        ),
-                        z3.If(
-                            mav == 2,
-                            z3.If(
-                                miv == zv,
-                                z3.If(
-                                    mdv != 2,
                                     z3.If(
-                                        rv == 0,
-                                        next_rv == 1,
-                                        z3.If(rv == 1, next_rv == 0, next_rv == rv),
+                                        rv == 1,
+                                        next_rv == 0,
+                                        z3.If(rv == 2, next_rv == 1, next_rv == rv),
                                     ),
-                                    next_rv == rv,
                                 ),
                                 next_rv == rv,
                             ),
                             next_rv == rv,
                         ),
+                        next_rv == rv,
                     ),
+                ),
+            )
+
+        for x, y, z in edges:
+            xv, yv, zv, rv = cubicle(s, x, y, z)
+            next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
+            assert rv is not None and next_rv is not None
+
+            # Restrictions for next r.
+            solver.add(
+                z3.If(
+                    mav == 2,
+                    z3.If(
+                        miv == zv,
+                        z3.If(
+                            mdv != 2,
+                            z3.If(
+                                rv == 0,
+                                next_rv == 1,
+                                z3.If(rv == 1, next_rv == 0, next_rv == rv),
+                            ),
+                            next_rv == rv,
+                        ),
+                        next_rv == rv,
+                    ),
+                    next_rv == rv,
                 )
             )
 
