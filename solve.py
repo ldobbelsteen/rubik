@@ -192,19 +192,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
                     ),
                     z3.If(
                         mav == 1,
-                        z3.If(
-                            miv == xv,
-                            z3.If(
-                                mdv == 0,
-                                next_xv == xv,
-                                z3.If(
-                                    mdv == 1,
-                                    next_xv == xv,
-                                    z3.If(mdv == 2, next_xv == xv, next_xv == xv),
-                                ),
-                            ),
-                            next_xv == xv,
-                        ),
+                        next_xv == xv,
                         z3.If(
                             mav == 2,
                             z3.If(
@@ -234,19 +222,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
             solver.add(
                 z3.If(
                     mav == 0,
-                    z3.If(
-                        miv == yv,
-                        z3.If(
-                            mdv == 0,
-                            next_yv == yv,
-                            z3.If(
-                                mdv == 1,
-                                next_yv == yv,
-                                z3.If(mdv == 2, next_yv == yv, next_yv == yv),
-                            ),
-                        ),
-                        next_yv == yv,
-                    ),
+                    next_yv == yv,
                     z3.If(
                         mav == 1,
                         z3.If(
@@ -258,7 +234,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
                                     mdv == 1,
                                     next_yv == zv,
                                     z3.If(
-                                        mdv == 2, next_yv == n - 1 - xv, next_yv == yv
+                                        mdv == 2, next_yv == n - 1 - yv, next_yv == yv
                                     ),
                                 ),
                             ),
@@ -323,23 +299,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
                             ),
                             next_zv == zv,
                         ),
-                        z3.If(
-                            mav == 2,
-                            z3.If(
-                                miv == zv,
-                                z3.If(
-                                    mdv == 0,
-                                    next_zv == zv,
-                                    z3.If(
-                                        mdv == 1,
-                                        next_zv == zv,
-                                        z3.If(mdv == 2, next_zv == zv, next_zv == zv),
-                                    ),
-                                ),
-                                next_zv == zv,
-                            ),
-                            next_zv == zv,
-                        ),
+                        next_zv == zv,
                     ),
                 )
             )
