@@ -1,4 +1,5 @@
 from PIL import Image, ImageDraw
+from misc import rotate_list
 
 
 def face_name(f: int) -> str:
@@ -19,7 +20,7 @@ def face_name(f: int) -> str:
     raise Exception(f"invalid face: {f}")
 
 
-# Global face ordering to guarantee rotation ordering.
+# Global face ordering determining rotation labeling.
 # FIRST top/bottom, SECOND front/back, THIRD left/right.
 FACE_ORDERING = [4, 5, 0, 2, 3, 1]
 
@@ -87,8 +88,8 @@ def cubicle_type(n: int, x: int, y: int, z: int):
 
 
 def cubicle_colors(n: int, x: int, y: int, z: int) -> list[int]:
-    """Get the list of colors of a cubicle in a finished cube. The list is
-    sorted by the global face ordering."""
+    """Get the list of colors of a cubicle in a finished cube. The index of the
+    color indicates the rotation label."""
     colors = set()
     if x == 0:
         colors.add(3)
@@ -103,6 +104,19 @@ def cubicle_colors(n: int, x: int, y: int, z: int) -> list[int]:
     if z == n - 1:
         colors.add(2)
     return [f for f in FACE_ORDERING if f in colors]
+
+
+def corner_cubicle_clockwise(n: int, x: int, y: int, z: int) -> bool:
+    """Determine whether a cubicle's colors are labeled clockwise or not."""
+    assert cubicle_type(n, x, y, z) == 0
+
+    # Only four are clockwise. The others are counterclockwise.
+    return (
+        (x == 0 and y == n - 1 and z == 0)
+        or (x == 0 and y == 0 and z == n - 1)
+        or (x == n - 1 and y == 0 and z == 0)
+        or (x == n - 1 and y == n - 1 and z == n - 1)
+    )
 
 
 def cubicle_facelets(n: int, x: int, y: int, z: int) -> list[tuple[int, int, int]]:
@@ -295,24 +309,15 @@ class Puzzle:
                         colors = cubicle_colors(self.n, cx, cy, cz)
                         type = cubicle_type(self.n, cx, cy, cz)
 
-                        # NOTE: debugging
-                        if ff == 0 and fy == 0 and fx == 1:
-                            print(f"x,y,z {(x, y, z)}")
-                            print(f"cx,cy,cz {(cx, cy, cz)}")
-                            print(f"type {type}")
-                            print(colors)
-
                         if type == 1:
+                            assert len(colors) == 1
                             return colors[0]
                         elif type == 2:
                             assert len(colors) == 2
-
-                            r = self.rotations[cx][cy][cz]
-                            assert r == 0 or r == 1
-
                             fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
+                            r = self.rotations[cx][cy][cz]
                             assert fi == 0 or fi == 1
-
+                            assert r == 0 or r == 1
                             if fi == 0:
                                 return colors[r]
                             elif r == 0:
@@ -320,18 +325,33 @@ class Puzzle:
                             else:
                                 return colors[0]
                         elif type == 0:
+                            assert len(colors) == 3
                             r = self.rotations[cx][cy][cz]
+                            first_color = colors[r]
+
+                            # If the cubicles have opposite coloring directions,
+                            # reverse the color list to adhere to ordering.
+                            if corner_cubicle_clockwise(
+                                self.n,
+                                x,
+                                y,
+                                z,
+                            ) != corner_cubicle_clockwise(
+                                self.n,
+                                cx,
+                                cy,
+                                cz,
+                            ):
+                                colors.reverse()
+
+                            # Rotate until the color is in the first slot.
+                            while colors[0] != first_color:
+                                rotate_list(colors)
+
+                            # Get the facelet index of the facelet in question and return.
                             fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
-                            ci = (fi + r) % len(colors)
+                            return colors[fi]
 
-                            # NOTE: debugging
-                            if ff == 0 and fy == 0 and fx == 1:
-                                print(f"r {r}")
-                                print(f"fi {fi}")
-                                print(f"ci {ci}")
-                                print(f"cci {colors[ci]}")
-
-                            return colors[ci]
         raise Exception(f"invalid facelet: ({ff},{fy},{fx})")
 
     @staticmethod
@@ -348,8 +368,6 @@ class Puzzle:
             for f in range(6)
         ]
 
-        print(facelet_colors)  # NOTE: debugging
-
         coords, rotations = facelet_colors_to_encoding(n, facelet_colors)
         return Puzzle(n, coords, rotations)
 
@@ -362,15 +380,17 @@ class Puzzle:
             for f in range(6)
         ]
 
-        print(facelet_colors)  # NOTE: debugging
-
-        colors = [
-            facelet_colors[f][y][x]
-            for f in range(6)
-            for y in reversed(range(self.n))
-            for x in range(self.n)
-        ]
-        return "".join(map(str, colors))
+        return "".join(
+            map(
+                str,
+                [
+                    facelet_colors[f][y][x]
+                    for f in range(6)
+                    for y in reversed(range(self.n))
+                    for x in range(self.n)
+                ],
+            )
+        )
 
     @staticmethod
     def finished(n: int):

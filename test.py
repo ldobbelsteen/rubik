@@ -27,11 +27,11 @@ class Testing(unittest.TestCase):
     def test_puzzle_parsing(self):
         dir = "./puzzles"
         for filename in os.listdir(dir):
-            path = os.path.join(dir, filename)
-            with open(path, "r") as file:
-                print(path)
-                puzzle = file.read()
-                self.assertEqual(Puzzle.from_str(puzzle).to_str(), puzzle)
+            if filename.endswith(".txt"):
+                path = os.path.join(dir, filename)
+                with open(path, "r") as file:
+                    puzzle = file.read()
+                    self.assertEqual(Puzzle.from_str(puzzle).to_str(), puzzle)
 
 
 if __name__ == "__main__":

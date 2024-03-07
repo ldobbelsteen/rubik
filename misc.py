@@ -26,3 +26,9 @@ def natural_sorted(ls: list[str]):
         return [convert(c) for c in re.split("([0-9]+)", key)]
 
     return sorted(ls, key=alphanum_key)
+
+
+def rotate_list(ls: list[int]):
+    """Rotate a list by appending its last element to the front."""
+    last = ls.pop()
+    ls.insert(0, last)
