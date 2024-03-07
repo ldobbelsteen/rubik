@@ -295,6 +295,7 @@ class Puzzle:
                         colors = cubicle_colors(self.n, cx, cy, cz)
                         type = cubicle_type(self.n, cx, cy, cz)
 
+                        # NOTE: debugging
                         if ff == 0 and fy == 0 and fx == 1:
                             print(f"x,y,z {(x, y, z)}")
                             print(f"cx,cy,cz {(cx, cy, cz)}")
@@ -303,12 +304,27 @@ class Puzzle:
 
                         if type == 1:
                             return colors[0]
-                        else:
-                            assert type != -1
+                        elif type == 2:
+                            assert len(colors) == 2
+
+                            r = self.rotations[cx][cy][cz]
+                            assert r == 0 or r == 1
+
+                            fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
+                            assert fi == 0 or fi == 1
+
+                            if fi == 0:
+                                return colors[r]
+                            elif r == 0:
+                                return colors[1]
+                            else:
+                                return colors[0]
+                        elif type == 0:
                             r = self.rotations[cx][cy][cz]
                             fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
                             ci = (fi + r) % len(colors)
 
+                            # NOTE: debugging
                             if ff == 0 and fy == 0 and fx == 1:
                                 print(f"r {r}")
                                 print(f"fi {fi}")
@@ -331,7 +347,8 @@ class Puzzle:
             ]
             for f in range(6)
         ]
-        print(facelet_colors)
+
+        print(facelet_colors)  # NOTE: debugging
 
         coords, rotations = facelet_colors_to_encoding(n, facelet_colors)
         return Puzzle(n, coords, rotations)
@@ -345,15 +362,14 @@ class Puzzle:
             for f in range(6)
         ]
 
+        print(facelet_colors)  # NOTE: debugging
+
         colors = [
-            self.facelet_color(f, y, x)
+            facelet_colors[f][y][x]
             for f in range(6)
             for y in reversed(range(self.n))
             for x in range(self.n)
         ]
-
-        print(facelet_colors)
-        print(colors)
         return "".join(map(str, colors))
 
     @staticmethod
