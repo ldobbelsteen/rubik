@@ -267,26 +267,30 @@ def coord_mapping(
 
 
 def corner_rotation_mapping(
-    x: int, z: int, r: int, ma: int, mi: int, md: int
+    n: int, x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
 ) -> tuple[int]:
     if ma == 1:
         if mi == x:
             if md != 2:
-                if r == 0:
-                    return (1,)
-                elif r == 1:
-                    return (2,)
-                elif r == 2:
-                    return (0,)
+                if (
+                    (x == 0 and y == n - 1 and z == 0)
+                    or (x == 0 and y == 0 and z == n - 1)
+                    or (x == n - 1 and y == 0 and z == 0)
+                    or (x == n - 1 and y == n - 1 and z == n - 1)
+                ):
+                    return (r + 1 % 3,)
+                return (r + 2 % 3,)
     elif ma == 2:
         if mi == z:
             if md != 2:
-                if r == 0:
-                    return (2,)
-                elif r == 1:
-                    return (0,)
-                elif r == 2:
-                    return (1,)
+                if (
+                    (x == 0 and y == n - 1 and z == 0)
+                    or (x == 0 and y == 0 and z == n - 1)
+                    or (x == n - 1 and y == 0 and z == 0)
+                    or (x == n - 1 and y == n - 1 and z == n - 1)
+                ):
+                    return (r + 2 % 3,)
+                return (r + 1 % 3,)
     return (r,)
 
 
@@ -294,10 +298,7 @@ def edge_rotation_mapping(z: int, r: int, ma: int, mi: int, md: int) -> tuple[in
     if ma == 2:
         if mi == z:
             if md != 2:
-                if r == 0:
-                    return (1,)
-                elif r == 1:
-                    return (0,)
+                return (r + 1 % 2,)
     return (r,)
 
 
