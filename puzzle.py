@@ -110,7 +110,7 @@ def corner_cubicle_clockwise(n: int, x: int, y: int, z: int) -> bool:
     """Determine whether a cubicle's colors are labeled clockwise or not."""
     assert cubicle_type(n, x, y, z) == 0
 
-    # Only four are clockwise. The others are counterclockwise.
+    # Only these four are clockwise. The other four are counterclockwise.
     return (
         (x == 0 and y == n - 1 and z == 0)
         or (x == 0 and y == 0 and z == n - 1)
@@ -164,9 +164,9 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
         for cx in range(n):
             for cy in range(n):
                 for cz in range(n):
-                    labeling = cubicle_colors(n, cx, cy, cz)
-                    if set(colors) == set(labeling):
-                        return cx, cy, cz, labeling.index(colors[0])
+                    ccolors = cubicle_colors(n, cx, cy, cz)
+                    if set(colors) == set(ccolors):
+                        return cx, cy, cz, ccolors.index(colors[0])
         raise Exception(f"invalid color list: {colors}")
 
     # Extract cubie coords and rotations by finding the color sets.
@@ -183,10 +183,21 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
 
                 colors = cubie_colors[x][y][z]
                 cx, cy, cz, r = find_cubicle(colors)
+                assert coords[cx][cy][cz] == (-1, -1, -1)
                 coords[cx][cy][cz] = (x, y, z)
 
                 if type == 0 or type == 2:
+                    assert rotations[cx][cy][cz] == -1
                     rotations[cx][cy][cz] = r
+
+    # Check whether the coords are unique.
+    encountered = set()
+    for cx in range(n):
+        for cy in range(n):
+            for cz in range(n):
+                if coords[cx][cy][cz] in encountered:
+                    raise Exception(f"duplicate coord ({cx},{cy},{cz})")
+                encountered.add(coords[cx][cy][cz])
 
     return coords, rotations
 
