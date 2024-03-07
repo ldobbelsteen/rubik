@@ -1,5 +1,6 @@
 from PIL import Image, ImageDraw
 from misc import rotate_list
+import sys
 
 
 def face_name(f: int) -> str:
@@ -503,3 +504,9 @@ class Puzzle:
         draw_face(1 * self.n * facelet_size, 0 * self.n * facelet_size, 4)
         draw_face(1 * self.n * facelet_size, 2 * self.n * facelet_size, 5)
         im.show()
+
+
+# e.g. python puzzle.py ./puzzles/n2-random4.txt
+if __name__ == "__main__":
+    puzzle = Puzzle.from_file(sys.argv[1])
+    puzzle.print()
