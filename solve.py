@@ -174,7 +174,7 @@ def next_edge_r_restriction(
     mi: z3.ArithRef,
     md: z3.ArithRef,
 ):
-    z3.If(
+    return z3.If(
         z3.And(
             md != 2,
             z3.Or(
