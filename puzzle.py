@@ -3,8 +3,10 @@ from misc import rotate_list
 import sys
 import copy
 
-# FIRST top/bottom, SECOND front/back, THIRD left/right.
-FACES = [4, 5, 0, 2, 3, 1]
+
+# The global face ordering by which the desired rotation ordering is achieved.
+# First come top/bottom, second frontback and third left/right.
+FACE_ORDERING = [4, 5, 0, 2, 3, 1]
 
 
 def face_name(f: int) -> str:
@@ -71,8 +73,8 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
     raise Exception(f"invalid move: ({ma},{mi},{md})")
 
 
-def cubicle_type(n: int, x: int, y: int, z: int):
-    """Determine the type of a cubicle by its coordinates. 0 = corner, 1 = center,
+def cubie_type(n: int, x: int, y: int, z: int):
+    """Determine the type of a cubie by its coordinates. 0 = corner, 1 = center,
     2 = edge and -1 = internal."""
     if (x == 0 or x == n - 1) and (y == 0 or y == n - 1) and (z == 0 or z == n - 1):
         return 0
@@ -87,9 +89,9 @@ def cubicle_type(n: int, x: int, y: int, z: int):
     return 2
 
 
-def cubicle_colors(n: int, x: int, y: int, z: int) -> list[int]:
-    """Get the list of colors of a cubicle in a finished cube. The list is
-    sorted by the global face ordering."""
+def cubie_colors(n: int, x: int, y: int, z: int) -> list[int]:
+    """Get the list of colors of a cubie in a finished cube. The list is sorted
+    by the global face ordering."""
     colors = set()
     if x == 0:
         colors.add(3)
@@ -103,11 +105,11 @@ def cubicle_colors(n: int, x: int, y: int, z: int) -> list[int]:
         colors.add(0)
     if z == n - 1:
         colors.add(2)
-    return [f for f in FACES if f in colors]
+    return [f for f in FACE_ORDERING if f in colors]
 
 
 def corner_clockwise(n: int, x: int, y: int, z: int) -> bool:
-    """Determine whether a corner cubicle's colors are labeled clockwise or not."""
+    """Determine whether a corner cubie's colors are labeled clockwise or not."""
 
     # Only these four are clockwise. The other four are counterclockwise.
     return (
@@ -118,20 +120,20 @@ def corner_clockwise(n: int, x: int, y: int, z: int) -> bool:
     )
 
 
-def cubicle_facelets(n: int, x: int, y: int, z: int) -> list[tuple[int, int, int]]:
-    """Get the list of facelets of a cubicle. The list is sorted by the global
+def cubie_facelets(n: int, x: int, y: int, z: int) -> list[tuple[int, int, int]]:
+    """Get the list of facelets of a cubie. The list is sorted by the global
     face ordering."""
     facelets = []
-    for ff in FACES:
+    for ff in FACE_ORDERING:
         for fy in range(n):
             for fx in range(n):
-                if facelet_cubicle(n, ff, fy, fx) == (x, y, z):
+                if facelet_cubie(n, ff, fy, fx) == (x, y, z):
                     facelets.append((ff, fy, fx))
     return facelets
 
 
-def facelet_cubicle(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
-    """Get the cubicle on which a facelet is located."""
+def facelet_cubie(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
+    """Get the cubie on which a facelet is located."""
     match f:
         case 0:
             return (x, y, 0)
@@ -152,18 +154,20 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
     """Convert facelet colors of a cube to our coord and rotation encoding."""
 
     # Extract the cubie colors from the facelet representation.
-    cubie_colors = [[[[] for _ in range(n)] for _ in range(n)] for _ in range(n)]
-    for ff in FACES:
+    extracted_cubie_colors = [
+        [[[] for _ in range(n)] for _ in range(n)] for _ in range(n)
+    ]
+    for ff in FACE_ORDERING:
         for fy in range(n):
             for fx in range(n):
-                x, y, z = facelet_cubicle(n, ff, fy, fx)
-                cubie_colors[x][y][z].append(facelet_colors[ff][fy][fx])
+                x, y, z = facelet_cubie(n, ff, fy, fx)
+                extracted_cubie_colors[x][y][z].append(facelet_colors[ff][fy][fx])
 
-    def find_cubicle(colors: list[int]) -> tuple[int, int, int, int]:
+    def find_origin_cubie(colors: list[int]) -> tuple[int, int, int, int]:
         for cx in range(n):
             for cy in range(n):
                 for cz in range(n):
-                    ccolors = cubicle_colors(n, cx, cy, cz)
+                    ccolors = cubie_colors(n, cx, cy, cz)
                     if set(colors) == set(ccolors):
                         return (cx, cy, cz, ccolors.index(colors[0]))
         raise Exception(f"invalid color list: {colors}")
@@ -176,12 +180,12 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
     for x in range(n):
         for y in range(n):
             for z in range(n):
-                type = cubicle_type(n, x, y, z)
+                type = cubie_type(n, x, y, z)
                 if type == -1:
                     continue
 
-                colors = cubie_colors[x][y][z]
-                cx, cy, cz, r = find_cubicle(colors)
+                colors = extracted_cubie_colors[x][y][z]
+                cx, cy, cz, r = find_origin_cubie(colors)
                 coords[cx][cy][cz] = (x, y, z)
 
                 if type == 0:
@@ -195,33 +199,33 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
     return coords, corner_r, corner_c, edge_r
 
 
-def list_corner_cubicles(n: int) -> list[tuple[int, int, int]]:
+def list_corner_cubies(n: int) -> list[tuple[int, int, int]]:
     return [
         (x, y, z)
         for x in range(n)
         for y in range(n)
         for z in range(n)
-        if cubicle_type(n, x, y, z) == 0
+        if cubie_type(n, x, y, z) == 0
     ]
 
 
-def list_center_cubicles(n: int) -> list[tuple[int, int, int]]:
+def list_center_cubies(n: int) -> list[tuple[int, int, int]]:
     return [
         (x, y, z)
         for x in range(n)
         for y in range(n)
         for z in range(n)
-        if cubicle_type(n, x, y, z) == 1
+        if cubie_type(n, x, y, z) == 1
     ]
 
 
-def list_edge_cubicles(n: int) -> list[tuple[int, int, int]]:
+def list_edge_cubies(n: int) -> list[tuple[int, int, int]]:
     return [
         (x, y, z)
         for x in range(n)
         for y in range(n)
         for z in range(n)
-        if cubicle_type(n, x, y, z) == 2
+        if cubie_type(n, x, y, z) == 2
     ]
 
 
@@ -441,7 +445,7 @@ class Puzzle:
         for x in range(self.n):
             for y in range(self.n):
                 for z in range(self.n):
-                    type = cubicle_type(self.n, x, y, z)
+                    type = cubie_type(self.n, x, y, z)
                     prev_x, prev_y, prev_z = self.coords[x][y][z]
                     prev_corner_r = self.corner_r[x][y][z]
                     prev_corner_c = self.corner_c[x][y][z]
@@ -467,20 +471,20 @@ class Puzzle:
                         )
 
     def facelet_color(self, ff: int, fy: int, fx: int) -> int:
-        x, y, z = facelet_cubicle(self.n, ff, fy, fx)
+        x, y, z = facelet_cubie(self.n, ff, fy, fx)
         for cx in range(self.n):
             for cy in range(self.n):
                 for cz in range(self.n):
                     if self.coords[cx][cy][cz] == (x, y, z):
-                        colors = cubicle_colors(self.n, cx, cy, cz)
-                        type = cubicle_type(self.n, cx, cy, cz)
+                        colors = cubie_colors(self.n, cx, cy, cz)
+                        type = cubie_type(self.n, cx, cy, cz)
 
                         if type == 1:
                             assert len(colors) == 1
                             return colors[0]
                         elif type == 2:
                             assert len(colors) == 2
-                            fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
+                            fi = cubie_facelets(self.n, x, y, z).index((ff, fy, fx))
                             r = self.edge_r[cx][cy][cz]
                             assert fi == 0 or fi == 1
                             if not r:
@@ -506,7 +510,7 @@ class Puzzle:
                                 rotate_list(colors)
 
                             # Get the facelet index of the facelet in question and return.
-                            fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
+                            fi = cubie_facelets(self.n, x, y, z).index((ff, fy, fx))
                             return colors[fi]
 
         raise Exception(f"invalid facelet: ({ff},{fy},{fx})")

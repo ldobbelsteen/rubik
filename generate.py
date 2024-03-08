@@ -11,6 +11,9 @@ def moveset(n: int):
 
 
 def generate(n: int, randomizations: int, overwrite=False):
+    if n < 2 or n > 3:
+        raise Exception(f"n = {n} not supported")
+
     path = f"./puzzles/n{n}-random{randomizations}.txt"
     if not overwrite and os.path.isfile(path):
         return

@@ -7,9 +7,9 @@ import z3
 from puzzle import (
     Puzzle,
     move_name,
-    list_edge_cubicles,
-    list_center_cubicles,
-    list_corner_cubicles,
+    list_edge_cubies,
+    list_center_cubies,
+    list_corner_cubies,
 )
 from misc import print_stamped
 import itertools
@@ -61,9 +61,9 @@ def solve_for_k(puzzle: Puzzle, k: int):
         for _ in range(k + 1)
     ]
 
-    corners = list_corner_cubicles(n)
-    centers = list_center_cubicles(n)
-    edges = list_edge_cubicles(n)
+    corners = list_corner_cubies(n)
+    centers = list_center_cubies(n)
+    edges = list_edge_cubies(n)
 
     # Populate the cubicle states with Z3 variables.
     for s in range(k + 1):
@@ -168,7 +168,6 @@ def solve_for_k(puzzle: Puzzle, k: int):
         solver.add(z3.Or(mis[s] != n, fix_state(s, finished)))
 
     # Restrict cubicle states according to moves.
-    # NOTE: naive reference implementation
     for s in range(k):
         mav, miv, mdv = mas[s], mis[s], mds[s]
 
