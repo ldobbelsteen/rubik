@@ -12,7 +12,6 @@ from puzzle import (
     list_corner_cubicles,
 )
 from misc import print_stamped
-import move_mapping
 import itertools
 
 
@@ -386,196 +385,6 @@ def solve_for_k(puzzle: Puzzle, k: int):
                 )
             )
 
-    # Restrict cubicle states according to moves.
-    # NOTE: optimized implementation
-    # mappings = move_mapping.load(n)
-    # for s in range(k):
-    #     mav, miv, mdv = mas[s], mis[s], mds[s]
-
-    #     def convert_exp(exp: int | str) -> int | z3.ArithRef:
-    #         if isinstance(exp, int):
-    #             return exp
-    #         elif exp.isnumeric():
-    #             return int(exp)
-    #         elif "-" in exp:
-    #             left, right = exp.split("-")
-    #             return convert_exp(left.strip()) - convert_exp(right.strip())
-    #         elif "+" in exp:
-    #             left, right = exp.split("+")
-    #             return convert_exp(left.strip()) + convert_exp(right.strip())
-    #         else:
-    #             match exp:
-    #                 case "x":
-    #                     return xv
-    #                 case "y":
-    #                     return yv
-    #                 case "z":
-    #                     return zv
-    #                 case "r":
-    #                     assert rv is not None
-    #                     return rv
-    #                 case "ma":
-    #                     return mav
-    #                 case "mi":
-    #                     return miv
-    #                 case "md":
-    #                     return mdv
-    #                 case _:
-    #                     raise Exception(f"invalid variable: {exp}")
-
-    #     def convert_eq(left: str, eq: bool, right: int | str) -> bool | z3.BoolRef:
-    #         if eq:
-    #             return convert_exp(left) == convert_exp(right)
-    #         else:
-    #             return convert_exp(left) != convert_exp(right)
-
-    #     # Add restrictions for all corners.
-    #     for x, y, z in corners:
-    #         xv, yv, zv, rv = cubicle(s, x, y, z)
-    #         next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
-
-    #         # Mappings for x-coordinates.
-    #         for inputs, output in mappings["corner_coord"]["x_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_xv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for y-coordinates.
-    #         for inputs, output in mappings["corner_coord"]["y_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_yv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for z-coordinates.
-    #         for inputs, output in mappings["corner_coord"]["z_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_zv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for rotation.
-    #         for inputs, output in mappings["corner_rotation"]["r_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_rv == convert_exp(output),
-    #                 )
-    #             )
-
-    #     # Add restrictions for all centers.
-    #     for x, y, z in centers:
-    #         xv, yv, zv, rv = cubicle(s, x, y, z)
-    #         next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
-
-    #         # Mappings for x-coordinates.
-    #         for inputs, output in mappings["center_coord"]["x_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_xv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for y-coordinates.
-    #         for inputs, output in mappings["center_coord"]["y_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_yv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for z-coordinates.
-    #         for inputs, output in mappings["center_coord"]["z_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_zv == convert_exp(output),
-    #                 )
-    #             )
-
-    #     # Add restrictions for all edges.
-    #     for x, y, z in edges:
-    #         xv, yv, zv, rv = cubicle(s, x, y, z)
-    #         next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
-
-    #         # Mappings for x-coordinates.
-    #         for inputs, output in mappings["edge_coord"]["x_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_xv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for y-coordinates.
-    #         for inputs, output in mappings["edge_coord"]["y_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_yv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for z-coordinates.
-    #         for inputs, output in mappings["edge_coord"]["z_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_zv == convert_exp(output),
-    #                 )
-    #             )
-
-    #         # Mappings for rotation.
-    #         for inputs, output in mappings["edge_rotation"]["r_new"]:
-    #             conditions = [
-    #                 convert_eq(input, eq, val) for input, (eq, val) in inputs.items()
-    #             ]
-    #             solver.add(
-    #                 z3.Or(
-    #                     z3.Or([z3.Not(cond) for cond in conditions]),
-    #                     next_rv == convert_exp(output),
-    #                 )
-    #             )
-
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
     for s in range(1, k):
         for rs in range(1, min(n + 1, s + 1)):
@@ -639,17 +448,10 @@ def solve(files: list[str], process_count: int):
         # List of puzzles to solve.
         puzzles = [Puzzle.from_file(file) for file in files]
 
-        # List of n values for each of the puzzles.
-        ns = [puzzles[i].n for i in range(len(puzzles))]
-
-        # Generate any missing move mappings.
-        for n in ns:
-            move_mapping.generate(n)
-
         # List of upperbounds for k for each of the puzzles.
-        k_upperbounds = [k_upperbound(ns[i]) for i in range(len(puzzles))]
+        k_upperbounds = [k_upperbound(puzzles[i].n) for i in range(len(puzzles))]
 
-        # Lists of prospects for k for each of the puzzles.
+        # Lists of prospects for k for each of the puzzles (starting with [0, k]).
         k_prospects = [list(range(k_upperbounds[i] + 1)) for i in range(len(puzzles))]
 
         # List of currently found minimum size solutions for each of the puzzles.
