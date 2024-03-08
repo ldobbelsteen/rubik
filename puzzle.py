@@ -2,6 +2,9 @@ from PIL import Image, ImageDraw
 from misc import rotate_list
 import sys
 
+# FIRST top/bottom, SECOND front/back, THIRD left/right.
+FACES = [4, 5, 0, 2, 3, 1]
+
 
 def face_name(f: int) -> str:
     """Convert a face index to its canonical name."""
@@ -19,11 +22,6 @@ def face_name(f: int) -> str:
         case 5:
             return "bottom"
     raise Exception(f"invalid face: {f}")
-
-
-# Global face ordering determining rotation labeling.
-# FIRST top/bottom, SECOND front/back, THIRD left/right.
-FACE_ORDERING = [4, 5, 0, 2, 3, 1]
 
 
 def color_name(c: int) -> str:
@@ -89,8 +87,8 @@ def cubicle_type(n: int, x: int, y: int, z: int):
 
 
 def cubicle_colors(n: int, x: int, y: int, z: int) -> list[int]:
-    """Get the list of colors of a cubicle in a finished cube. The index of the
-    color indicates the rotation label."""
+    """Get the list of colors of a cubicle in a finished cube. The list is
+    sorted by the global face ordering."""
     colors = set()
     if x == 0:
         colors.add(3)
@@ -104,12 +102,11 @@ def cubicle_colors(n: int, x: int, y: int, z: int) -> list[int]:
         colors.add(0)
     if z == n - 1:
         colors.add(2)
-    return [f for f in FACE_ORDERING if f in colors]
+    return [f for f in FACES if f in colors]
 
 
-def corner_cubicle_clockwise(n: int, x: int, y: int, z: int) -> bool:
-    """Determine whether a cubicle's colors are labeled clockwise or not."""
-    assert cubicle_type(n, x, y, z) == 0
+def corner_clockwise(n: int, x: int, y: int, z: int) -> bool:
+    """Determine whether a corner cubicle's colors are labeled clockwise or not."""
 
     # Only these four are clockwise. The other four are counterclockwise.
     return (
@@ -124,7 +121,7 @@ def cubicle_facelets(n: int, x: int, y: int, z: int) -> list[tuple[int, int, int
     """Get the list of facelets of a cubicle. The list is sorted by the global
     face ordering."""
     facelets = []
-    for ff in FACE_ORDERING:
+    for ff in FACES:
         for fy in range(n):
             for fx in range(n):
                 if facelet_cubicle(n, ff, fy, fx) == (x, y, z):
@@ -155,7 +152,7 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
 
     # Extract the cubie colors from the facelet representation.
     cubie_colors = [[[[] for _ in range(n)] for _ in range(n)] for _ in range(n)]
-    for ff in FACE_ORDERING:
+    for ff in FACES:
         for fy in range(n):
             for fx in range(n):
                 x, y, z = facelet_cubicle(n, ff, fy, fx)
@@ -167,14 +164,14 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
                 for cz in range(n):
                     ccolors = cubicle_colors(n, cx, cy, cz)
                     if set(colors) == set(ccolors):
-                        return cx, cy, cz, ccolors.index(colors[0])
+                        return (cx, cy, cz, ccolors.index(colors[0]))
         raise Exception(f"invalid color list: {colors}")
 
-    # Extract cubie coords and rotations by finding the color sets.
-    coords: list[list[list[tuple[int, int, int]]]] = [
-        [[(-1, -1, -1) for _ in range(n)] for _ in range(n)] for _ in range(n)
-    ]
-    rotations = [[[-1 for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    coords = [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)]
+    corner_r = [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    corner_c = [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)]
+    edge_r = [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)]
+
     for x in range(n):
         for y in range(n):
             for z in range(n):
@@ -184,27 +181,20 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
 
                 colors = cubie_colors[x][y][z]
                 cx, cy, cz, r = find_cubicle(colors)
-                assert coords[cx][cy][cz] == (-1, -1, -1)
                 coords[cx][cy][cz] = (x, y, z)
 
-                if type == 0 or type == 2:
-                    assert rotations[cx][cy][cz] == -1
-                    rotations[cx][cy][cz] = r
+                if type == 0:
+                    corner_r[cx][cy][cz] = r
+                    c = corner_clockwise(n, x, y, z) != corner_clockwise(n, cx, cy, cz)
+                    corner_c[cx][cy][cz] = c
+                elif type == 2:
+                    assert r == 0 or r == 1
+                    edge_r[cx][cy][cz] = r == 1
 
-    # Check whether the coords are unique.
-    encountered: set[tuple[int, int, int]] = set()
-    for cx in range(n):
-        for cy in range(n):
-            for cz in range(n):
-                if coords[cx][cy][cz] in encountered:
-                    raise Exception(f"duplicate coord ({cx},{cy},{cz})")
-                encountered.add(coords[cx][cy][cz])
-
-    return coords, rotations
+    return coords, corner_r, corner_c, edge_r
 
 
-def list_corners(n: int) -> list[tuple[int, int, int]]:
-    """Get a list of coordinates of the corners."""
+def list_corner_cubicles(n: int) -> list[tuple[int, int, int]]:
     return [
         (x, y, z)
         for x in range(n)
@@ -214,8 +204,7 @@ def list_corners(n: int) -> list[tuple[int, int, int]]:
     ]
 
 
-def list_centers(n: int) -> list[tuple[int, int, int]]:
-    """Get a list of coordinates of the centers."""
+def list_center_cubicles(n: int) -> list[tuple[int, int, int]]:
     return [
         (x, y, z)
         for x in range(n)
@@ -225,8 +214,7 @@ def list_centers(n: int) -> list[tuple[int, int, int]]:
     ]
 
 
-def list_edges(n: int) -> list[tuple[int, int, int]]:
-    """Get a list of coordinates of the edges."""
+def list_edge_cubicles(n: int) -> list[tuple[int, int, int]]:
     return [
         (x, y, z)
         for x in range(n)
@@ -236,70 +224,116 @@ def list_edges(n: int) -> list[tuple[int, int, int]]:
     ]
 
 
-def coord_mapping(
-    n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
-) -> tuple[int, int, int]:
-    if ma == 0:
-        if mi == y:
-            if md == 0:
-                return (z, y, n - 1 - x)  # clockwise
-            elif md == 1:
-                return (n - 1 - z, y, x)  # counterclockwise
-            elif md == 2:
-                return (n - 1 - x, y, n - 1 - z)  # 180 degree
-    elif ma == 1:
-        if mi == x:
-            if md == 0:
-                return (x, n - 1 - z, y)  # counterclockwise
-            elif md == 1:
-                return (x, z, n - 1 - y)  # clockwise
-            elif md == 2:
-                return (x, n - 1 - y, n - 1 - z)  # 180 degree
-    elif ma == 2:
-        if mi == z:
-            if md == 0:
-                return (y, n - 1 - x, z)  # clockwise
-            elif md == 1:
-                return (n - 1 - y, x, z)  # counterclockwise
-            elif md == 2:
-                return (n - 1 - x, n - 1 - y, z)  # 180 degree
-    return (x, y, z)
+# def coord_mapping(
+#     n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
+# ) -> tuple[int, int, int]:
+#     if ma == 0 and mi == y:
+#         if md == 0:
+#             return (z, y, n - 1 - x)  # clockwise
+#         elif md == 1:
+#             return (n - 1 - z, y, x)  # counterclockwise
+#         elif md == 2:
+#             return (n - 1 - x, y, n - 1 - z)  # 180 degree
+#     elif ma == 1 and mi == x:
+#         if md == 0:
+#             return (x, n - 1 - z, y)  # counterclockwise
+#         elif md == 1:
+#             return (x, z, n - 1 - y)  # clockwise
+#         elif md == 2:
+#             return (x, n - 1 - y, n - 1 - z)  # 180 degree
+#     elif ma == 2 and mi == z:
+#         if md == 0:
+#             return (y, n - 1 - x, z)  # clockwise
+#         elif md == 1:
+#             return (n - 1 - y, x, z)  # counterclockwise
+#         elif md == 2:
+#             return (n - 1 - x, n - 1 - y, z)  # 180 degree
+#     return (x, y, z)
 
 
-def corner_rotation_mapping(
-    n: int, x: int, y: int, z: int, r: int, ma: int, mi: int, md: int
-) -> tuple[int]:
-    if ma == 1:
-        if mi == x:
-            if md != 2:
-                if (
-                    (x == 0 and y == n - 1 and z == 0)
-                    or (x == 0 and y == 0 and z == n - 1)
-                    or (x == n - 1 and y == 0 and z == 0)
-                    or (x == n - 1 and y == n - 1 and z == n - 1)
-                ):
-                    return (r + 1 % 3,)
-                return (r + 2 % 3,)
-    elif ma == 2:
-        if mi == z:
-            if md != 2:
-                if (
-                    (x == 0 and y == n - 1 and z == 0)
-                    or (x == 0 and y == 0 and z == n - 1)
-                    or (x == n - 1 and y == 0 and z == 0)
-                    or (x == n - 1 and y == n - 1 and z == n - 1)
-                ):
-                    return (r + 2 % 3,)
-                return (r + 1 % 3,)
-    return (r,)
+def x_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
+    if ma == 0 and mi == y:
+        if md == 0:
+            return z
+        elif md == 1:
+            return n - 1 - z
+        elif md == 2:
+            return n - 1 - x
+    elif ma == 2 and mi == z:
+        if md == 0:
+            return y
+        elif md == 1:
+            return n - 1 - y
+        elif md == 2:
+            return n - 1 - x
+    return x
 
 
-def edge_rotation_mapping(z: int, r: int, ma: int, mi: int, md: int) -> tuple[int]:
-    if ma == 2:
-        if mi == z:
-            if md != 2:
-                return (r + 1 % 2,)
-    return (r,)
+def y_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
+    if ma == 1 and mi == x:
+        if md == 0:
+            return n - 1 - z
+        elif md == 1:
+            return z
+        elif md == 2:
+            return n - 1 - y
+    elif ma == 2 and mi == z:
+        if md == 0:
+            return n - 1 - x
+        elif md == 1:
+            return x
+        elif md == 2:
+            return n - 1 - y
+    return y
+
+
+def z_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
+    if ma == 0 and mi == y:
+        if md == 0:
+            return n - 1 - x
+        elif md == 1:
+            return x
+        elif md == 2:
+            return n - 1 - z
+    elif ma == 1 and mi == x:
+        if md == 0:
+            return y
+        elif md == 1:
+            return n - 1 - y
+        elif md == 2:
+            return n - 1 - z
+    return z
+
+
+def corner_r_mapping(x: int, z: int, r: int, c: bool, ma: int, mi: int, md: int) -> int:
+    if md != 2:
+        if ma == 1 and mi == x:
+            if c:
+                return (r - 1) % 3
+            else:
+                return (r + 1) % 3
+        elif ma == 2 and mi == z:
+            if c:
+                return (r + 1) % 3
+            else:
+                return (r - 1) % 3
+    return r
+
+
+def corner_c_mapping(
+    x: int, y: int, z: int, c: bool, ma: int, mi: int, md: int
+) -> bool:
+    if md != 2 and (
+        (ma == 0 and mi == y) or (ma == 1 and mi == x) or (ma == 2 and mi == z)
+    ):
+        return not c
+    return c
+
+
+def edge_r_mapping(z: int, r: bool, ma: int, mi: int, md: int) -> bool:
+    if ma == 2 and mi == z and md != 2:
+        return not r
+    return r
 
 
 class Puzzle:
@@ -307,11 +341,15 @@ class Puzzle:
         self,
         n: int,
         coords: list[list[list[tuple[int, int, int]]]],
-        rotations: list[list[list[int]]],
+        corner_r: list[list[list[int]]],
+        corner_c: list[list[list[bool]]],
+        edge_r: list[list[list[bool]]],
     ):
         self.n = n
         self.coords = coords
-        self.rotations = rotations
+        self.corner_r = corner_r
+        self.corner_c = corner_c
+        self.edge_r = edge_r
 
     def facelet_color(self, ff: int, fy: int, fx: int) -> int:
         x, y, z = facelet_cubicle(self.n, ff, fy, fx)
@@ -328,33 +366,24 @@ class Puzzle:
                         elif type == 2:
                             assert len(colors) == 2
                             fi = cubicle_facelets(self.n, x, y, z).index((ff, fy, fx))
-                            r = self.rotations[cx][cy][cz]
+                            r = self.edge_r[cx][cy][cz]
                             assert fi == 0 or fi == 1
-                            assert r == 0 or r == 1
-                            if fi == 0:
-                                return colors[r]
-                            elif r == 0:
+                            if not r:
+                                if fi == 0:
+                                    return colors[0]
                                 return colors[1]
                             else:
+                                if fi == 0:
+                                    return colors[1]
                                 return colors[0]
                         elif type == 0:
                             assert len(colors) == 3
-                            r = self.rotations[cx][cy][cz]
+                            r = self.corner_r[cx][cy][cz]
                             first_color = colors[r]
 
-                            # If the cubicles have opposite coloring directions,
-                            # reverse the color list to adhere to ordering.
-                            if corner_cubicle_clockwise(
-                                self.n,
-                                x,
-                                y,
-                                z,
-                            ) != corner_cubicle_clockwise(
-                                self.n,
-                                cx,
-                                cy,
-                                cz,
-                            ):
+                            # If the cubie's direction has changed, reverse the
+                            # color list to adhere to ordering.
+                            if self.corner_c[cx][cy][cz]:
                                 colors.reverse()
 
                             # Rotate until the color is in the first slot.
@@ -387,8 +416,7 @@ class Puzzle:
             for f in range(6)
         ]
 
-        coords, rotations = facelet_colors_to_encoding(n, facelet_colors)
-        return Puzzle(n, coords, rotations)
+        return Puzzle(n, *facelet_colors_to_encoding(n, facelet_colors))
 
     def to_str(self):
         facelet_colors = [
@@ -415,29 +443,10 @@ class Puzzle:
     def finished(n: int):
         return Puzzle(
             n,
-            [
-                [
-                    [
-                        (x, y, z) if cubicle_type(n, x, y, z) != -1 else (-1, -1, -1)
-                        for z in range(n)
-                    ]
-                    for y in range(n)
-                ]
-                for x in range(n)
-            ],
-            [
-                [
-                    [
-                        0
-                        if cubicle_type(n, x, y, z) == 0
-                        or cubicle_type(n, x, y, z) == 2
-                        else -1
-                        for z in range(n)
-                    ]
-                    for y in range(n)
-                ]
-                for x in range(n)
-            ],
+            [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)],
+            [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)],
+            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
+            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
         )
 
     def execute_move(self, ma: int, mi: int, md: int):
@@ -446,23 +455,26 @@ class Puzzle:
                 for z in range(self.n):
                     type = cubicle_type(self.n, x, y, z)
                     prev_x, prev_y, prev_z = self.coords[x][y][z]
-                    prev_r = self.rotations[x][y][z]
+                    prev_corner_r = self.corner_r[x][y][z]
+                    prev_corner_c = self.corner_c[x][y][z]
+                    prev_edge_r = self.edge_r[x][y][z]
 
-                    # Map the coordinates.
                     if type != -1:
                         self.coords[x][y][z] = coord_mapping(
                             self.n, prev_x, prev_y, prev_z, ma, mi, md
                         )
 
-                    # Map the rotation.
                     if type == 0:
-                        self.rotations[x][y][z] = corner_rotation_mapping(
-                            prev_x, prev_z, prev_r, ma, mi, md
-                        )[0]
+                        self.corner_r[x][y][z] = corner_r_mapping(
+                            prev_x, prev_z, prev_corner_r, prev_corner_c, ma, mi, md
+                        )
+                        self.corner_c[x][y][z] = corner_c_mapping(
+                            prev_x, prev_y, prev_z, prev_corner_c, ma, mi, md
+                        )
                     elif type == 2:
-                        self.rotations[x][y][z] = edge_rotation_mapping(
-                            prev_z, prev_r, ma, mi, md
-                        )[0]
+                        self.edge_r[x][y][z] = edge_r_mapping(
+                            prev_z, prev_edge_r, ma, mi, md
+                        )
 
     def print(self):
         facelet_size = 48
@@ -500,5 +512,5 @@ class Puzzle:
 
 # e.g. python puzzle.py ./puzzles/n2-random4.txt
 if __name__ == "__main__":
-    puzzle = Puzzle.from_file(sys.argv[1])
-    puzzle.print()
+    p = Puzzle.from_file(sys.argv[1])
+    p.print()

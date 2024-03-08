@@ -4,7 +4,13 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from puzzle import Puzzle, move_name, list_edges, list_centers, list_corners
+from puzzle import (
+    Puzzle,
+    move_name,
+    list_edge_cubicles,
+    list_center_cubicles,
+    list_corner_cubicles,
+)
 from misc import print_stamped
 import move_mapping
 import itertools
@@ -58,9 +64,9 @@ def solve_for_k(puzzle: Puzzle, k: int):
         for _ in range(k + 1)
     ]
 
-    corners = list_corners(n)
-    centers = list_centers(n)
-    edges = list_edges(n)
+    corners = list_corner_cubicles(n)
+    centers = list_center_cubicles(n)
+    edges = list_edge_cubicles(n)
 
     # Populate the cubicle states with Z3 variables.
     for s in range(k + 1):
@@ -107,7 +113,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
             conditions.append(xv == puzzle.coords[x][y][z][0])
             conditions.append(yv == puzzle.coords[x][y][z][1])
             conditions.append(zv == puzzle.coords[x][y][z][2])
-            conditions.append(rv == puzzle.rotations[x][y][z])
+            conditions.append(rv == puzzle.corner_r[x][y][z])
         for x, y, z in centers:
             xv, yv, zv, _ = cubicle(s, x, y, z)
             conditions.append(xv == puzzle.coords[x][y][z][0])
@@ -118,7 +124,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
             conditions.append(xv == puzzle.coords[x][y][z][0])
             conditions.append(yv == puzzle.coords[x][y][z][1])
             conditions.append(zv == puzzle.coords[x][y][z][2])
-            conditions.append(rv == puzzle.rotations[x][y][z])
+            conditions.append(rv == puzzle.corner_r[x][y][z])
 
         return z3.And(conditions)
 
