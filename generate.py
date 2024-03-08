@@ -1,17 +1,18 @@
 import random
 import sys
 import os
-from puzzle import Puzzle
+from puzzle import Puzzle, SUPPORTED_NS
 from misc import create_parent_directory
 import itertools
 
 
 def moveset(n: int):
+    assert n in SUPPORTED_NS
     return list(itertools.product(range(3), range(n), range(3)))
 
 
 def generate(n: int, randomizations: int, overwrite=False):
-    if n < 2 or n > 3:
+    if n not in SUPPORTED_NS:
         raise Exception(f"n = {n} not supported")
 
     path = f"./puzzles/n{n}-random{randomizations}.txt"
@@ -20,10 +21,10 @@ def generate(n: int, randomizations: int, overwrite=False):
     create_parent_directory(path)
 
     p = Puzzle.finished(n)
-    moves = moveset(n)
+    m = moveset(n)
 
     for _ in range(randomizations):
-        ma, mi, md = random.choice(moves)
+        ma, mi, md = random.choice(m)
         p.execute_move(ma, mi, md)
 
     with open(path, "w") as file:

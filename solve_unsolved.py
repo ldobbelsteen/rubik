@@ -5,10 +5,10 @@ from misc import natural_sorted
 
 # e.g. python solve_unsolved.py
 if __name__ == "__main__":
+    dir = "./puzzles/"
     puzzles: list[str] = []
-    puzzle_dir = "./puzzles/"
-    for file in os.listdir(puzzle_dir):
-        path = os.path.join(puzzle_dir, file)
+    for filename in os.listdir(dir):
+        path = os.path.join(dir, filename)
         if (
             os.path.isfile(path)
             and path.endswith(".txt")

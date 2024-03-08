@@ -3,6 +3,8 @@ from misc import rotate_list
 import sys
 import copy
 
+# The only supported values for n.
+SUPPORTED_NS = {2, 3}
 
 # The global face ordering by which the desired rotation ordering is achieved.
 # First come top/bottom, second frontback and third left/right.
@@ -47,6 +49,8 @@ def color_name(c: int) -> str:
 
 def move_name(n: int, ma: int, mi: int, md: int) -> str:
     """Convert a move to its canonical name."""
+    assert n in SUPPORTED_NS
+
     if mi == n:
         return "nothing"
     if ma == 0:
@@ -76,6 +80,8 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
 def cubie_type(n: int, x: int, y: int, z: int):
     """Determine the type of a cubie by its coordinates. 0 = corner, 1 = center,
     2 = edge and -1 = internal."""
+    assert n in SUPPORTED_NS
+
     if (x == 0 or x == n - 1) and (y == 0 or y == n - 1) and (z == 0 or z == n - 1):
         return 0
     if (
@@ -92,6 +98,8 @@ def cubie_type(n: int, x: int, y: int, z: int):
 def cubie_colors(n: int, x: int, y: int, z: int) -> list[int]:
     """Get the list of colors of a cubie in a finished cube. The list is sorted
     by the global face ordering."""
+    assert n in SUPPORTED_NS
+
     colors = set()
     if x == 0:
         colors.add(3)
@@ -110,6 +118,7 @@ def cubie_colors(n: int, x: int, y: int, z: int) -> list[int]:
 
 def corner_clockwise(n: int, x: int, y: int, z: int) -> bool:
     """Determine whether a corner cubie's colors are labeled clockwise or not."""
+    assert n in SUPPORTED_NS
 
     # Only these four are clockwise. The other four are counterclockwise.
     return (
@@ -123,17 +132,22 @@ def corner_clockwise(n: int, x: int, y: int, z: int) -> bool:
 def cubie_facelets(n: int, x: int, y: int, z: int) -> list[tuple[int, int, int]]:
     """Get the list of facelets of a cubie. The list is sorted by the global
     face ordering."""
+    assert n in SUPPORTED_NS
+
     facelets = []
     for ff in FACE_ORDERING:
         for fy in range(n):
             for fx in range(n):
                 if facelet_cubie(n, ff, fy, fx) == (x, y, z):
                     facelets.append((ff, fy, fx))
+
     return facelets
 
 
 def facelet_cubie(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
     """Get the cubie on which a facelet is located."""
+    assert n in SUPPORTED_NS
+
     match f:
         case 0:
             return (x, y, 0)
@@ -147,11 +161,13 @@ def facelet_cubie(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
             return (x, n - 1, y)
         case 5:
             return (x, 0, n - 1 - y)
-    raise Exception(f"invalid face: {f}")
+        case _:
+            raise Exception(f"invalid face: {f}")
 
 
 def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
     """Convert facelet colors of a cube to our coord and rotation encoding."""
+    assert n in SUPPORTED_NS
 
     # Extract the cubie colors from the facelet representation.
     extracted_cubie_colors = [
@@ -200,6 +216,7 @@ def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
 
 
 def list_corner_cubies(n: int) -> list[tuple[int, int, int]]:
+    assert n in SUPPORTED_NS
     return [
         (x, y, z)
         for x in range(n)
@@ -210,6 +227,7 @@ def list_corner_cubies(n: int) -> list[tuple[int, int, int]]:
 
 
 def list_center_cubies(n: int) -> list[tuple[int, int, int]]:
+    assert n in SUPPORTED_NS
     return [
         (x, y, z)
         for x in range(n)
@@ -220,6 +238,7 @@ def list_center_cubies(n: int) -> list[tuple[int, int, int]]:
 
 
 def list_edge_cubies(n: int) -> list[tuple[int, int, int]]:
+    assert n in SUPPORTED_NS
     return [
         (x, y, z)
         for x in range(n)
@@ -232,6 +251,7 @@ def list_edge_cubies(n: int) -> list[tuple[int, int, int]]:
 # def coord_mapping(
 #     n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
 # ) -> tuple[int, int, int]:
+#     assert n in SUPPORTED_NS
 #     if ma == 0 and mi == y:
 #         if md == 0:
 #             return (z, y, n - 1 - x)  # clockwise
@@ -257,6 +277,7 @@ def list_edge_cubies(n: int) -> list[tuple[int, int, int]]:
 
 
 def x_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
+    assert n in SUPPORTED_NS
     if ma == 0 and mi == y:
         if md == 0:
             return z
@@ -275,6 +296,7 @@ def x_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
 
 
 def y_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
+    assert n in SUPPORTED_NS
     if ma == 1 and mi == x:
         if md == 0:
             return n - 1 - z
@@ -293,6 +315,7 @@ def y_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
 
 
 def z_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
+    assert n in SUPPORTED_NS
     if ma == 0 and mi == y:
         if md == 0:
             return n - 1 - x
@@ -338,6 +361,7 @@ def corner_c_mapping(
 def edge_r_mapping(
     n: int, x: int, y: int, z: int, r: bool, ma: int, mi: int, md: int
 ) -> bool:
+    assert n in SUPPORTED_NS
     if md != 2 and (
         (ma == 2 and mi == z)
         or (
@@ -357,6 +381,7 @@ class Puzzle:
         corner_c: list[list[list[bool]]],
         edge_r: list[list[list[bool]]],
     ):
+        assert n in SUPPORTED_NS
         self.n = n
         self.coords = coords
         self.corner_r = corner_r
@@ -372,7 +397,10 @@ class Puzzle:
     @staticmethod
     def from_str(s: str):
         n = int((len(s) / 6) ** 0.5)
-        assert len(s) == 6 * n * n
+        if len(s) != 6 * n * n:
+            raise Exception("invalid puzzle string length")
+        if n not in SUPPORTED_NS:
+            raise Exception(f"n = {n} not supported")
 
         # Extract the facelet colors from the string.
         facelet_colors = [
@@ -433,6 +461,7 @@ class Puzzle:
 
     @staticmethod
     def finished(n: int):
+        assert n in SUPPORTED_NS
         return Puzzle(
             n,
             [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)],
