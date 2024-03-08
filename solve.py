@@ -17,14 +17,12 @@ import itertools
 
 def k_upperbound(n: int):
     match n:
-        case 1:
-            return 0  # is always already solved
         case 2:
             return 11  # God's Number
         case 3:
             return 20  # God's Number
         case _:
-            raise Exception(f"upperbound of {n} not set")
+            raise Exception(f"k upperbound of {n} not set")
 
 
 def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
