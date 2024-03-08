@@ -29,6 +29,7 @@ def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
 
 def next_x_restriction(
     n: int,
+    next_x: z3.ArithRef,
     x: z3.ArithRef,
     y: z3.ArithRef,
     z: z3.ArithRef,
@@ -38,17 +39,26 @@ def next_x_restriction(
 ):
     return z3.If(
         z3.And(ma == 0, mi == y),
-        z3.If(md == 0, z, z3.If(md == 1, n - 1 - z, n - 1 - x)),
+        z3.If(
+            md == 0,
+            next_x == z,
+            z3.If(md == 1, next_x == n - 1 - z, next_x == n - 1 - x),
+        ),
         z3.If(
             z3.And(ma == 2, mi == z),
-            z3.If(md == 0, y, z3.If(md == 1, n - 1 - y, n - 1 - x)),
-            x,
+            z3.If(
+                md == 0,
+                next_x == y,
+                z3.If(md == 1, next_x == n - 1 - y, next_x == n - 1 - x),
+            ),
+            next_x == x,
         ),
     )
 
 
 def next_y_restriction(
     n: int,
+    next_y: z3.ArithRef,
     x: z3.ArithRef,
     y: z3.ArithRef,
     z: z3.ArithRef,
@@ -58,17 +68,26 @@ def next_y_restriction(
 ):
     return z3.If(
         z3.And(ma == 1, mi == x),
-        z3.If(md == 0, n - 1 - z, z3.If(md == 1, z, n - 1 - y)),
+        z3.If(
+            md == 0,
+            next_y == n - 1 - z,
+            z3.If(md == 1, next_y == z, next_y == n - 1 - y),
+        ),
         z3.If(
             z3.And(ma == 2, mi == z),
-            z3.If(md == 0, n - 1 - x, z3.If(md == 1, x, n - 1 - y)),
-            y,
+            z3.If(
+                md == 0,
+                next_y == n - 1 - x,
+                z3.If(md == 1, next_y == x, next_y == n - 1 - y),
+            ),
+            next_y == y,
         ),
     )
 
 
 def next_z_restriction(
     n: int,
+    next_z: z3.ArithRef,
     x: z3.ArithRef,
     y: z3.ArithRef,
     z: z3.ArithRef,
@@ -78,16 +97,25 @@ def next_z_restriction(
 ):
     return z3.If(
         z3.And(ma == 0, mi == y),
-        z3.If(md == 0, n - 1 - x, z3.If(md == 1, x, n - 1 - z)),
+        z3.If(
+            md == 0,
+            next_z == n - 1 - x,
+            z3.If(md == 1, next_z == x, next_z == n - 1 - z),
+        ),
         z3.If(
             z3.And(ma == 1, mi == x),
-            z3.If(md == 0, y, z3.If(md == 1, n - 1 - y, n - 1 - z)),
-            z,
+            z3.If(
+                md == 0,
+                next_z == next_z == y,
+                z3.If(md == 1, next_z == n - 1 - y, next_z == n - 1 - z),
+            ),
+            next_z == z,
         ),
     )
 
 
 def next_corner_r_restriction(
+    next_r: z3.ArithRef,
     x: z3.ArithRef,
     z: z3.ArithRef,
     r: z3.ArithRef,
@@ -100,14 +128,19 @@ def next_corner_r_restriction(
         md != 2,
         z3.If(
             z3.And(ma == 1, mi == x),
-            z3.If(c, (r - 1) % 3, (r + 1) % 3),
-            z3.If(z3.And(ma == 2, mi == z), z3.If(c, (r + 1) % 3, (r - 1) % 3), r),
+            z3.If(c, next_r == (r - 1) % 3, next_r == (r + 1) % 3),
+            z3.If(
+                z3.And(ma == 2, mi == z),
+                z3.If(c, next_r == (r + 1) % 3, next_r == (r - 1) % 3),
+                next_r == r,
+            ),
         ),
-        r,
+        next_r == r,
     )
 
 
 def next_corner_c_restriction(
+    next_c: z3.BoolRef,
     x: z3.ArithRef,
     y: z3.ArithRef,
     z: z3.ArithRef,
@@ -125,13 +158,14 @@ def next_corner_c_restriction(
                 z3.And(ma == 2, mi == z),
             ),
         ),
-        z3.Not(c),
-        c,
+        next_c != c,
+        next_c == c,
     )
 
 
 def next_edge_r_restriction(
     n: int,
+    next_r: z3.BoolRef,
     x: z3.ArithRef,
     y: z3.ArithRef,
     z: z3.ArithRef,
@@ -152,8 +186,8 @@ def next_edge_r_restriction(
                 ),
             ),
         ),
-        z3.Not(r),
-        r,
+        next_r != r,
+        next_r == r,
     )
 
 
@@ -258,24 +292,24 @@ def solve_for_k(puzzle: Puzzle, k: int):
 
         for i, (x, y, z, r, c) in enumerate(corners[s]):
             next_x, next_y, next_z, next_r, next_c = corners[s + 1][i]
-            solver.add(next_x == next_x_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_y == next_y_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_z == next_z_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_r == next_corner_r_restriction(x, z, r, c, ma, mi, md))
-            solver.add(next_c == next_corner_c_restriction(x, y, z, c, ma, mi, md))
+            solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
+            solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
+            solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
+            solver.add(next_corner_r_restriction(next_r, x, z, r, c, ma, mi, md))
+            solver.add(next_corner_c_restriction(next_c, x, y, z, c, ma, mi, md))
 
         for i, (x, y, z) in enumerate(centers[s]):
             next_x, next_y, next_z = centers[s + 1][i]
-            solver.add(next_x == next_x_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_y == next_y_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_z == next_z_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
+            solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
+            solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
 
         for i, (x, y, z, r) in enumerate(edges[s]):
             next_x, next_y, next_z, next_r = edges[s + 1][i]
-            solver.add(next_x == next_x_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_y == next_y_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_z == next_z_restriction(n, x, y, z, ma, mi, md))
-            solver.add(next_r == next_edge_r_restriction(n, x, y, z, r, ma, mi, md))
+            solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
+            solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
+            solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
+            solver.add(next_edge_r_restriction(n, next_r, x, y, z, r, ma, mi, md))
 
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
     for s in range(1, k):
