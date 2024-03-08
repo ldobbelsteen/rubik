@@ -1,7 +1,6 @@
 from PIL import Image, ImageDraw
 from misc import rotate_list
 import sys
-import copy
 
 # The only supported values for n.
 SUPPORTED_NS = {2, 3}
@@ -49,8 +48,6 @@ def color_name(c: int) -> str:
 
 def move_name(n: int, ma: int, mi: int, md: int) -> str:
     """Convert a move to its canonical name."""
-    assert n in SUPPORTED_NS
-
     if mi == n:
         return "nothing"
     if ma == 0:
@@ -80,8 +77,6 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
 def cubie_type(n: int, x: int, y: int, z: int):
     """Determine the type of a cubie by its coordinates. 0 = corner, 1 = center,
     2 = edge and -1 = internal."""
-    assert n in SUPPORTED_NS
-
     if (x == 0 or x == n - 1) and (y == 0 or y == n - 1) and (z == 0 or z == n - 1):
         return 0
     if (
@@ -98,8 +93,6 @@ def cubie_type(n: int, x: int, y: int, z: int):
 def cubie_colors(n: int, x: int, y: int, z: int) -> list[int]:
     """Get the list of colors of a cubie in a finished cube. The list is sorted
     by the global face ordering."""
-    assert n in SUPPORTED_NS
-
     colors = set()
     if x == 0:
         colors.add(3)
@@ -118,7 +111,6 @@ def cubie_colors(n: int, x: int, y: int, z: int) -> list[int]:
 
 def corner_clockwise(n: int, x: int, y: int, z: int) -> bool:
     """Determine whether a corner cubie's colors are labeled clockwise or not."""
-    assert n in SUPPORTED_NS
 
     # Only these four are clockwise. The other four are counterclockwise.
     return (
@@ -132,22 +124,17 @@ def corner_clockwise(n: int, x: int, y: int, z: int) -> bool:
 def cubie_facelets(n: int, x: int, y: int, z: int) -> list[tuple[int, int, int]]:
     """Get the list of facelets of a cubie. The list is sorted by the global
     face ordering."""
-    assert n in SUPPORTED_NS
-
     facelets = []
     for ff in FACE_ORDERING:
         for fy in range(n):
             for fx in range(n):
                 if facelet_cubie(n, ff, fy, fx) == (x, y, z):
                     facelets.append((ff, fy, fx))
-
     return facelets
 
 
 def facelet_cubie(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
     """Get the cubie on which a facelet is located."""
-    assert n in SUPPORTED_NS
-
     match f:
         case 0:
             return (x, y, 0)
@@ -165,93 +152,9 @@ def facelet_cubie(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
             raise Exception(f"invalid face: {f}")
 
 
-def facelet_colors_to_encoding(n: int, facelet_colors: list[list[list[int]]]):
-    """Convert facelet colors of a cube to our coord and rotation encoding."""
-    assert n in SUPPORTED_NS
-
-    # Extract the cubie colors from the facelet representation.
-    extracted_cubie_colors = [
-        [[[] for _ in range(n)] for _ in range(n)] for _ in range(n)
-    ]
-    for ff in FACE_ORDERING:
-        for fy in range(n):
-            for fx in range(n):
-                x, y, z = facelet_cubie(n, ff, fy, fx)
-                extracted_cubie_colors[x][y][z].append(facelet_colors[ff][fy][fx])
-
-    def find_origin_cubie(colors: list[int]) -> tuple[int, int, int, int]:
-        for cx in range(n):
-            for cy in range(n):
-                for cz in range(n):
-                    ccolors = cubie_colors(n, cx, cy, cz)
-                    if set(colors) == set(ccolors):
-                        return (cx, cy, cz, ccolors.index(colors[0]))
-        raise Exception(f"invalid color list: {colors}")
-
-    coords = [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)]
-    corner_r = [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)]
-    corner_c = [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)]
-    edge_r = [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)]
-
-    for x in range(n):
-        for y in range(n):
-            for z in range(n):
-                type = cubie_type(n, x, y, z)
-                if type == -1:
-                    continue
-
-                colors = extracted_cubie_colors[x][y][z]
-                cx, cy, cz, r = find_origin_cubie(colors)
-                coords[cx][cy][cz] = (x, y, z)
-
-                if type == 0:
-                    corner_r[cx][cy][cz] = r
-                    c = corner_clockwise(n, x, y, z) != corner_clockwise(n, cx, cy, cz)
-                    corner_c[cx][cy][cz] = c
-                elif type == 2:
-                    assert r == 0 or r == 1
-                    edge_r[cx][cy][cz] = r == 1
-
-    return coords, corner_r, corner_c, edge_r
-
-
-def list_corner_cubies(n: int) -> list[tuple[int, int, int]]:
-    assert n in SUPPORTED_NS
-    return [
-        (x, y, z)
-        for x in range(n)
-        for y in range(n)
-        for z in range(n)
-        if cubie_type(n, x, y, z) == 0
-    ]
-
-
-def list_center_cubies(n: int) -> list[tuple[int, int, int]]:
-    assert n in SUPPORTED_NS
-    return [
-        (x, y, z)
-        for x in range(n)
-        for y in range(n)
-        for z in range(n)
-        if cubie_type(n, x, y, z) == 1
-    ]
-
-
-def list_edge_cubies(n: int) -> list[tuple[int, int, int]]:
-    assert n in SUPPORTED_NS
-    return [
-        (x, y, z)
-        for x in range(n)
-        for y in range(n)
-        for z in range(n)
-        if cubie_type(n, x, y, z) == 2
-    ]
-
-
 # def coord_mapping(
 #     n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
 # ) -> tuple[int, int, int]:
-#     assert n in SUPPORTED_NS
 #     if ma == 0 and mi == y:
 #         if md == 0:
 #             return (z, y, n - 1 - x)  # clockwise
@@ -277,7 +180,6 @@ def list_edge_cubies(n: int) -> list[tuple[int, int, int]]:
 
 
 def x_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
-    assert n in SUPPORTED_NS
     if ma == 0 and mi == y:
         if md == 0:
             return z
@@ -296,7 +198,6 @@ def x_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
 
 
 def y_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
-    assert n in SUPPORTED_NS
     if ma == 1 and mi == x:
         if md == 0:
             return n - 1 - z
@@ -315,7 +216,6 @@ def y_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
 
 
 def z_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
-    assert n in SUPPORTED_NS
     if ma == 0 and mi == y:
         if md == 0:
             return n - 1 - x
@@ -361,7 +261,6 @@ def corner_c_mapping(
 def edge_r_mapping(
     n: int, x: int, y: int, z: int, r: bool, ma: int, mi: int, md: int
 ) -> bool:
-    assert n in SUPPORTED_NS
     if md != 2 and (
         (ma == 2 and mi == z)
         or (
@@ -372,21 +271,45 @@ def edge_r_mapping(
     return r
 
 
+class Cubies:
+    def __init__(self, n: int):
+        self.corners = [
+            (x, y, z)
+            for x in range(n)
+            for y in range(n)
+            for z in range(n)
+            if cubie_type(n, x, y, z) == 0
+        ]
+        self.centers = [
+            (x, y, z)
+            for x in range(n)
+            for y in range(n)
+            for z in range(n)
+            if cubie_type(n, x, y, z) == 1
+        ]
+        self.edges = [
+            (x, y, z)
+            for x in range(n)
+            for y in range(n)
+            for z in range(n)
+            if cubie_type(n, x, y, z) == 2
+        ]
+
+
 class Puzzle:
     def __init__(
         self,
         n: int,
-        coords: list[list[list[tuple[int, int, int]]]],
-        corner_r: list[list[list[int]]],
-        corner_c: list[list[list[bool]]],
-        edge_r: list[list[list[bool]]],
+        cubies: Cubies,
+        corners: list[tuple[int, int, int, int, bool]],
+        centers: list[tuple[int, int, int]],
+        edges: list[tuple[int, int, int, bool]],
     ):
-        assert n in SUPPORTED_NS
         self.n = n
-        self.coords = coords
-        self.corner_r = corner_r
-        self.corner_c = corner_c
-        self.edge_r = edge_r
+        self.cubies = cubies
+        self.corners = corners
+        self.centers = centers
+        self.edges = edges
 
     @staticmethod
     def from_file(path: str):
@@ -402,41 +325,92 @@ class Puzzle:
         if n not in SUPPORTED_NS:
             raise Exception(f"n = {n} not supported")
 
-        # Extract the facelet colors from the string.
-        facelet_colors = [
+        return Puzzle.from_facelet_colors(
+            n,
             [
-                [int(s[f * n * n + y * n + x]) for x in range(n)]
-                for y in reversed(range(n))
-            ]
-            for f in range(6)
-        ]
+                [
+                    [int(s[f * n * n + y * n + x]) for x in range(n)]
+                    for y in reversed(range(n))
+                ]
+                for f in range(6)
+            ],  # Extract facelet colors from string.
+        )
 
-        return Puzzle(n, *facelet_colors_to_encoding(n, facelet_colors))
+    @staticmethod
+    def from_facelet_colors(n: int, facelet_colors: list[list[list[int]]]):
+        finished = Puzzle.finished(n)
+        cubies = finished.cubies
+
+        # Extract the cubie colors from the facelet representation.
+        corner_colors = [[] for _ in cubies.corners]
+        center_colors = [[] for _ in cubies.centers]
+        edge_colors = [[] for _ in cubies.edges]
+        for ff in FACE_ORDERING:
+            for fy in range(n):
+                for fx in range(n):
+                    x, y, z = facelet_cubie(n, ff, fy, fx)
+                    match cubie_type(n, x, y, z):
+                        case 0:
+                            corner_colors[cubies.corners.index((x, y, z))].append(
+                                facelet_colors[ff][fy][fx]
+                            )
+                        case 1:
+                            center_colors[cubies.centers.index((x, y, z))].append(
+                                facelet_colors[ff][fy][fx]
+                            )
+                        case 2:
+                            edge_colors[cubies.edges.index((x, y, z))].append(
+                                facelet_colors[ff][fy][fx]
+                            )
+
+        corners = finished.corners
+        for i, (x, y, z) in enumerate(cubies.corners):
+            colors = corner_colors[i]
+            for o_i, (o_x, o_y, o_z) in enumerate(cubies.corners):
+                origin_colors = cubie_colors(n, o_x, o_y, o_z)
+                if set(origin_colors) == set(colors):
+                    r = origin_colors.index(colors[0])
+                    c = corner_clockwise(n, x, y, z) != corner_clockwise(
+                        n, o_x, o_y, o_z
+                    )
+                    corners[o_i] = (x, y, z, r, c)
+
+        centers = finished.centers
+        for i, (x, y, z) in enumerate(cubies.centers):
+            colors = center_colors[i]
+            for o_i, (o_x, o_y, o_z) in enumerate(cubies.centers):
+                origin_colors = cubie_colors(n, o_x, o_y, o_z)
+                if set(origin_colors) == set(colors):
+                    r = origin_colors.index(colors[0])
+                    centers[o_i] = (x, y, z)
+
+        edges = finished.edges
+        for i, (x, y, z) in enumerate(cubies.edges):
+            colors = edge_colors[i]
+            for o_i, (o_x, o_y, o_z) in enumerate(cubies.edges):
+                origin_colors = cubie_colors(n, o_x, o_y, o_z)
+                if set(origin_colors) == set(colors):
+                    r = origin_colors.index(colors[0])
+                    edges[o_i] = (x, y, z, r == 1)
+
+        return Puzzle(n, cubies, corners, centers, edges)
 
     def copy(self):
         return Puzzle(
             self.n,
-            copy.deepcopy(self.coords),
-            copy.deepcopy(self.corner_r),
-            copy.deepcopy(self.corner_c),
-            copy.deepcopy(self.edge_r),
+            self.cubies,
+            self.corners.copy(),
+            self.centers.copy(),
+            self.edges.copy(),
         )
 
     def __eq__(self, other: "Puzzle"):
-        if self.n != other.n:
-            return False
-        for x in range(self.n):
-            for y in range(self.n):
-                for z in range(self.n):
-                    if self.coords[x][y][z] != other.coords[x][y][z]:
-                        return False
-                    if self.corner_r[x][y][z] != other.corner_r[x][y][z]:
-                        return False
-                    if self.corner_c[x][y][z] != other.corner_c[x][y][z]:
-                        return False
-                    if self.edge_r[x][y][z] != other.edge_r[x][y][z]:
-                        return False
-        return True
+        return (
+            self.n == other.n
+            and self.corners == other.corners
+            and self.centers == other.centers
+            and self.edges == other.edges
+        )
 
     def to_str(self):
         facelet_colors = [
@@ -447,100 +421,91 @@ class Puzzle:
             for f in range(6)
         ]
 
-        return "".join(
-            map(
-                str,
-                [
-                    facelet_colors[f][y][x]
-                    for f in range(6)
-                    for y in reversed(range(self.n))
-                    for x in range(self.n)
-                ],
-            )
-        )
+        flattened = [
+            facelet_colors[f][y][x]
+            for f in range(6)
+            for y in reversed(range(self.n))
+            for x in range(self.n)
+        ]
+
+        return "".join([str(c) for c in flattened])
 
     @staticmethod
     def finished(n: int):
-        assert n in SUPPORTED_NS
+        cubies = Cubies(n)
         return Puzzle(
             n,
-            [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)],
-            [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)],
-            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
-            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
+            cubies,
+            [(x, y, z, 0, False) for x, y, z in cubies.corners],
+            [(x, y, z) for x, y, z in cubies.centers],
+            [(x, y, z, False) for x, y, z in cubies.edges],
         )
 
     def execute_move(self, ma: int, mi: int, md: int):
-        for x in range(self.n):
-            for y in range(self.n):
-                for z in range(self.n):
-                    type = cubie_type(self.n, x, y, z)
-                    prev_x, prev_y, prev_z = self.coords[x][y][z]
-                    prev_corner_r = self.corner_r[x][y][z]
-                    prev_corner_c = self.corner_c[x][y][z]
-                    prev_edge_r = self.edge_r[x][y][z]
+        for i, (x, y, z, r, c) in enumerate(self.corners):
+            self.corners[i] = (
+                x_mapping(self.n, x, y, z, ma, mi, md),
+                y_mapping(self.n, x, y, z, ma, mi, md),
+                z_mapping(self.n, x, y, z, ma, mi, md),
+                corner_r_mapping(x, z, r, c, ma, mi, md),
+                corner_c_mapping(x, y, z, c, ma, mi, md),
+            )
 
-                    if type != -1:
-                        self.coords[x][y][z] = (
-                            x_mapping(self.n, prev_x, prev_y, prev_z, ma, mi, md),
-                            y_mapping(self.n, prev_x, prev_y, prev_z, ma, mi, md),
-                            z_mapping(self.n, prev_x, prev_y, prev_z, ma, mi, md),
-                        )
+        for i, (x, y, z) in enumerate(self.centers):
+            self.centers[i] = (
+                x_mapping(self.n, x, y, z, ma, mi, md),
+                y_mapping(self.n, x, y, z, ma, mi, md),
+                z_mapping(self.n, x, y, z, ma, mi, md),
+            )
 
-                    if type == 0:
-                        self.corner_r[x][y][z] = corner_r_mapping(
-                            prev_x, prev_z, prev_corner_r, prev_corner_c, ma, mi, md
-                        )
-                        self.corner_c[x][y][z] = corner_c_mapping(
-                            prev_x, prev_y, prev_z, prev_corner_c, ma, mi, md
-                        )
-                    elif type == 2:
-                        self.edge_r[x][y][z] = edge_r_mapping(
-                            self.n, prev_x, prev_y, prev_z, prev_edge_r, ma, mi, md
-                        )
+        for i, (x, y, z, r) in enumerate(self.edges):
+            self.edges[i] = (
+                x_mapping(self.n, x, y, z, ma, mi, md),
+                y_mapping(self.n, x, y, z, ma, mi, md),
+                z_mapping(self.n, x, y, z, ma, mi, md),
+                edge_r_mapping(self.n, x, y, z, r, ma, mi, md),
+            )
 
     def facelet_color(self, ff: int, fy: int, fx: int) -> int:
         x, y, z = facelet_cubie(self.n, ff, fy, fx)
-        for cx in range(self.n):
-            for cy in range(self.n):
-                for cz in range(self.n):
-                    if self.coords[cx][cy][cz] == (x, y, z):
-                        colors = cubie_colors(self.n, cx, cy, cz)
-                        type = cubie_type(self.n, cx, cy, cz)
 
-                        if type == 1:
-                            assert len(colors) == 1
-                            return colors[0]
-                        elif type == 2:
-                            assert len(colors) == 2
-                            fi = cubie_facelets(self.n, x, y, z).index((ff, fy, fx))
-                            r = self.edge_r[cx][cy][cz]
-                            assert fi == 0 or fi == 1
-                            if not r:
-                                if fi == 0:
-                                    return colors[0]
-                                return colors[1]
-                            else:
-                                if fi == 0:
-                                    return colors[1]
-                                return colors[0]
-                        elif type == 0:
-                            assert len(colors) == 3
-                            r = self.corner_r[cx][cy][cz]
-                            first_color = colors[r]
+        if (x, y, z) in self.cubies.corners:
+            for c_i, (c_x, c_y, c_z) in enumerate(self.cubies.corners):
+                o_x, o_y, o_z, o_r, o_c = self.corners[c_i]
+                if (o_x, o_y, o_z) == (x, y, z):
+                    colors = cubie_colors(self.n, c_x, c_y, c_z)
+                    first_color = colors[o_r]
 
-                            # If the cubie's direction has changed, reverse the
-                            # color list to adhere to ordering.
-                            if self.corner_c[cx][cy][cz]:
-                                colors.reverse()
+                    # If the cubie's direction has changed, reverse the
+                    # color list to adhere to ordering.
+                    if o_c:
+                        colors.reverse()
 
-                            # Rotate until the color is in the first slot.
-                            while colors[0] != first_color:
-                                rotate_list(colors)
+                    # Rotate until the color is in the first slot.
+                    while colors[0] != first_color:
+                        rotate_list(colors)
 
-                            # Get the facelet index of the facelet in question and return.
-                            fi = cubie_facelets(self.n, x, y, z).index((ff, fy, fx))
-                            return colors[fi]
+                    # Get the facelet index of the facelet in question and return.
+                    fi = cubie_facelets(self.n, x, y, z).index((ff, fy, fx))
+                    return colors[fi]
+
+        if (x, y, z) in self.cubies.centers:
+            for c_i, (c_x, c_y, c_z) in enumerate(self.cubies.centers):
+                o_x, o_y, o_z = self.centers[c_i]
+                if (o_x, o_y, o_z) == (x, y, z):
+                    colors = cubie_colors(self.n, c_x, c_y, c_z)
+                    return colors[0]
+
+        if (x, y, z) in self.cubies.edges:
+            for c_i, (c_x, c_y, c_z) in enumerate(self.cubies.edges):
+                o_x, o_y, o_z, o_r = self.edges[c_i]
+                if (o_x, o_y, o_z) == (x, y, z):
+                    colors = cubie_colors(self.n, c_x, c_y, c_z)
+                    fi = cubie_facelets(self.n, x, y, z).index((ff, fy, fx))
+                    if not o_r:
+                        return colors[fi]
+                    else:
+                        return colors[1 - fi]
 
         raise Exception(f"invalid facelet: ({ff},{fy},{fx})")
 

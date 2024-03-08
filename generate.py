@@ -7,7 +7,6 @@ import itertools
 
 
 def moveset(n: int):
-    assert n in SUPPORTED_NS
     return list(itertools.product(range(3), range(n), range(3)))
 
 
