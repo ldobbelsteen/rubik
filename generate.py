@@ -6,21 +6,25 @@ from misc import create_parent_directory
 import itertools
 
 
+def moveset(n: int):
+    return list(itertools.product(range(3), range(n), range(3)))
+
+
 def generate(n: int, randomizations: int, overwrite=False):
     path = f"./puzzles/n{n}-random{randomizations}.txt"
     if not overwrite and os.path.isfile(path):
         return
     create_parent_directory(path)
 
-    state = Puzzle.finished(n)
-    moves = list(itertools.product(range(3), range(n), range(3)))
+    p = Puzzle.finished(n)
+    moves = moveset(n)
 
     for _ in range(randomizations):
         ma, mi, md = random.choice(moves)
-        state.execute_move(ma, mi, md)
+        p.execute_move(ma, mi, md)
 
     with open(path, "w") as file:
-        file.write(state.to_str())
+        file.write(p.to_str())
 
 
 # e.g. python generate.py {n} {randomization_count}

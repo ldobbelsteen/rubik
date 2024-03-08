@@ -1,6 +1,8 @@
 import unittest
 import os
+import random
 from puzzle import cubicle_type, cubicle_colors, facelet_cubicle, Puzzle
+from generate import moveset
 
 
 class Testing(unittest.TestCase):
@@ -32,6 +34,33 @@ class Testing(unittest.TestCase):
                 with open(path, "r") as file:
                     puzzle = file.read()
                     self.assertEqual(Puzzle.from_str(puzzle).to_str(), puzzle)
+
+    def test_puzzle_move_consistency(self):
+        for n in [2, 3]:
+            # Take a random permutation of all possible moves.
+            moves = moveset(n)
+            random.shuffle(moves)
+
+            state = Puzzle.finished(n)
+            states = []
+
+            # Execute the moves and store the states before each move.
+            for ma, mi, md in moves:
+                states.append(state.copy())
+                state.execute_move(ma, mi, md)
+
+            # Execute the inverted moves and check whether we get the same states.
+            moves.reverse()
+            states.reverse()
+            for i, (ma, mi, md) in enumerate(moves):
+                if md == 0:
+                    md_inv = 1
+                elif md == 1:
+                    md_inv = 0
+                else:
+                    md_inv = 2
+                state.execute_move(ma, mi, md_inv)
+                self.assertEqual(state, states[i])
 
 
 if __name__ == "__main__":

@@ -1,6 +1,7 @@
 from PIL import Image, ImageDraw
 from misc import rotate_list
 import sys
+import copy
 
 # FIRST top/bottom, SECOND front/back, THIRD left/right.
 FACES = [4, 5, 0, 2, 3, 1]
@@ -330,8 +331,15 @@ def corner_c_mapping(
     return c
 
 
-def edge_r_mapping(z: int, r: bool, ma: int, mi: int, md: int) -> bool:
-    if ma == 2 and mi == z and md != 2:
+def edge_r_mapping(
+    n: int, x: int, y: int, z: int, r: bool, ma: int, mi: int, md: int
+) -> bool:
+    if md != 2 and (
+        (ma == 2 and mi == z)
+        or (
+            mi != 0 and mi != n - 1 and ((ma == 0 and mi == y) or (ma == 1 and mi == x))
+        )
+    ):
         return not r
     return r
 
@@ -350,6 +358,113 @@ class Puzzle:
         self.corner_r = corner_r
         self.corner_c = corner_c
         self.edge_r = edge_r
+
+    @staticmethod
+    def from_file(path: str):
+        with open(path, "r") as file:
+            content = file.read()
+            return Puzzle.from_str(content)
+
+    @staticmethod
+    def from_str(s: str):
+        n = int((len(s) / 6) ** 0.5)
+        assert len(s) == 6 * n * n
+
+        # Extract the facelet colors from the string.
+        facelet_colors = [
+            [
+                [int(s[f * n * n + y * n + x]) for x in range(n)]
+                for y in reversed(range(n))
+            ]
+            for f in range(6)
+        ]
+
+        return Puzzle(n, *facelet_colors_to_encoding(n, facelet_colors))
+
+    def copy(self):
+        return Puzzle(
+            self.n,
+            copy.deepcopy(self.coords),
+            copy.deepcopy(self.corner_r),
+            copy.deepcopy(self.corner_c),
+            copy.deepcopy(self.edge_r),
+        )
+
+    def __eq__(self, other: "Puzzle"):
+        if self.n != other.n:
+            return False
+        for x in range(self.n):
+            for y in range(self.n):
+                for z in range(self.n):
+                    if self.coords[x][y][z] != other.coords[x][y][z]:
+                        return False
+                    if self.corner_r[x][y][z] != other.corner_r[x][y][z]:
+                        return False
+                    if self.corner_c[x][y][z] != other.corner_c[x][y][z]:
+                        return False
+                    if self.edge_r[x][y][z] != other.edge_r[x][y][z]:
+                        return False
+        return True
+
+    def to_str(self):
+        facelet_colors = [
+            [
+                [self.facelet_color(f, y, x) for x in range(self.n)]
+                for y in range(self.n)
+            ]
+            for f in range(6)
+        ]
+
+        return "".join(
+            map(
+                str,
+                [
+                    facelet_colors[f][y][x]
+                    for f in range(6)
+                    for y in reversed(range(self.n))
+                    for x in range(self.n)
+                ],
+            )
+        )
+
+    @staticmethod
+    def finished(n: int):
+        return Puzzle(
+            n,
+            [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)],
+            [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)],
+            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
+            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
+        )
+
+    def execute_move(self, ma: int, mi: int, md: int):
+        for x in range(self.n):
+            for y in range(self.n):
+                for z in range(self.n):
+                    type = cubicle_type(self.n, x, y, z)
+                    prev_x, prev_y, prev_z = self.coords[x][y][z]
+                    prev_corner_r = self.corner_r[x][y][z]
+                    prev_corner_c = self.corner_c[x][y][z]
+                    prev_edge_r = self.edge_r[x][y][z]
+
+                    if type != -1:
+                        self.coords[x][y][z] = (
+                            x_mapping(self.n, prev_x, prev_y, prev_z, ma, mi, md),
+                            y_mapping(self.n, prev_x, prev_y, prev_z, ma, mi, md),
+                            z_mapping(self.n, prev_x, prev_y, prev_z, ma, mi, md),
+                        )
+
+                    if type == 0:
+                        self.corner_r[x][y][z] = corner_r_mapping(
+                            prev_x, prev_z, prev_corner_r, prev_corner_c, ma, mi, md
+                        )
+                        self.corner_c[x][y][z] = corner_c_mapping(
+                            prev_x, prev_y, prev_z, prev_corner_c, ma, mi, md
+                        )
+                    elif type == 2:
+                        self.edge_r[x][y][z] = edge_r_mapping(
+                            self.n, prev_x, prev_y, prev_z, prev_edge_r, ma, mi, md
+                        )
 
     def facelet_color(self, ff: int, fy: int, fx: int) -> int:
         x, y, z = facelet_cubicle(self.n, ff, fy, fx)
@@ -395,86 +510,6 @@ class Puzzle:
                             return colors[fi]
 
         raise Exception(f"invalid facelet: ({ff},{fy},{fx})")
-
-    @staticmethod
-    def from_file(path: str):
-        with open(path, "r") as file:
-            content = file.read()
-            return Puzzle.from_str(content)
-
-    @staticmethod
-    def from_str(s: str):
-        n = int((len(s) / 6) ** 0.5)
-        assert len(s) == 6 * n * n
-
-        # Extract the facelet colors from the string.
-        facelet_colors = [
-            [
-                [int(s[f * n * n + y * n + x]) for x in range(n)]
-                for y in reversed(range(n))
-            ]
-            for f in range(6)
-        ]
-
-        return Puzzle(n, *facelet_colors_to_encoding(n, facelet_colors))
-
-    def to_str(self):
-        facelet_colors = [
-            [
-                [self.facelet_color(f, y, x) for x in range(self.n)]
-                for y in range(self.n)
-            ]
-            for f in range(6)
-        ]
-
-        return "".join(
-            map(
-                str,
-                [
-                    facelet_colors[f][y][x]
-                    for f in range(6)
-                    for y in reversed(range(self.n))
-                    for x in range(self.n)
-                ],
-            )
-        )
-
-    @staticmethod
-    def finished(n: int):
-        return Puzzle(
-            n,
-            [[[(x, y, z) for z in range(n)] for y in range(n)] for x in range(n)],
-            [[[0 for _ in range(n)] for _ in range(n)] for _ in range(n)],
-            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
-            [[[False for _ in range(n)] for _ in range(n)] for _ in range(n)],
-        )
-
-    def execute_move(self, ma: int, mi: int, md: int):
-        for x in range(self.n):
-            for y in range(self.n):
-                for z in range(self.n):
-                    type = cubicle_type(self.n, x, y, z)
-                    prev_x, prev_y, prev_z = self.coords[x][y][z]
-                    prev_corner_r = self.corner_r[x][y][z]
-                    prev_corner_c = self.corner_c[x][y][z]
-                    prev_edge_r = self.edge_r[x][y][z]
-
-                    if type != -1:
-                        self.coords[x][y][z] = coord_mapping(
-                            self.n, prev_x, prev_y, prev_z, ma, mi, md
-                        )
-
-                    if type == 0:
-                        self.corner_r[x][y][z] = corner_r_mapping(
-                            prev_x, prev_z, prev_corner_r, prev_corner_c, ma, mi, md
-                        )
-                        self.corner_c[x][y][z] = corner_c_mapping(
-                            prev_x, prev_y, prev_z, prev_corner_c, ma, mi, md
-                        )
-                    elif type == 2:
-                        self.edge_r[x][y][z] = edge_r_mapping(
-                            prev_z, prev_edge_r, ma, mi, md
-                        )
 
     def print(self):
         facelet_size = 48
