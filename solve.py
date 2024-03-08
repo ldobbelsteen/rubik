@@ -4,15 +4,8 @@ from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
 import z3
-from puzzle import (
-    Puzzle,
-    move_name,
-    list_edge_cubies,
-    list_center_cubies,
-    list_corner_cubies,
-)
+from puzzle import Puzzle, move_name
 from misc import print_stamped
-import itertools
 
 
 def k_upperbound(n: int):
@@ -34,353 +27,255 @@ def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
     return var
 
 
+def next_x_restriction(
+    n: int,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    ma: z3.ArithRef,
+    mi: z3.ArithRef,
+    md: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(ma == 0, mi == y),
+        z3.If(md == 0, z, z3.If(md == 1, n - 1 - z, n - 1 - x)),
+        z3.If(
+            z3.And(ma == 2, mi == z),
+            z3.If(md == 0, y, z3.If(md == 1, n - 1 - y, n - 1 - x)),
+            x,
+        ),
+    )
+
+
+def next_y_restriction(
+    n: int,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    ma: z3.ArithRef,
+    mi: z3.ArithRef,
+    md: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(ma == 1, mi == x),
+        z3.If(md == 0, n - 1 - z, z3.If(md == 1, z, n - 1 - y)),
+        z3.If(
+            z3.And(ma == 2, mi == z),
+            z3.If(md == 0, n - 1 - x, z3.If(md == 1, x, n - 1 - y)),
+            y,
+        ),
+    )
+
+
+def next_z_restriction(
+    n: int,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    ma: z3.ArithRef,
+    mi: z3.ArithRef,
+    md: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(ma == 0, mi == y),
+        z3.If(md == 0, n - 1 - x, z3.If(md == 1, x, n - 1 - z)),
+        z3.If(
+            z3.And(ma == 1, mi == x),
+            z3.If(md == 0, y, z3.If(md == 1, n - 1 - y, n - 1 - z)),
+            z,
+        ),
+    )
+
+
+def next_corner_r_restriction(
+    x: z3.ArithRef,
+    z: z3.ArithRef,
+    r: z3.ArithRef,
+    c: z3.BoolRef,
+    ma: z3.ArithRef,
+    mi: z3.ArithRef,
+    md: z3.ArithRef,
+):
+    return z3.If(
+        md != 2,
+        z3.If(
+            z3.And(ma == 1, mi == x),
+            z3.If(c, (r - 1) % 3, (r + 1) % 3),
+            z3.If(z3.And(ma == 2, mi == z), z3.If(c, (r + 1) % 3, (r - 1) % 3), r),
+        ),
+        r,
+    )
+
+
+def next_corner_c_restriction(
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    c: z3.BoolRef,
+    ma: z3.ArithRef,
+    mi: z3.ArithRef,
+    md: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(
+            md != 2,
+            z3.Or(
+                z3.And(ma == 0, mi == y),
+                z3.And(ma == 1, mi == x),
+                z3.And(ma == 2, mi == z),
+            ),
+        ),
+        z3.Not(c),
+        c,
+    )
+
+
+def next_edge_r_restriction(
+    n: int,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    r: z3.BoolRef,
+    ma: z3.ArithRef,
+    mi: z3.ArithRef,
+    md: z3.ArithRef,
+):
+    z3.If(
+        z3.And(
+            md != 2,
+            z3.Or(
+                z3.And(ma == 2, mi == z),
+                z3.And(
+                    mi != 0,
+                    mi != n - 1,
+                    z3.Or(z3.And(ma == 0, mi == y), z3.And(ma == 1, mi == x)),
+                ),
+            ),
+        ),
+        z3.Not(r),
+        r,
+    )
+
+
 def solve_for_k(puzzle: Puzzle, k: int):
     """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible.
     Also returns, in both cases, the time it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
     solver = z3.Optimize()
+
     n = puzzle.n
+    finished = Puzzle.finished(n)
+    cubies = finished.cubies
 
-    # Nested list representing the n × n × n cube of cubicles for each state.
-    cubicle_states: list[
-        list[
-            list[
-                list[
-                    tuple[
-                        z3.ArithRef,  # x-coordinate
-                        z3.ArithRef,  # y-coordinate
-                        z3.ArithRef,  # z-coordinate
-                        z3.ArithRef | None,  # rotation
-                    ]
-                    | None  # internal cubie
-                ]
-            ]
-        ]
-    ] = [
-        [[[None for _ in range(n)] for _ in range(n)] for _ in range(n)]
-        for _ in range(k + 1)
-    ]
-
-    corners = list_corner_cubies(n)
-    centers = list_center_cubies(n)
-    edges = list_edge_cubies(n)
-
-    # Populate the cubicle states with Z3 variables.
-    for s in range(k + 1):
-        for x, y, z in corners:
-            cubicle_states[s][x][y][z] = (
+    # Nested lists representing the n × n × n cube for each state.
+    corners = [
+        [
+            (
                 z3_int(solver, f"corner({x},{y},{z}) s({s}) x", 0, n),
                 z3_int(solver, f"corner({x},{y},{z}) s({s}) y", 0, n),
                 z3_int(solver, f"corner({x},{y},{z}) s({s}) z", 0, n),
                 z3_int(solver, f"corner({x},{y},{z}) s({s}) r", 0, 3),
+                z3.Bool(f"corner({x},{y},{z}) s({s}) c"),
             )
-        for x, y, z in centers:
-            cubicle_states[s][x][y][z] = (
+            for x, y, z in cubies.corners
+        ]
+        for s in range(k + 1)
+    ]
+    centers = [
+        [
+            (
                 z3_int(solver, f"center({x},{y},{z}) s({s}) x", 0, n),
                 z3_int(solver, f"center({x},{y},{z}) s({s}) y", 0, n),
                 z3_int(solver, f"center({x},{y},{z}) s({s}) z", 0, n),
-                None,
             )
-        for x, y, z in edges:
-            cubicle_states[s][x][y][z] = (
+            for x, y, z in cubies.centers
+        ]
+        for s in range(k + 1)
+    ]
+    edges = [
+        [
+            (
                 z3_int(solver, f"edge({x},{y},{z}) s({s}) x", 0, n),
                 z3_int(solver, f"edge({x},{y},{z}) s({s}) y", 0, n),
                 z3_int(solver, f"edge({x},{y},{z}) s({s}) z", 0, n),
-                z3_int(solver, f"edge({x},{y},{z}) s({s}) r", 0, 2),
+                z3.Bool(f"edge({x},{y},{z}) s({s}) r"),
             )
+            for x, y, z in cubies.edges
+        ]
+        for s in range(k + 1)
+    ]
 
     # Variables which together indicate the move at each state.
     mas = [z3_int(solver, f"s({s}) ma", 0, 3) for s in range(k)]
     mis = [z3_int(solver, f"s({s}) mi", 0, n + 1) for s in range(k)]
     mds = [z3_int(solver, f"s({s}) md", 0, 3) for s in range(k)]
 
-    def cubicle(s: int, x: int, y: int, z: int):
-        """Get a cubicle assuming it exists."""
-        cubicle = cubicle_states[s][x][y][z]
-        if cubicle is None:
-            raise Exception(f"invalid cubicle: {({x},{y},{z})}")
-        return cubicle
-
     def fix_state(s: int, puzzle: Puzzle):
-        """Return condition of a state being equal to a puzzle object."""
-        conditions = []
-
-        for x, y, z in corners:
-            xv, yv, zv, rv = cubicle(s, x, y, z)
-            conditions.append(xv == puzzle.coords[x][y][z][0])
-            conditions.append(yv == puzzle.coords[x][y][z][1])
-            conditions.append(zv == puzzle.coords[x][y][z][2])
-            conditions.append(rv == puzzle.corner_r[x][y][z])
-        for x, y, z in centers:
-            xv, yv, zv, _ = cubicle(s, x, y, z)
-            conditions.append(xv == puzzle.coords[x][y][z][0])
-            conditions.append(yv == puzzle.coords[x][y][z][1])
-            conditions.append(zv == puzzle.coords[x][y][z][2])
-        for x, y, z in edges:
-            xv, yv, zv, rv = cubicle(s, x, y, z)
-            conditions.append(xv == puzzle.coords[x][y][z][0])
-            conditions.append(yv == puzzle.coords[x][y][z][1])
-            conditions.append(zv == puzzle.coords[x][y][z][2])
-            conditions.append(rv == puzzle.corner_r[x][y][z])
-
-        return z3.And(conditions)
+        """Return conditions of a state being equal to a puzzle object."""
+        conds: list[z3.BoolRef | bool] = []
+        for i, (x, y, z, r, c) in enumerate(corners[s]):
+            px, py, pz, pr, pc = puzzle.corners[i]
+            conds.extend([x == px, y == py, z == pz, r == pr, c == pc])
+        for i, (x, y, z) in enumerate(centers[s]):
+            px, py, pz = puzzle.centers[i]
+            conds.extend([x == px, y == py, z == pz])
+        for i, (x, y, z, r) in enumerate(edges[s]):
+            px, py, pz, pr = puzzle.edges[i]
+            conds.extend([x == px, y == py, z == pz, r == pr])
+        return conds
 
     def identical_states(s1: int, s2: int):
-        """Return condition of two states being equal."""
-        conditions = []
-
-        for x, y, z in corners:
-            x1, y1, z1, r1 = cubicle(s1, x, y, z)
-            x2, y2, z2, r2 = cubicle(s2, x, y, z)
-            conditions.append(x1 == x2)
-            conditions.append(y1 == y2)
-            conditions.append(z1 == z2)
-            conditions.append(r1 == r2)
-        for x, y, z in centers:
-            x1, y1, z1, r1 = cubicle(s1, x, y, z)
-            x2, y2, z2, r2 = cubicle(s2, x, y, z)
-            conditions.append(x1 == x2)
-            conditions.append(y1 == y2)
-            conditions.append(z1 == z2)
-        for x, y, z in edges:
-            x1, y1, z1, r1 = cubicle(s1, x, y, z)
-            x2, y2, z2, r2 = cubicle(s2, x, y, z)
-            conditions.append(x1 == x2)
-            conditions.append(y1 == y2)
-            conditions.append(z1 == z2)
-            conditions.append(r1 == r2)
-
-        return z3.And(conditions)
+        """Return conditions of two states being equal."""
+        conds: list[z3.BoolRef | bool] = []
+        for i, (x1, y1, z1, r1, c1) in enumerate(corners[s1]):
+            x2, y2, z2, r2, c2 = corners[s2][i]
+            conds.extend([x1 == x2, y1 == y2, z1 == z2, r1 == r2, c1 == c2])
+        for i, (x1, y1, z1) in enumerate(centers[s1]):
+            x2, y2, z2 = centers[s2][i]
+            conds.extend([x1 == x2, y1 == y2, z1 == z2])
+        for i, (x1, y1, z1, r1) in enumerate(edges[s1]):
+            x2, y2, z2, r2 = edges[s2][i]
+            conds.extend([x1 == x2, y1 == y2, z1 == z2, r1 == r2])
+        return conds
 
     # Fix the first state to the puzzle state.
-    solver.add(fix_state(0, puzzle))
+    solver.add(z3.And(fix_state(0, puzzle)))
 
     # Fix the last state to the finished state.
-    finished = Puzzle.finished(n)
-    solver.add(fix_state(-1, finished))
+    solver.add(z3.And(fix_state(-1, finished)))
 
     # Restrict color states when move is nothing.
     for s in range(k):
-        solver.add(z3.Or(mis[s] != n, identical_states(s, s + 1)))
+        solver.add(z3.Or(mis[s] != n, z3.And(identical_states(s, s + 1))))
 
     # Only allow nothing move when complete.
     for s in range(k):
-        solver.add(z3.Or(mis[s] != n, fix_state(s, finished)))
+        solver.add(z3.Or(mis[s] != n, z3.And(fix_state(s, finished))))
 
     # Restrict cubicle states according to moves.
     for s in range(k):
-        mav, miv, mdv = mas[s], mis[s], mds[s]
+        ma, mi, md = mas[s], mis[s], mds[s]
 
-        for x, y, z in itertools.chain(corners, centers, edges):
-            xv, yv, zv, _ = cubicle(s, x, y, z)
-            next_xv, next_yv, next_zv, _ = cubicle(s + 1, x, y, z)
+        for i, (x, y, z, r, c) in enumerate(corners[s]):
+            next_x, next_y, next_z, next_r, next_c = corners[s + 1][i]
+            solver.add(next_x == next_x_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_y == next_y_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_z == next_z_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_r == next_corner_r_restriction(x, z, r, c, ma, mi, md))
+            solver.add(next_c == next_corner_c_restriction(x, y, z, c, ma, mi, md))
 
-            # Restrictions for next x.
-            solver.add(
-                z3.If(
-                    mav == 0,
-                    z3.If(
-                        miv == yv,
-                        z3.If(
-                            mdv == 0,
-                            next_xv == zv,
-                            z3.If(
-                                mdv == 1,
-                                next_xv == n - 1 - zv,
-                                z3.If(mdv == 2, next_xv == n - 1 - xv, next_xv == xv),
-                            ),
-                        ),
-                        next_xv == xv,
-                    ),
-                    z3.If(
-                        mav == 1,
-                        next_xv == xv,
-                        z3.If(
-                            mav == 2,
-                            z3.If(
-                                miv == zv,
-                                z3.If(
-                                    mdv == 0,
-                                    next_xv == yv,
-                                    z3.If(
-                                        mdv == 1,
-                                        next_xv == n - 1 - yv,
-                                        z3.If(
-                                            mdv == 2,
-                                            next_xv == n - 1 - xv,
-                                            next_xv == xv,
-                                        ),
-                                    ),
-                                ),
-                                next_xv == xv,
-                            ),
-                            next_xv == xv,
-                        ),
-                    ),
-                )
-            )
+        for i, (x, y, z) in enumerate(centers[s]):
+            next_x, next_y, next_z = centers[s + 1][i]
+            solver.add(next_x == next_x_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_y == next_y_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_z == next_z_restriction(n, x, y, z, ma, mi, md))
 
-            # Restrictions for next y.
-            solver.add(
-                z3.If(
-                    mav == 0,
-                    next_yv == yv,
-                    z3.If(
-                        mav == 1,
-                        z3.If(
-                            miv == xv,
-                            z3.If(
-                                mdv == 0,
-                                next_yv == n - 1 - zv,
-                                z3.If(
-                                    mdv == 1,
-                                    next_yv == zv,
-                                    z3.If(
-                                        mdv == 2, next_yv == n - 1 - yv, next_yv == yv
-                                    ),
-                                ),
-                            ),
-                            next_yv == yv,
-                        ),
-                        z3.If(
-                            mav == 2,
-                            z3.If(
-                                miv == zv,
-                                z3.If(
-                                    mdv == 0,
-                                    next_yv == n - 1 - xv,
-                                    z3.If(
-                                        mdv == 1,
-                                        next_yv == xv,
-                                        z3.If(
-                                            mdv == 2,
-                                            next_yv == n - 1 - yv,
-                                            next_yv == yv,
-                                        ),
-                                    ),
-                                ),
-                                next_yv == yv,
-                            ),
-                            next_yv == yv,
-                        ),
-                    ),
-                )
-            )
-
-            # Restrictions for next z.
-            solver.add(
-                z3.If(
-                    mav == 0,
-                    z3.If(
-                        miv == yv,
-                        z3.If(
-                            mdv == 0,
-                            next_zv == n - 1 - xv,
-                            z3.If(
-                                mdv == 1,
-                                next_zv == xv,
-                                z3.If(mdv == 2, next_zv == n - 1 - zv, next_zv == zv),
-                            ),
-                        ),
-                        next_zv == zv,
-                    ),
-                    z3.If(
-                        mav == 1,
-                        z3.If(
-                            miv == xv,
-                            z3.If(
-                                mdv == 0,
-                                next_zv == yv,
-                                z3.If(
-                                    mdv == 1,
-                                    next_zv == n - 1 - yv,
-                                    z3.If(
-                                        mdv == 2, next_zv == n - 1 - zv, next_zv == zv
-                                    ),
-                                ),
-                            ),
-                            next_zv == zv,
-                        ),
-                        next_zv == zv,
-                    ),
-                )
-            )
-
-        for x, y, z in corners:
-            xv, yv, zv, rv = cubicle(s, x, y, z)
-            next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
-            assert rv is not None and next_rv is not None
-
-            # Restrictions for next r.
-            solver.add(
-                z3.If(
-                    mav == 1,
-                    z3.If(
-                        miv == xv,
-                        z3.If(
-                            mdv != 2,
-                            z3.If(
-                                rv == 0,
-                                next_rv == 1,
-                                z3.If(
-                                    rv == 1,
-                                    next_rv == 2,
-                                    z3.If(rv == 2, next_rv == 0, next_rv == rv),
-                                ),
-                            ),
-                            next_rv == rv,
-                        ),
-                        next_rv == rv,
-                    ),
-                    z3.If(
-                        mav == 2,
-                        z3.If(
-                            miv == zv,
-                            z3.If(
-                                mdv != 2,
-                                z3.If(
-                                    rv == 0,
-                                    next_rv == 2,
-                                    z3.If(
-                                        rv == 1,
-                                        next_rv == 0,
-                                        z3.If(rv == 2, next_rv == 1, next_rv == rv),
-                                    ),
-                                ),
-                                next_rv == rv,
-                            ),
-                            next_rv == rv,
-                        ),
-                        next_rv == rv,
-                    ),
-                ),
-            )
-
-        for x, y, z in edges:
-            xv, yv, zv, rv = cubicle(s, x, y, z)
-            next_xv, next_yv, next_zv, next_rv = cubicle(s + 1, x, y, z)
-            assert rv is not None and next_rv is not None
-
-            # Restrictions for next r.
-            solver.add(
-                z3.If(
-                    mav == 2,
-                    z3.If(
-                        miv == zv,
-                        z3.If(
-                            mdv != 2,
-                            z3.If(
-                                rv == 0,
-                                next_rv == 1,
-                                z3.If(rv == 1, next_rv == 0, next_rv == rv),
-                            ),
-                            next_rv == rv,
-                        ),
-                        next_rv == rv,
-                    ),
-                    next_rv == rv,
-                )
-            )
+        for i, (x, y, z, r) in enumerate(edges[s]):
+            next_x, next_y, next_z, next_r = edges[s + 1][i]
+            solver.add(next_x == next_x_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_y == next_y_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_z == next_z_restriction(n, x, y, z, ma, mi, md))
+            solver.add(next_r == next_edge_r_restriction(n, x, y, z, r, ma, mi, md))
 
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
     for s in range(1, k):
@@ -412,7 +307,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
     # States cannot be repeated.
     for s1 in range(k + 1):
         for s2 in range(s1 + 1, k + 1):
-            solver.add(z3.Not(identical_states(s1, s2)))
+            solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start

@@ -395,6 +395,17 @@ class Puzzle:
 
         return Puzzle(n, cubies, corners, centers, edges)
 
+    @staticmethod
+    def finished(n: int):
+        cubies = Cubies(n)
+        return Puzzle(
+            n,
+            cubies,
+            [(x, y, z, 0, False) for x, y, z in cubies.corners],
+            [(x, y, z) for x, y, z in cubies.centers],
+            [(x, y, z, False) for x, y, z in cubies.edges],
+        )
+
     def copy(self):
         return Puzzle(
             self.n,
@@ -429,17 +440,6 @@ class Puzzle:
         ]
 
         return "".join([str(c) for c in flattened])
-
-    @staticmethod
-    def finished(n: int):
-        cubies = Cubies(n)
-        return Puzzle(
-            n,
-            cubies,
-            [(x, y, z, 0, False) for x, y, z in cubies.corners],
-            [(x, y, z) for x, y, z in cubies.centers],
-            [(x, y, z, False) for x, y, z in cubies.edges],
-        )
 
     def execute_move(self, ma: int, mi: int, md: int):
         for i, (x, y, z, r, c) in enumerate(self.corners):
