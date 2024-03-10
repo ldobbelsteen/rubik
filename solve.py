@@ -124,16 +124,18 @@ def next_corner_r_restriction(
     mi: z3.ArithRef,
     md: z3.ArithRef,
 ):
+    # Condition for next_r == (r + 1) % 3
+    add_one = z3.If(r == 0, next_r == 1, z3.If(r == 1, next_r == 2, next_r == 0))
+
+    # Condition for next_r == (r - 1) % 3
+    minus_one = z3.If(r == 0, next_r == 2, z3.If(r == 1, next_r == 0, next_r == 1))
+
     return z3.If(
         md != 2,
         z3.If(
             z3.And(ma == 1, mi == x),
-            z3.If(c, next_r == (r - 1) % 3, next_r == (r + 1) % 3),
-            z3.If(
-                z3.And(ma == 2, mi == z),
-                z3.If(c, next_r == (r + 1) % 3, next_r == (r - 1) % 3),
-                next_r == r,
-            ),
+            z3.If(c, minus_one, add_one),
+            z3.If(z3.And(ma == 2, mi == z), z3.If(c, add_one, minus_one), next_r == r),
         ),
         next_r == r,
     )
