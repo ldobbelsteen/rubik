@@ -16,4 +16,5 @@ if __name__ == "__main__":
             and not os.path.isfile(f"{path}.solution")
         ):
             puzzles.append(path)
-    solve(natural_sorted(puzzles), cpu_count())
+    for puzzle in natural_sorted(puzzles):
+        solve(puzzle, cpu_count())
