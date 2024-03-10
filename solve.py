@@ -448,25 +448,32 @@ def solve(path: str, max_processes: int):
                 for _ in range(killed):
                     spawn_new_process()
 
-        total_solve_time = sum(solve_times.values(), timedelta())
-        total_prep_time = sum(prep_times.values(), timedelta())
-
         if optimal_solution is None:
+            k = "n/a"
+            total_solve_time = sum(solve_times.values(), timedelta())
+            total_prep_time = sum(prep_times.values(), timedelta())
             print_stamped(
                 f"foud no k ≤ {k_upperbound} to be possible in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
             )
         else:
+            k = len(optimal_solution)
+            total_solve_time = sum(
+                [v for kp, v in solve_times.items() if kp <= k + 1], timedelta()
+            )
+            total_prep_time = sum(
+                [v for kp, v in prep_times.items() if kp <= k + 1], timedelta()
+            )
             print_stamped(
-                f"minimum k = {len(optimal_solution)} found in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
+                f"minimum k = {k} found in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
             )
 
         result = {
-            "k": len(optimal_solution) if optimal_solution is not None else "n/a",
-            "moves": optimal_solution if optimal_solution is not None else "impossible",
+            "k": k,
+            "moves": "impossible" if optimal_solution is None else optimal_solution,
             "total_solve_time": str(total_solve_time),
             "total_prep_time": str(total_prep_time),
-            "prep_time_per_k": {k: str(t) for k, t in sorted(prep_times.items())},
-            "solve_time_per_k": {k: str(t) for k, t in sorted(solve_times.items())},
+            "prep_times": {k: str(t) for k, t in sorted(prep_times.items())},
+            "solve_times": {k: str(t) for k, t in sorted(solve_times.items())},
             "max_processes": max_processes,
             "k_upperbound": k_upperbound,
         }
