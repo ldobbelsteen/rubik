@@ -194,7 +194,7 @@ def next_edge_r_restriction(
     )
 
 
-def solve_for_k(puzzle: Puzzle, k: int):
+def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]] = []):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it."""
@@ -348,6 +348,19 @@ def solve_for_k(puzzle: Puzzle, k: int):
         for s2 in range(s1 + 1, k + 1):
             solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
+    # Ban any banned movesets.
+    for ban in banned:
+        solver.add(
+            z3.Not(
+                z3.And(
+                    [
+                        z3.And(mas[s] == ma, mis[s] == mi, mds[s] == md)
+                        for s, (ma, mi, md) in enumerate(ban)
+                    ]
+                )
+            )
+        )
+
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
     solve_start = datetime.now()
@@ -482,6 +495,6 @@ def solve(path: str, max_processes=cpu_count() - 1):
 # e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
     path = sys.argv[1]
-    result = solve(sys.argv[1])
+    result = solve(path)
     with open(f"{path}.solution", "w") as file:
         file.write(json.dumps(result, indent=4))
