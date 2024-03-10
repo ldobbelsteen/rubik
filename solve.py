@@ -458,10 +458,10 @@ def solve(path: str, max_processes: int):
         else:
             k = len(optimal_solution)
             total_solve_time = sum(
-                [v for kp, v in solve_times.items() if kp <= k + 1], timedelta()
+                [v for kp, v in solve_times.items() if kp <= k], timedelta()
             )
             total_prep_time = sum(
-                [v for kp, v in prep_times.items() if kp <= k + 1], timedelta()
+                [v for kp, v in prep_times.items() if kp <= k], timedelta()
             )
             print_stamped(
                 f"minimum k = {k} found in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
