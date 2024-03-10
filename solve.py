@@ -353,15 +353,14 @@ def solve_for_k(puzzle: Puzzle, k: int):
     solve_start = datetime.now()
     res = solver.check()
     solve_time = datetime.now() - solve_start
-    moves: list[str] | None = None
+    moves: list[tuple[int, int, int]] | None = None
 
     if res == z3.sat:
         moves = []
         model = solver.model()
         for s in range(k):
             moves.append(
-                move_name(
-                    n,
+                (
                     model.get_interp(mas[s]).as_long(),
                     model.get_interp(mis[s]).as_long(),
                     model.get_interp(mds[s]).as_long(),
@@ -383,7 +382,7 @@ def solve(path: str, max_processes: int):
 
     with Manager() as manager:
         k_prospects = list(range(k_upperbound + 1))
-        optimal_solution: list[str] | None = None
+        optimal_solution: list[tuple[int, int, int]] | None = None
 
         # Times for each tried k.
         prep_times: dict[int, timedelta] = {}
@@ -393,15 +392,17 @@ def solve(path: str, max_processes: int):
         processes: list[tuple[Process, int]] = []
 
         # Queue for the processes to output results onto.
-        output: Queue[tuple[int, list[str] | None, timedelta, timedelta]] = (
-            manager.Queue()
-        )
+        output: Queue[
+            tuple[int, list[tuple[int, int, int]] | None, timedelta, timedelta]
+        ] = manager.Queue()
 
         def spawn_new_process():
             def solve_for_k_wrapper(
                 puzzle: Puzzle,
                 k: int,
-                output: Queue[tuple[int, list[str] | None, timedelta, timedelta]],
+                output: Queue[
+                    tuple[int, list[tuple[int, int, int]] | None, timedelta, timedelta]
+                ],
             ):
                 solution, prep_time, solve_time = solve_for_k(puzzle, k)
                 output.put((k, solution, prep_time, solve_time))
@@ -468,7 +469,9 @@ def solve(path: str, max_processes: int):
 
         result = {
             "k": k,
-            "moves": "impossible" if optimal_solution is None else optimal_solution,
+            "moves": "impossible"
+            if optimal_solution is None
+            else [move_name(puzzle.n, ma, mi, md) for ma, mi, md in optimal_solution],
             "total_solve_time": str(total_solve_time),
             "total_prep_time": str(total_prep_time),
             "prep_times": {k: str(t) for k, t in sorted(prep_times.items())},
