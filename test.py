@@ -1,8 +1,9 @@
-import unittest
 import os
 import random
-from puzzle import cubie_type, cubie_colors, facelet_cubie, Puzzle
+import unittest
+
 from generate import moveset
+from puzzle import Puzzle, cubie_colors, cubie_type, facelet_cubie
 
 
 class Testing(unittest.TestCase):

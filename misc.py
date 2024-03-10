@@ -1,6 +1,6 @@
-from datetime import datetime
 import os
 import re
+from datetime import datetime
 
 
 def print_stamped(s: str):

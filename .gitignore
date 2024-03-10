@@ -1,4 +1,6 @@
-__pycache__
-venv
-.idea
-.vscode
+/.idea
+/.vscode
+/__pycache__
+/build
+/rubik.egg-info
+/venv

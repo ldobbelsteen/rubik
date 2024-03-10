@@ -1,6 +1,8 @@
-from PIL import Image, ImageDraw
-from misc import rotate_list
 import sys
+
+from PIL import Image, ImageDraw
+
+from misc import rotate_list
 
 # The only supported values for n.
 SUPPORTED_NS = {2, 3}

@@ -1,9 +1,10 @@
+import itertools
+import os
 import random
 import sys
-import os
-from puzzle import Puzzle, SUPPORTED_NS
+
 from misc import create_parent_directory
-import itertools
+from puzzle import SUPPORTED_NS, Puzzle
 
 
 def moveset(n: int):

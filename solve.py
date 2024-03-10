@@ -3,12 +3,14 @@ import sys
 from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
+
 import z3
-from puzzle import Puzzle, move_name
+
 from misc import print_stamped
+from puzzle import Puzzle, move_name
 
 
-def k_upperbound(n: int):
+def default_k_upperbound(n: int):
     match n:
         case 2:
             return 11  # God's Number
@@ -194,8 +196,9 @@ def next_edge_r_restriction(
 
 
 def solve_for_k(puzzle: Puzzle, k: int):
-    """Solve a puzzle with a maximum number of moves. Return list of move names or nothing if not possible.
-    Also returns, in both cases, the time it took to prepare the SAT model and the time it took to solve it."""
+    """Compute the optimal solution for a puzzle with a maximum number of moves k.
+    Returns list of moves or nothing if impossible. In both cases, also returns the time
+    it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
     solver = z3.Optimize()
 
@@ -313,7 +316,8 @@ def solve_for_k(puzzle: Puzzle, k: int):
             solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
             solver.add(next_edge_r_restriction(n, next_r, x, y, z, r, ma, mi, md))
 
-    # If between 1 and n moves ago we made a turn at an index and axis, a different axis has to have been turned in the meantime.
+    # If between 1 and n moves ago we made a turn at an index and axis, a different axis
+    # has to have been turned in the meantime.
     for s in range(1, k):
         for rs in range(1, min(n + 1, s + 1)):
             solver.add(
@@ -369,131 +373,110 @@ def solve_for_k(puzzle: Puzzle, k: int):
     return moves, prep_time, solve_time
 
 
-def solve(files: list[str], process_count: int):
-    """Solve a list of puzzles, efficiently distributing tasks among multiple processes."""
+def solve(path: str, max_processes: int):
+    """Compute the optimal solution for a puzzle in parallel for all possible values
+    of k within the upperbound. Returns a dict containing statistics of the solving
+    process and the result."""
+    print_stamped(f"solving '{path}'...")
+
+    puzzle = Puzzle.from_file(path)
+    k_upperbound = default_k_upperbound(puzzle.n)
 
     with Manager() as manager:
-        # List of puzzles to solve.
-        puzzles = [Puzzle.from_file(file) for file in files]
+        k_prospects = list(range(k_upperbound + 1))
+        optimal_solution: list[str] | None = None
 
-        # List of upperbounds for k for each of the puzzles.
-        k_upperbounds = [k_upperbound(puzzles[i].n) for i in range(len(puzzles))]
+        # Times for each tried k.
+        prep_times: dict[int, timedelta] = {}
+        solve_times: dict[int, timedelta] = {}
 
-        # Lists of prospects for k for each of the puzzles (starting with [0, k]).
-        k_prospects = [list(range(k_upperbounds[i] + 1)) for i in range(len(puzzles))]
+        # List of running processes and their k.
+        processes: list[tuple[Process, int]] = []
 
-        # List of currently found minimum size solutions for each of the puzzles.
-        k_minima: list[list[str] | None] = [None for _ in range(len(puzzles))]
-
-        # List of prep times for each tried prospect for each puzzle.
-        prep_times: list[dict[int, timedelta]] = [{} for _ in range(len(puzzles))]
-
-        # List of solving times for each tried prospect for each puzzle.
-        solve_times: list[dict[int, timedelta]] = [{} for _ in range(len(puzzles))]
-
-        # List of processes and their current tasks.
-        processes: list[tuple[int, int, Process]] = []
-
-        # Queue to output results onto.
-        output: Queue[tuple[int, int, list[str] | None, timedelta, timedelta]] = (
+        # Queue for the processes to output results onto.
+        output: Queue[tuple[int, list[str] | None, timedelta, timedelta]] = (
             manager.Queue()
         )
 
         def spawn_new_process():
-            def solve_wrapper(
+            def solve_for_k_wrapper(
                 puzzle: Puzzle,
                 k: int,
-                i: int,
-                output: Queue[tuple[int, int, list[str] | None, timedelta, timedelta]],
+                output: Queue[tuple[int, list[str] | None, timedelta, timedelta]],
             ):
                 solution, prep_time, solve_time = solve_for_k(puzzle, k)
-                output.put((i, k, solution, prep_time, solve_time))
+                output.put((k, solution, prep_time, solve_time))
 
-            for i in range(len(puzzles)):
-                if len(k_prospects[i]) > 0:
-                    k = k_prospects[i].pop(0)
-                    process = Process(
-                        target=solve_wrapper,
-                        args=(
-                            puzzles[i],
-                            k,
-                            i,
-                            output,
-                        ),
-                    )
-                    processes.append((i, k, process))
-                    process.start()
-                    break
+            if len(k_prospects) > 0:
+                k = k_prospects.pop(0)
+                process = Process(target=solve_for_k_wrapper, args=(puzzle, k, output))
+                processes.append((process, k))
+                process.start()
 
-        for _ in range(process_count):
+        for _ in range(max_processes):
             spawn_new_process()
 
         while len(processes) > 0:
-            i, k, solution, prep_time, solve_time = output.get()
-            prep_times[i][k] = prep_time
-            solve_times[i][k] = solve_time
+            k, solution, prep_time, solve_time = output.get()
+            prep_times[k] = prep_time
+            solve_times[k] = solve_time
 
             if solution is None:
                 print_stamped(
-                    f"{files[i]}: unsat for k = {k} found in {solve_time} with {prep_time} prep time..."
+                    f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep..."
                 )
-                k_prospects[i] = [p for p in k_prospects[i] if p > k]
+                k_prospects = [kp for kp in k_prospects if kp > k]
                 killed = 0
                 for pi in range(len(processes) - 1, -1, -1):
                     if processes[pi][1] <= k:
-                        processes.pop(pi)[2].kill()
+                        processes.pop(pi)[0].kill()
                         killed += 1
                 for _ in range(killed):
                     spawn_new_process()
             else:
                 print_stamped(
-                    f"{files[i]}: sat for k = {k} found in {solve_time} with {prep_time} prep time..."
+                    f"k = {k}: SAT found in {solve_time} with {prep_time} prep..."
                 )
-                current_minimum = k_minima[i]
-                if current_minimum is None or k < len(current_minimum):
-                    k_minima[i] = solution
-                k_prospects[i] = [p for p in k_prospects[i] if p < k]
+                if optimal_solution is None or k < len(optimal_solution):
+                    optimal_solution = solution
+                k_prospects = [kp for kp in k_prospects if kp < k]
                 killed = 0
                 for pi in range(len(processes) - 1, -1, -1):
                     if processes[pi][1] >= k:
-                        processes.pop(pi)[2].kill()
+                        processes.pop(pi)[0].kill()
                         killed += 1
                 for _ in range(killed):
                     spawn_new_process()
 
-            if all([i != pi for pi, _, _ in processes]):
-                minimum = k_minima[i]
-                total_solve_time = sum(solve_times[i].values(), timedelta())
-                total_prep_time = sum(prep_times[i].values(), timedelta())
+        total_solve_time = sum(solve_times.values(), timedelta())
+        total_prep_time = sum(prep_times.values(), timedelta())
 
-                if minimum is None:
-                    print_stamped(
-                        f"{files[i]}: found no solution with k ≤ {k_upperbounds[i]} to be possible in {total_solve_time} with {total_prep_time} prep time"
-                    )
-                else:
-                    print_stamped(
-                        f"{files[i]}: minimum k = {len(minimum)} found in {total_solve_time} with {total_prep_time} prep time"
-                    )
+        if optimal_solution is None:
+            print_stamped(
+                f"foud no k ≤ {k_upperbound} to be possible in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
+            )
+        else:
+            print_stamped(
+                f"minimum k = {len(optimal_solution)} found in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
+            )
 
-                result = {
-                    "k": len(minimum) if minimum is not None else "n/a",
-                    "moves": minimum if minimum is not None else "impossible",
-                    "total_solve_time": str(total_solve_time),
-                    "total_prep_time": str(total_prep_time),
-                    "prep_time_per_k": {
-                        k: str(t) for k, t in sorted(prep_times[i].items())
-                    },
-                    "solve_time_per_k": {
-                        k: str(t) for k, t in sorted(solve_times[i].items())
-                    },
-                    "k_upperbound": k_upperbounds[i],
-                    "process_count": process_count,
-                }
+        result = {
+            "k": len(optimal_solution) if optimal_solution is not None else "n/a",
+            "moves": optimal_solution if optimal_solution is not None else "impossible",
+            "total_solve_time": str(total_solve_time),
+            "total_prep_time": str(total_prep_time),
+            "prep_time_per_k": {k: str(t) for k, t in sorted(prep_times.items())},
+            "solve_time_per_k": {k: str(t) for k, t in sorted(solve_times.items())},
+            "max_processes": max_processes,
+            "k_upperbound": k_upperbound,
+        }
 
-                with open(f"{files[i]}.solution", "w") as solution_file:
-                    solution_file.write(json.dumps(result, indent=4))
+        with open(f"{path}.solution", "w") as file:
+            file.write(json.dumps(result, indent=4))
+
+    pass
 
 
 # e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
-    solve([sys.argv[1]], cpu_count())
+    solve(sys.argv[1], cpu_count())

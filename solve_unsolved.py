@@ -1,7 +1,8 @@
 import os
 from multiprocessing import cpu_count
-from solve import solve
+
 from misc import natural_sorted
+from solve import solve
 
 # e.g. python solve_unsolved.py
 if __name__ == "__main__":
