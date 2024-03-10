@@ -178,7 +178,6 @@ def next_edge_r_restriction(
     mi: z3.ArithRef,
     md: z3.ArithRef,
 ):
-    assert n == 3  # this restriction only works for n = 3
     return z3.If(
         z3.And(
             md != 2,
@@ -186,7 +185,7 @@ def next_edge_r_restriction(
                 z3.And(ma == 2, mi == z),
                 z3.And(
                     mi == 1,
-                    z3.Or(z3.And(ma == 0, y == 1), z3.And(ma == 1, x == 1)),
+                    z3.Or(z3.And(ma == 0, mi == y), z3.And(ma == 1, mi == x)),
                 ),
             ),
         ),

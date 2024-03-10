@@ -263,11 +263,10 @@ def corner_c_mapping(
 def edge_r_mapping(
     n: int, x: int, y: int, z: int, r: bool, ma: int, mi: int, md: int
 ) -> bool:
+    assert n == 3
     if md != 2 and (
         (ma == 2 and mi == z)
-        or (
-            mi != 0 and mi != n - 1 and ((ma == 0 and mi == y) or (ma == 1 and mi == x))
-        )
+        or (mi == 1 and ((ma == 0 and mi == y) or (ma == 1 and mi == x)))
     ):
         return not r
     return r
