@@ -44,14 +44,14 @@ def next_x_restriction(
         z3.If(
             md == 0,
             next_x == z,
-            z3.If(md == 1, next_x == n - 1 - z, next_x == n - 1 - x),
+            z3.If(md == 1, next_x == (n - 1) - z, next_x == (n - 1) - x),
         ),
         z3.If(
             z3.And(ma == 2, mi == z),
             z3.If(
                 md == 0,
                 next_x == y,
-                z3.If(md == 1, next_x == n - 1 - y, next_x == n - 1 - x),
+                z3.If(md == 1, next_x == (n - 1) - y, next_x == (n - 1) - x),
             ),
             next_x == x,
         ),
@@ -72,15 +72,15 @@ def next_y_restriction(
         z3.And(ma == 1, mi == x),
         z3.If(
             md == 0,
-            next_y == n - 1 - z,
-            z3.If(md == 1, next_y == z, next_y == n - 1 - y),
+            next_y == (n - 1) - z,
+            z3.If(md == 1, next_y == z, next_y == (n - 1) - y),
         ),
         z3.If(
             z3.And(ma == 2, mi == z),
             z3.If(
                 md == 0,
-                next_y == n - 1 - x,
-                z3.If(md == 1, next_y == x, next_y == n - 1 - y),
+                next_y == (n - 1) - x,
+                z3.If(md == 1, next_y == x, next_y == (n - 1) - y),
             ),
             next_y == y,
         ),
@@ -101,15 +101,15 @@ def next_z_restriction(
         z3.And(ma == 0, mi == y),
         z3.If(
             md == 0,
-            next_z == n - 1 - x,
-            z3.If(md == 1, next_z == x, next_z == n - 1 - z),
+            next_z == (n - 1) - x,
+            z3.If(md == 1, next_z == x, next_z == (n - 1) - z),
         ),
         z3.If(
             z3.And(ma == 1, mi == x),
             z3.If(
                 md == 0,
                 next_z == next_z == y,
-                z3.If(md == 1, next_z == n - 1 - y, next_z == n - 1 - z),
+                z3.If(md == 1, next_z == (n - 1) - y, next_z == (n - 1) - z),
             ),
             next_z == z,
         ),
@@ -185,7 +185,7 @@ def next_edge_r_restriction(
                 z3.And(ma == 2, mi == z),
                 z3.And(
                     mi != 0,
-                    mi != n - 1,
+                    mi != (n - 1),
                     z3.Or(z3.And(ma == 0, mi == y), z3.And(ma == 1, mi == x)),
                 ),
             ),
