@@ -371,7 +371,7 @@ def solve_for_k(puzzle: Puzzle, k: int):
     return moves, prep_time, solve_time
 
 
-def solve(path: str, max_processes: int):
+def solve(path: str, max_processes=cpu_count() - 1):
     """Compute the optimal solution for a puzzle in parallel for all possible values
     of k within the upperbound. Returns a dict containing statistics of the solving
     process and the result."""
@@ -482,6 +482,6 @@ def solve(path: str, max_processes: int):
 # e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
     path = sys.argv[1]
-    result = solve(sys.argv[1], cpu_count())
+    result = solve(sys.argv[1])
     with open(f"{path}.solution", "w") as file:
         file.write(json.dumps(result, indent=4))
