@@ -481,8 +481,6 @@ def solve(path: str, max_processes: int):
         with open(f"{path}.solution", "w") as file:
             file.write(json.dumps(result, indent=4))
 
-    pass
-
 
 # e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
