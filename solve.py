@@ -7,7 +7,7 @@ from queue import Queue
 import z3
 
 from misc import print_stamped
-from puzzle import Puzzle, move_name
+from puzzle import Puzzle
 
 
 def default_k_upperbound(n: int):
@@ -469,9 +469,7 @@ def solve(path: str, max_processes: int):
 
         result = {
             "k": k,
-            "moves": "impossible"
-            if optimal_solution is None
-            else [move_name(puzzle.n, ma, mi, md) for ma, mi, md in optimal_solution],
+            "moves": "impossible" if optimal_solution is None else optimal_solution,
             "total_solve_time": str(total_solve_time),
             "total_prep_time": str(total_prep_time),
             "prep_times": {k: str(t) for k, t in sorted(prep_times.items())},
