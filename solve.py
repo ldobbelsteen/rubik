@@ -341,11 +341,11 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
                 )
             )
 
-    # States cannot be repeated.
-    # TODO: investigate whether this is worth the load.
-    for s1 in range(k + 1):
-        for s2 in range(s1 + 1, k + 1):
-            solver.add(z3.Not(z3.And(identical_states(s1, s2))))
+    # NOTE: commented out due to performance worries
+    # # States cannot be repeated.
+    # for s1 in range(k + 1):
+    #     for s2 in range(s1 + 1, k + 1):
+    #         solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
     # Ban any banned movesets.
     for ban in banned:
