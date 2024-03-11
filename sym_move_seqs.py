@@ -24,6 +24,18 @@ def is_allowed(n: int, seq: MoveSequence) -> bool:
         if seq[s][0] == seq[s + 1][0] and seq[s][1] >= seq[s + 1][1]:
             return False
 
+    # Ascending axes for consecutive center moves.
+    if n == 3:
+        for s in range(len(seq) - 1):
+            if (
+                seq[s][1] == 1
+                and seq[s + 1][1] == 1
+                and seq[s][2] == 2
+                and seq[s + 1][2] == 2
+                and seq[s][0] >= seq[s + 1][0]
+            ):
+                return False
+
     return True
 
 
