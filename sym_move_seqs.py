@@ -27,8 +27,8 @@ def is_allowed(n: int, seq: MoveSequence) -> bool:
     return True
 
 
-def compute_duplicate_move_sequences(n: int, max_depth: int, overwrite=False):
-    path = f"./sym_move_seqs/n{n}-d{max_depth}.txt"
+def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
+    path = f"./sym_move_seqs/n{n}-d{depth}.txt"
     if not overwrite and os.path.isfile(path):
         return
     create_parent_directory(path)
@@ -46,8 +46,7 @@ def compute_duplicate_move_sequences(n: int, max_depth: int, overwrite=False):
     layer: list[tuple[Puzzle, MoveSequence]] = [(finished, tuple())]
 
     # Perform BFS.
-    for depth in range(1, max_depth + 1):
-        print_stamped(f"depth = {depth}...")
+    for d in range(1, depth + 1):
         next_layer: list[tuple[Puzzle, MoveSequence]] = []
 
         # Execute all possible moves from the states encountered in the last iteration.
@@ -83,4 +82,9 @@ def compute_duplicate_move_sequences(n: int, max_depth: int, overwrite=False):
 
 # e.g. python sym_move_seqs.py {n} {max_depth}
 if __name__ == "__main__":
-    compute_duplicate_move_sequences(int(sys.argv[1]), int(sys.argv[2]), True)
+    n = int(sys.argv[1])
+    max_depth = int(sys.argv[2])
+
+    for d in range(1, max_depth + 1):
+        print_stamped(f"computing for depth = {d}...")
+        compute_duplicate_move_sequences(n, d, True)
