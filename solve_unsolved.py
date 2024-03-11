@@ -1,5 +1,4 @@
 import os
-from multiprocessing import cpu_count
 
 from misc import natural_sorted
 from solve import solve
@@ -17,4 +16,4 @@ if __name__ == "__main__":
         ):
             puzzles.append(path)
     for puzzle in natural_sorted(puzzles):
-        solve(puzzle, cpu_count())
+        solve(puzzle)
