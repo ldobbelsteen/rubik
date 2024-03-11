@@ -2,7 +2,7 @@ import os
 import random
 import unittest
 
-from generate import moveset
+from generate import list_all_moves
 from puzzle import Puzzle, cubie_colors, cubie_type, facelet_cubie
 
 
@@ -39,7 +39,7 @@ class Testing(unittest.TestCase):
     def test_puzzle_move_consistency(self):
         for n in [2, 3]:
             # Take a random permutation of all possible moves.
-            moves = moveset(n)
+            moves = list_all_moves(n)
             random.shuffle(moves)
 
             state = Puzzle.finished(n)

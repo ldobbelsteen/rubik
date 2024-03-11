@@ -3,8 +3,8 @@ import os
 from misc import natural_sorted
 from solve import solve
 
-# e.g. python solve_unsolved.py
-if __name__ == "__main__":
+
+def solve_unsolved():
     dir = "./puzzles/"
     puzzles: list[str] = []
     for filename in os.listdir(dir):
@@ -17,3 +17,8 @@ if __name__ == "__main__":
             puzzles.append(path)
     for puzzle in natural_sorted(puzzles):
         solve(puzzle)
+
+
+# e.g. python solve_unsolved.py
+if __name__ == "__main__":
+    solve_unsolved()

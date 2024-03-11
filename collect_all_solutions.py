@@ -4,9 +4,8 @@ from misc import print_stamped
 from puzzle import Puzzle, move_name
 from solve import solve, solve_for_k
 
-# e.g. python solve_all_solutions.py ./puzzles/n2-random7.txt
-if __name__ == "__main__":
-    path = sys.argv[1]
+
+def collect_all_solutions(path: str):
     puzzle = Puzzle.from_file(path)
 
     def canonicalize(solution: list[tuple[int, int, int]]):
@@ -25,5 +24,11 @@ if __name__ == "__main__":
         if solution is None:
             break
         solutions.append(solution)
+        print_stamped("-----------------------")
         print_stamped(f"new solution: {solution}")
         print_stamped(f"new solution (canonical): {canonicalize(solution)}")
+
+
+# e.g. python collect_all_solutions.py ./puzzles/n2-random7.txt
+if __name__ == "__main__":
+    collect_all_solutions(sys.argv[1])

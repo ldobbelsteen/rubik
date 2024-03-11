@@ -1,7 +1,8 @@
+import ast
 import os
 import sys
 
-from generate import moveset
+from generate import list_all_moves
 from misc import create_parent_directory
 from puzzle import Puzzle
 
@@ -39,14 +40,18 @@ def is_allowed(n: int, seq: MoveSequence) -> bool:
     return True
 
 
-def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
-    path = f"./sym_move_seqs/n{n}-d{depth}.txt"
+def file_path(n: int, d: int):
+    return f"./sym_move_seqs/n{n}-d{d}.txt"
+
+
+def compute_symmetric_move_sequences(n: int, d: int, overwrite=False):
+    path = file_path(n, d)
     if not overwrite and os.path.isfile(path):
         return
     create_parent_directory(path)
 
     finished = Puzzle.finished(n)
-    moves = moveset(n)
+    moves = list_all_moves(n)
 
     # To keep track of the set of move sequences equal to a move sequence.
     duplicates: dict[MoveSequence, list[MoveSequence]] = {}
@@ -58,7 +63,7 @@ def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
     layer: list[tuple[Puzzle, MoveSequence]] = [(finished, tuple())]
 
     # Perform BFS.
-    for _ in range(1, depth + 1):
+    for _ in range(1, d + 1):
         next_layer: list[tuple[Puzzle, MoveSequence]] = []
 
         # Execute all possible moves from the states encountered in the last iteration.
@@ -93,8 +98,17 @@ def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
             file.write(f"{str(seq)}\t{str(sym)}\n")
 
 
+def load_symmetric_move_sequences(n: int, d: int):
+    output: list[
+        tuple[list[tuple[int, int, int]], list[list[tuple[int, int, int]]]]
+    ] = []
+    with open(file_path(n, d), "r") as file:
+        for line in file:
+            seq_raw, sym_raw = line.rstrip("\n").split("\t")
+            output.append((ast.literal_eval(seq_raw), ast.literal_eval(sym_raw)))
+    return output
+
+
 # e.g. python sym_move_seqs.py {n} {depth}
 if __name__ == "__main__":
-    n = int(sys.argv[1])
-    depth = int(sys.argv[2])
-    compute_duplicate_move_sequences(n, depth, True)
+    compute_symmetric_move_sequences(int(sys.argv[1]), int(sys.argv[2]), True)

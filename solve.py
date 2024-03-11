@@ -498,7 +498,6 @@ def solve(path: str, max_processes=cpu_count() - 1):
 
 # e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
-    path = sys.argv[1]
-    _, result = solve(path)
-    with open(f"{path}.solution", "w") as file:
-        file.write(json.dumps(result, indent=4))
+    _, res = solve(sys.argv[1])
+    with open(f"{sys.argv[1]}.solution", "w") as file:
+        file.write(json.dumps(res, indent=4))

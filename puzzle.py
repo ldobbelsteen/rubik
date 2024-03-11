@@ -549,5 +549,4 @@ class Puzzle:
 
 # e.g. python puzzle.py ./puzzles/n2-random4.txt
 if __name__ == "__main__":
-    p = Puzzle.from_file(sys.argv[1])
-    p.print()
+    Puzzle.from_file(sys.argv[1]).print()
