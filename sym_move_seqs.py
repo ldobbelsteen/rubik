@@ -83,11 +83,11 @@ def compute(n: int, d: int):
 
                 # If state has been seen, add it to the set of duplicates.
                 if next_puzzle in encountered:
-                    encountered_combination = encountered[next_puzzle]
-                    assert len(encountered_combination) <= len(next_seq)
-                    if encountered_combination not in duplicates:
-                        duplicates[encountered_combination] = []
-                    duplicates[encountered_combination].append(next_seq)
+                    encountered_seq = encountered[next_puzzle]
+                    assert len(encountered_seq) <= len(next_seq)
+                    if encountered_seq not in duplicates:
+                        duplicates[encountered_seq] = []
+                    duplicates[encountered_seq].append(next_seq)
                 # Else store as encountered and add it to the next iteration.
                 else:
                     encountered[next_puzzle] = next_seq
