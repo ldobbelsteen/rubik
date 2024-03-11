@@ -9,15 +9,14 @@ if __name__ == "__main__":
     path = sys.argv[1]
     puzzle = Puzzle.from_file(path)
 
-    def canonical_solution(solution: list[tuple[int, int, int]]):
+    def canonicalize(solution: list[tuple[int, int, int]]):
         return [move_name(puzzle.n, ma, mi, md) for ma, mi, md in solution]
 
-    base_result = solve(path)
-    base_solution = base_result["moves"]
-    if base_solution == "impossible":
+    base_solution, base_result = solve(path)
+    if base_solution is None:
         raise Exception("puzzle has no solution")
     print_stamped(f"base solution: {base_solution}")
-    print_stamped(f"base solution (canonical): {canonical_solution(base_solution)}")
+    print_stamped(f"base solution (canonical): {canonicalize(base_solution)}")
     k = base_result["k"]
 
     solutions = [base_solution]
@@ -27,4 +26,4 @@ if __name__ == "__main__":
             break
         solutions.append(solution)
         print_stamped(f"new solution: {solution}")
-        print_stamped(f"new solution (canonical): {canonical_solution(solution)}")
+        print_stamped(f"new solution (canonical): {canonicalize(solution)}")

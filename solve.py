@@ -7,7 +7,7 @@ from queue import Queue
 import z3
 
 from misc import print_stamped
-from puzzle import Puzzle
+from puzzle import Puzzle, move_name
 
 
 def default_k_upperbound(n: int):
@@ -480,9 +480,11 @@ def solve(path: str, max_processes=cpu_count() - 1):
             f"minimum k = {k} found in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
         )
 
-    return {
+    return optimal_solution, {
         "k": k,
-        "moves": "impossible" if optimal_solution is None else optimal_solution,
+        "moves": "impossible"
+        if optimal_solution is None
+        else [move_name(puzzle.n, ma, mi, md) for ma, mi, md in optimal_solution],
         "total_solve_time": str(total_solve_time),
         "total_prep_time": str(total_prep_time),
         "prep_times": {k: str(t) for k, t in sorted(prep_times.items())},
@@ -495,6 +497,6 @@ def solve(path: str, max_processes=cpu_count() - 1):
 # e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
     path = sys.argv[1]
-    result = solve(path)
+    _, result = solve(path)
     with open(f"{path}.solution", "w") as file:
         file.write(json.dumps(result, indent=4))
