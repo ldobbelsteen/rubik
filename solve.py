@@ -315,33 +315,26 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
             solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
             solver.add(next_edge_r_restriction(n, next_r, x, y, z, r, ma, mi, md))
 
-    # If between 1 and n moves ago we made a turn at an index and axis, a different axis
-    # has to have been turned in the meantime.
-    for s in range(1, k):
-        for h in range(1, min(n, s) + 1):
-            solver.add(
-                z3.Or(
-                    mas[s - h] != mas[s],
-                    mis[s - h] != mis[s],
-                    z3.Or([mas[s] != mas[b] for b in range(s - h + 1, s)]),
-                )
-            )
-
-    # All subsequent moves in the same axis happen in ascending order of index.
-    for s in range(1, k):
+    # If we make a move at an index and axis, we cannot make a move at the same index
+    # and axis for the next n moves, unless a different axis has been turned in the
+    # meantime.
+    for s in range(k - 1):
         solver.add(
-            z3.Or(
-                mas[s - 1] != mas[s],
-                z3.And(
-                    [
-                        z3.And(
-                            [z3.Or(mis[s - 1] != b, mis[s] != c) for c in range(1, b)]
-                        )
-                        for b in range(n, 1, -1)
-                    ]
-                ),
+            z3.And(
+                [
+                    z3.Or(
+                        mas[f] != mas[s],
+                        mis[f] != mis[s],
+                        z3.Or([mas[s] != mas[b] for b in range(s + 1, f)]),
+                    )
+                    for f in range(s + 1, min(s + n + 1, k))
+                ]
             )
         )
+
+    # All subsequent moves in the same axis happen in ascending order of index.
+    for s in range(k - 1):
+        solver.add(z3.Or(mas[s] != mas[s + 1], mis[s] < mis[s + 1]))
 
     # States cannot be repeated.
     # TODO: investigate whether this is worth the load.
