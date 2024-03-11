@@ -318,12 +318,12 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
     # If between 1 and n moves ago we made a turn at an index and axis, a different axis
     # has to have been turned in the meantime.
     for s in range(1, k):
-        for rs in range(1, min(n + 1, s + 1)):
+        for h in range(1, min(n, s) + 1):
             solver.add(
                 z3.Or(
-                    mas[s - rs] != mas[s],
-                    mis[s - rs] != mis[s],
-                    z3.Or([mas[s] != mas[p] for p in range(s - rs + 1, s)]),
+                    mas[s - h] != mas[s],
+                    mis[s - h] != mis[s],
+                    z3.Or([mas[s] != mas[b] for b in range(s - h + 1, s)]),
                 )
             )
 
@@ -344,6 +344,7 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
         )
 
     # States cannot be repeated.
+    # TODO: investigate whether this is worth the load.
     for s1 in range(k + 1):
         for s2 in range(s1 + 1, k + 1):
             solver.add(z3.Not(z3.And(identical_states(s1, s2))))
