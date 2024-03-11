@@ -1,5 +1,4 @@
 import itertools
-import os
 import random
 import sys
 
@@ -12,13 +11,11 @@ def list_all_moves(n: int):
     return list(itertools.product(range(3), range(n), range(3)))
 
 
-def generate_puzzle(n: int, randomizations: int, overwrite=False):
+def generate_puzzle(n: int, randomizations: int):
     if n not in SUPPORTED_NS:
         raise Exception(f"n = {n} not supported")
 
     path = f"./puzzles/n{n}-random{randomizations}.txt"
-    if not overwrite and os.path.isfile(path):
-        return
     create_parent_directory(path)
 
     p = Puzzle.finished(n)
@@ -34,4 +31,4 @@ def generate_puzzle(n: int, randomizations: int, overwrite=False):
 
 # e.g. python generate.py {n} {randomization_count}
 if __name__ == "__main__":
-    generate_puzzle(int(sys.argv[1]), int(sys.argv[2]), True)
+    generate_puzzle(int(sys.argv[1]), int(sys.argv[2]))

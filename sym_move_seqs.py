@@ -9,49 +9,62 @@ from puzzle import Puzzle
 MoveSequence = tuple[tuple[int, int, int], ...]
 
 
-def is_allowed(n: int, seq: MoveSequence) -> bool:
-    # Same index and axis banned for n moves unless diff axis in between.
-    for s in range(len(seq) - 1):
-        for f in range(s + 1, min(s + n + 1, len(seq))):
-            if (
-                seq[f][0] == seq[s][0]
-                and seq[f][1] == seq[s][1]
-                and all([seq[s][0] == seq[b][0] for b in range(s + 1, f)])
-            ):
-                return False
-
-    # Ascending index.
-    for s in range(len(seq) - 1):
-        if seq[s][0] == seq[s + 1][0] and seq[s][1] >= seq[s + 1][1]:
-            return False
-
-    # Ascending axes for consecutive center moves.
-    if n == 3:
-        for s in range(len(seq) - 1):
-            if (
-                seq[s][1] == 1
-                and seq[s + 1][1] == 1
-                and seq[s][2] == 2
-                and seq[s + 1][2] == 2
-                and seq[s][0] >= seq[s + 1][0]
-            ):
-                return False
-
-    return True
-
-
 def file_path(n: int, d: int):
     return f"./sym_move_seqs/n{n}-d{d}.txt"
 
 
-def compute_symmetric_move_sequences(n: int, d: int, overwrite=False):
+def compute_symmetric_move_sequences(n: int, d: int, force_recompute_lower=False):
     path = file_path(n, d)
-    if not overwrite and os.path.isfile(path):
-        return
     create_parent_directory(path)
+
+    lower_depths = [
+        load_symmetric_move_sequences(n, ld, force_recompute_lower) for ld in range(d)
+    ]
 
     finished = Puzzle.finished(n)
     moves = list_all_moves(n)
+
+    def is_allowed(n: int, seq: MoveSequence) -> bool:
+        # Same index and axis banned for n moves unless diff axis in between.
+        for s in range(len(seq) - 1):
+            for f in range(s + 1, min(s + n + 1, len(seq))):
+                if (
+                    seq[f][0] == seq[s][0]
+                    and seq[f][1] == seq[s][1]
+                    and all([seq[s][0] == seq[b][0] for b in range(s + 1, f)])
+                ):
+                    return False
+
+        # Ascending index.
+        for s in range(len(seq) - 1):
+            if seq[s][0] == seq[s + 1][0] and seq[s][1] >= seq[s + 1][1]:
+                return False
+
+        # Ascending axes for consecutive center moves.
+        if n == 3:
+            for s in range(len(seq) - 1):
+                if (
+                    seq[s][1] == 1
+                    and seq[s + 1][1] == 1
+                    and seq[s][2] == 2
+                    and seq[s + 1][2] == 2
+                    and seq[s][0] >= seq[s + 1][0]
+                ):
+                    return False
+
+        # Disallow symmetric move sequences from lower depths.
+        for lower_depth in lower_depths:
+            for _, syms in lower_depth:
+                for sym in syms:
+                    if any(
+                        [
+                            seq == sym[i : i + len(seq)]
+                            for i in range(len(sym) - len(seq) + 1)
+                        ]
+                    ):
+                        return False
+
+        return True
 
     # To keep track of the set of move sequences equal to a move sequence.
     duplicates: dict[MoveSequence, list[MoveSequence]] = {}
@@ -90,7 +103,7 @@ def compute_symmetric_move_sequences(n: int, d: int, overwrite=False):
 
         layer = next_layer
 
-    output = [(list(seq), [list(s) for s in sym]) for seq, sym in duplicates.items()]
+    output = list(duplicates.items())
     output.sort(key=lambda x: len(x[0]))
 
     with open(path, "w") as file:
@@ -98,11 +111,13 @@ def compute_symmetric_move_sequences(n: int, d: int, overwrite=False):
             file.write(f"{str(seq)}\t{str(sym)}\n")
 
 
-def load_symmetric_move_sequences(n: int, d: int):
-    output: list[
-        tuple[list[tuple[int, int, int]], list[list[tuple[int, int, int]]]]
-    ] = []
-    with open(file_path(n, d), "r") as file:
+def load_symmetric_move_sequences(n: int, d: int, force_recompute=False):
+    path = file_path(n, d)
+    if not os.path.isfile(path) or force_recompute:
+        compute_symmetric_move_sequences(n, d, force_recompute)
+
+    output: list[tuple[MoveSequence, list[MoveSequence]]] = []
+    with open(path, "r") as file:
         for line in file:
             seq_raw, sym_raw = line.rstrip("\n").split("\t")
             output.append((ast.literal_eval(seq_raw), ast.literal_eval(sym_raw)))
