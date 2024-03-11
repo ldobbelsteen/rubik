@@ -105,6 +105,27 @@ def compute(n: int, d: int | None = None):
             file.write(f"{str(seq)}\t{str(sym)}\n")
 
 
+def load(n: int, d: int | None = None) -> dict[MoveSequence, list[MoveSequence]]:
+    if d is None:
+        d = default_k_upperbound(n)
+    if d == 0:
+        return {}
+
+    path = file_path(n, d)
+    if not os.path.isfile(path):
+        compute(n, d)
+
+    result: dict[MoveSequence, list[MoveSequence]] = {}
+    with open(path, "r") as file:
+        for line in file:
+            seq_raw, sym_raw = line.rstrip("\n").split("\t")
+            seq: MoveSequence = ast.literal_eval(seq_raw)
+            sym: list[MoveSequence] = ast.literal_eval(sym_raw)
+            result[seq] = sym
+
+    return result | load(n, d - 1)
+
+
 def load_superfluous(n: int, d: int | None = None) -> list[MoveSequence]:
     if d is None:
         d = default_k_upperbound(n)
