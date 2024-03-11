@@ -13,14 +13,11 @@ def file_path(n: int, d: int):
     return f"./sym_move_seqs/n{n}-d{d}.txt"
 
 
-def compute_symmetric_move_sequences(n: int, d: int, force_recompute_lower=False):
+def compute(n: int, d: int):
     path = file_path(n, d)
     create_parent_directory(path)
 
-    lower_depths = [
-        load_symmetric_move_sequences(n, ld, force_recompute_lower) for ld in range(d)
-    ]
-
+    lower_syms = load_all_symmetric(n, d - 1)
     finished = Puzzle.finished(n)
     moves = list_all_moves(n)
 
@@ -53,16 +50,11 @@ def compute_symmetric_move_sequences(n: int, d: int, force_recompute_lower=False
                     return False
 
         # Disallow symmetric move sequences from lower depths.
-        for lower_depth in lower_depths:
-            for _, syms in lower_depth:
-                for sym in syms:
-                    if any(
-                        [
-                            seq == sym[i : i + len(seq)]
-                            for i in range(len(sym) - len(seq) + 1)
-                        ]
-                    ):
-                        return False
+        for sym in lower_syms:
+            if any(
+                [seq == sym[i : i + len(seq)] for i in range(len(sym) - len(seq) + 1)]
+            ):
+                return False
 
         return True
 
@@ -111,19 +103,24 @@ def compute_symmetric_move_sequences(n: int, d: int, force_recompute_lower=False
             file.write(f"{str(seq)}\t{str(sym)}\n")
 
 
-def load_symmetric_move_sequences(n: int, d: int, force_recompute=False):
-    path = file_path(n, d)
-    if not os.path.isfile(path) or force_recompute:
-        compute_symmetric_move_sequences(n, d, force_recompute)
+def load_all_symmetric(n: int, d: int) -> list[MoveSequence]:
+    if d == 0:
+        return []
 
-    output: list[tuple[MoveSequence, list[MoveSequence]]] = []
+    path = file_path(n, d)
+    if not os.path.isfile(path):
+        compute(n, d)
+
+    result: list[MoveSequence] = []
     with open(path, "r") as file:
         for line in file:
-            seq_raw, sym_raw = line.rstrip("\n").split("\t")
-            output.append((ast.literal_eval(seq_raw), ast.literal_eval(sym_raw)))
-    return output
+            _, sym_raw = line.rstrip("\n").split("\t")
+            sym: list[MoveSequence] = ast.literal_eval(sym_raw)
+            result += sym
+
+    return result + load_all_symmetric(n, d - 1)
 
 
 # e.g. python sym_move_seqs.py {n} {depth}
 if __name__ == "__main__":
-    compute_symmetric_move_sequences(int(sys.argv[1]), int(sys.argv[2]), True)
+    compute(int(sys.argv[1]), int(sys.argv[2]))
