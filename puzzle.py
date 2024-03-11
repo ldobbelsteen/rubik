@@ -50,8 +50,6 @@ def color_name(c: int) -> str:
 
 def move_name(n: int, ma: int, mi: int, md: int) -> str:
     """Convert a move to its canonical name."""
-    if mi == n:
-        return "nothing"
     if ma == 0:
         if md == 0:
             return f"quarter row {mi} left"

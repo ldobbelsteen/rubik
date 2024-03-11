@@ -245,7 +245,7 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
 
     # Variables which together indicate the move at each state.
     mas = [z3_int(solver, f"s({s}) ma", 0, 3) for s in range(k)]
-    mis = [z3_int(solver, f"s({s}) mi", 0, n + 1) for s in range(k)]
+    mis = [z3_int(solver, f"s({s}) mi", 0, n) for s in range(k)]
     mds = [z3_int(solver, f"s({s}) md", 0, 3) for s in range(k)]
 
     def fix_state(s: int, puzzle: Puzzle):
@@ -281,14 +281,6 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
 
     # Fix the last state to the finished state.
     solver.add(z3.And(fix_state(-1, finished)))
-
-    # Restrict color states when move is nothing.
-    for s in range(k):
-        solver.add(z3.Or(mis[s] != n, z3.And(identical_states(s, s + 1))))
-
-    # Only allow nothing move when complete.
-    for s in range(k):
-        solver.add(z3.Or(mis[s] != n, z3.And(fix_state(s, finished))))
 
     # Restrict cubicle states according to moves.
     for s in range(k):
@@ -432,28 +424,32 @@ def solve(path: str, max_processes=cpu_count() - 1):
                 print_stamped(
                     f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep..."
                 )
-                k_prospects = [kp for kp in k_prospects if kp > k]
-                killed = 0
-                for pi in range(len(processes) - 1, -1, -1):
-                    if processes[pi][1] <= k:
-                        processes.pop(pi)[0].kill()
-                        killed += 1
-                for _ in range(killed):
-                    spawn_new_process()
+
+                # Kill the process that returned this result and replace it.
+                for i in reversed(range(len(processes))):
+                    if processes[i][1] == k:
+                        process, _ = processes.pop(i)
+                        process.kill()
+                        spawn_new_process()
             else:
                 print_stamped(
                     f"k = {k}: SAT found in {solve_time} with {prep_time} prep..."
                 )
+
+                # Update the optimal solution if it is better than the current.
                 if optimal_solution is None or k < len(optimal_solution):
                     optimal_solution = solution
+
+                # Filter out larger prospects, since we now know they are also SAT.
                 k_prospects = [kp for kp in k_prospects if kp < k]
-                killed = 0
-                for pi in range(len(processes) - 1, -1, -1):
-                    if processes[pi][1] >= k:
-                        processes.pop(pi)[0].kill()
-                        killed += 1
-                for _ in range(killed):
-                    spawn_new_process()
+
+                # Kill the process that returned this result and any processes solving
+                # larger prospects, and replace them.
+                for i in reversed(range(len(processes))):
+                    if processes[i][1] >= k:
+                        process, _ = processes.pop(i)
+                        process.kill()
+                        spawn_new_process()
 
     if optimal_solution is None:
         k = "n/a"
