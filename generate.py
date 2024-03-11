@@ -8,6 +8,7 @@ from puzzle import SUPPORTED_NS, Puzzle
 
 
 def moveset(n: int):
+    """List all possible moves given n."""
     return list(itertools.product(range(3), range(n), range(3)))
 
 
