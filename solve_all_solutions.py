@@ -10,7 +10,7 @@ if __name__ == "__main__":
     puzzle = Puzzle.from_file(path)
 
     def canonicalize(solution: list[tuple[int, int, int]]):
-        return [move_name(puzzle.n, ma, mi, md) for ma, mi, md in solution]
+        return ", ".join([move_name(puzzle.n, ma, mi, md) for ma, mi, md in solution])
 
     base_solution, base_result = solve(path)
     if base_solution is None:
