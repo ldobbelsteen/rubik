@@ -68,7 +68,7 @@ def compute(n: int, d: int):
     layer: list[tuple[Puzzle, MoveSequence]] = [(finished, tuple())]
 
     # Perform BFS.
-    for _ in range(1, d + 1):
+    for _ in range(d):
         next_layer: list[tuple[Puzzle, MoveSequence]] = []
 
         # Execute all possible moves from the states encountered in the last iteration.
