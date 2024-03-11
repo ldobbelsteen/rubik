@@ -424,6 +424,11 @@ class Puzzle:
             and self.edges == other.edges
         )
 
+    def __hash__(self):
+        return hash(
+            (self.n, tuple(self.corners), tuple(self.centers), tuple(self.edges))
+        )
+
     def to_str(self):
         facelet_colors = [
             [
