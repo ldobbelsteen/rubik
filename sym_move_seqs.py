@@ -2,7 +2,7 @@ import os
 import sys
 
 from generate import moveset
-from misc import create_parent_directory, print_stamped
+from misc import create_parent_directory
 from puzzle import Puzzle
 
 MoveSequence = tuple[tuple[int, int, int], ...]
@@ -49,7 +49,7 @@ def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
     moves = moveset(n)
 
     # To keep track of the set of move sequences equal to a move sequence.
-    duplicates: dict[MoveSequence, set[MoveSequence]] = {}
+    duplicates: dict[MoveSequence, list[MoveSequence]] = {}
 
     # To keep track of the encountered states and which steps taken to get there.
     encountered: dict[Puzzle, MoveSequence] = {finished: tuple()}
@@ -58,7 +58,7 @@ def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
     layer: list[tuple[Puzzle, MoveSequence]] = [(finished, tuple())]
 
     # Perform BFS.
-    for d in range(1, depth + 1):
+    for _ in range(1, depth + 1):
         next_layer: list[tuple[Puzzle, MoveSequence]] = []
 
         # Execute all possible moves from the states encountered in the last iteration.
@@ -76,8 +76,8 @@ def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
                     encountered_combination = encountered[next_puzzle]
                     assert len(encountered_combination) <= len(next_seq)
                     if encountered_combination not in duplicates:
-                        duplicates[encountered_combination] = set()
-                    duplicates[encountered_combination].add(next_seq)
+                        duplicates[encountered_combination] = []
+                    duplicates[encountered_combination].append(next_seq)
                 # Else store as encountered and add it to the next iteration.
                 else:
                     encountered[next_puzzle] = next_seq
@@ -85,18 +85,16 @@ def compute_duplicate_move_sequences(n: int, depth: int, overwrite=False):
 
         layer = next_layer
 
+    output = [(list(seq), [list(s) for s in sym]) for seq, sym in duplicates.items()]
+    output.sort(key=lambda x: len(x[0]))
+
     with open(path, "w") as file:
-        for original, symmetrical in duplicates.items():
-            original = str(list(original))
-            symmetrical = str([list(seq) for seq in symmetrical])
-            file.write(f"{original}\t{symmetrical}\n")
+        for seq, sym in output:
+            file.write(f"{str(seq)}\t{str(sym)}\n")
 
 
-# e.g. python sym_move_seqs.py {n} {max_depth}
+# e.g. python sym_move_seqs.py {n} {depth}
 if __name__ == "__main__":
     n = int(sys.argv[1])
-    max_depth = int(sys.argv[2])
-
-    for d in range(1, max_depth + 1):
-        print_stamped(f"computing for depth = {d}...")
-        compute_duplicate_move_sequences(n, d, True)
+    depth = int(sys.argv[2])
+    compute_duplicate_move_sequences(n, depth, True)
