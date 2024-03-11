@@ -4,7 +4,7 @@ import sys
 
 from generate import list_all_moves
 from misc import create_parent_directory
-from puzzle import Puzzle
+from puzzle import Puzzle, default_k_upperbound
 
 MoveSequence = tuple[tuple[int, int, int], ...]
 
@@ -13,11 +13,11 @@ def file_path(n: int, d: int):
     return f"./sym_move_seqs/n{n}-d{d}.txt"
 
 
-def compute(n: int, d: int):
-    path = file_path(n, d)
-    create_parent_directory(path)
+def compute(n: int, d: int | None = None):
+    if d is None:
+        d = default_k_upperbound(n)
 
-    lower_syms = load_all_symmetric(n, d - 1)
+    lower = load_superfluous(n, d - 1)
     finished = Puzzle.finished(n)
     moves = list_all_moves(n)
 
@@ -50,7 +50,7 @@ def compute(n: int, d: int):
                     return False
 
         # Disallow symmetric move sequences from lower depths.
-        for sym in lower_syms:
+        for sym in lower:
             if any(
                 [seq == sym[i : i + len(seq)] for i in range(len(sym) - len(seq) + 1)]
             ):
@@ -98,12 +98,16 @@ def compute(n: int, d: int):
     output = list(duplicates.items())
     output.sort(key=lambda x: len(x[0]))
 
+    path = file_path(n, d)
+    create_parent_directory(path)
     with open(path, "w") as file:
         for seq, sym in output:
             file.write(f"{str(seq)}\t{str(sym)}\n")
 
 
-def load_all_symmetric(n: int, d: int) -> list[MoveSequence]:
+def load_superfluous(n: int, d: int | None = None) -> list[MoveSequence]:
+    if d is None:
+        d = default_k_upperbound(n)
     if d == 0:
         return []
 
@@ -118,9 +122,9 @@ def load_all_symmetric(n: int, d: int) -> list[MoveSequence]:
             sym: list[MoveSequence] = ast.literal_eval(sym_raw)
             result += sym
 
-    return result + load_all_symmetric(n, d - 1)
+    return result + load_superfluous(n, d - 1)
 
 
-# e.g. python sym_move_seqs.py {n} {depth}
+# e.g. python sym_move_seqs.py {n}
 if __name__ == "__main__":
-    compute(int(sys.argv[1]), int(sys.argv[2]))
+    compute(int(sys.argv[1]))

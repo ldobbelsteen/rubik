@@ -1,3 +1,4 @@
+import itertools
 import sys
 
 from PIL import Image, ImageDraw
@@ -72,6 +73,21 @@ def move_name(n: int, ma: int, mi: int, md: int) -> str:
         elif md == 2:
             return f"half layer {mi}"
     raise Exception(f"invalid move: ({ma},{mi},{md})")
+
+
+def list_all_moves(n: int):
+    """List all possible moves given n."""
+    return list(itertools.product(range(3), range(n), range(3)))
+
+
+def default_k_upperbound(n: int):
+    match n:
+        case 2:
+            return 11  # God's Number
+        case 3:
+            return 20  # God's Number
+        case _:
+            raise Exception(f"k upperbound of {n} not set")
 
 
 def cubie_type(n: int, x: int, y: int, z: int):

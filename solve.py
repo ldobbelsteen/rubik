@@ -7,17 +7,7 @@ from queue import Queue
 import z3
 
 from misc import print_stamped
-from puzzle import Puzzle, move_name
-
-
-def default_k_upperbound(n: int):
-    match n:
-        case 2:
-            return 11  # God's Number
-        case 3:
-            return 20  # God's Number
-        case _:
-            raise Exception(f"k upperbound of {n} not set")
+from puzzle import Puzzle, default_k_upperbound, move_name
 
 
 def z3_int(solver: z3.Optimize, name: str, low: int, high: int):

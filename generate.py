@@ -1,14 +1,8 @@
-import itertools
 import random
 import sys
 
 from misc import create_parent_directory
-from puzzle import SUPPORTED_NS, Puzzle
-
-
-def list_all_moves(n: int):
-    """List all possible moves given n."""
-    return list(itertools.product(range(3), range(n), range(3)))
+from puzzle import SUPPORTED_NS, Puzzle, list_all_moves
 
 
 def generate_puzzle(n: int, randomizations: int):
