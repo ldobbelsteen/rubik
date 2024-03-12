@@ -57,7 +57,7 @@ def compute(n: int, d: int | None = None):
         # Disallow symmetric move sequences from lower depths.
         for sym in lower:
             if any(
-                [seq == sym[i : i + len(seq)] for i in range(len(sym) - len(seq) + 1)]
+                [sym == seq[i : i + len(sym)] for i in range(len(seq) - len(sym) + 1)]
             ):
                 return False
 
