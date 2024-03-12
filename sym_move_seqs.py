@@ -22,30 +22,35 @@ def compute(n: int, d: int | None = None):
     moves = list_all_moves(n)
 
     def is_allowed(n: int, seq: MoveSequence) -> bool:
+        k = len(seq)
+        mas = [m[0] for m in seq]
+        mis = [m[1] for m in seq]
+        mds = [m[2] for m in seq]
+
         # Same index and axis banned for n moves unless diff axis in between.
-        for s in range(len(seq) - 1):
-            for f in range(s + 1, min(s + n + 1, len(seq))):
+        for s in range(k - 1):
+            for f in range(s + 1, min(s + n + 1, k)):
                 if (
-                    seq[f][0] == seq[s][0]
-                    and seq[f][1] == seq[s][1]
-                    and all([seq[s][0] == seq[b][0] for b in range(s + 1, f)])
+                    mas[f] == mas[s]
+                    and mis[f] == mis[s]
+                    and all([mas[s] == mas[b] for b in range(s + 1, f)])
                 ):
                     return False
 
         # Ascending index in same axis.
-        for s in range(len(seq) - 1):
-            if seq[s][0] == seq[s + 1][0] and seq[s][1] >= seq[s + 1][1]:
+        for s in range(k - 1):
+            if mas[s] == mas[s + 1] and mis[s] >= mis[s + 1]:
                 return False
 
         # Ascending axes for consecutive center half moves.
         if n == 3:
-            for s in range(len(seq) - 1):
+            for s in range(k - 1):
                 if (
-                    seq[s][1] == 1
-                    and seq[s + 1][1] == 1
-                    and seq[s][2] == 2
-                    and seq[s + 1][2] == 2
-                    and seq[s][0] >= seq[s + 1][0]
+                    mis[s] == 1
+                    and mis[s + 1] == 1
+                    and mds[s] == 2
+                    and mds[s + 1] == 2
+                    and mas[s] >= mas[s + 1]
                 ):
                     return False
 
@@ -59,7 +64,7 @@ def compute(n: int, d: int | None = None):
         return True
 
     # To keep track of the set of move sequences equal to a move sequence.
-    duplicates: dict[MoveSequence, list[MoveSequence]] = {}
+    duplicates: dict[MoveSequence, set[MoveSequence]] = {}
 
     # To keep track of the encountered states and which steps taken to get there.
     encountered: dict[Puzzle, MoveSequence] = {finished: tuple()}
@@ -86,8 +91,8 @@ def compute(n: int, d: int | None = None):
                     encountered_seq = encountered[next_puzzle]
                     assert len(encountered_seq) <= len(next_seq)
                     if encountered_seq not in duplicates:
-                        duplicates[encountered_seq] = []
-                    duplicates[encountered_seq].append(next_seq)
+                        duplicates[encountered_seq] = set()
+                    duplicates[encountered_seq].add(next_seq)
                 # Else store as encountered and add it to the next iteration.
                 else:
                     encountered[next_puzzle] = next_seq
@@ -95,7 +100,7 @@ def compute(n: int, d: int | None = None):
 
         layer = next_layer
 
-    output = list(duplicates.items())
+    output = list((k, list(v)) for k, v in duplicates.items())
     output.sort(key=lambda x: len(x[0]))
 
     path = file_path(n, d)
