@@ -8,6 +8,7 @@ import z3
 
 from misc import print_stamped
 from puzzle import Puzzle, default_k_upperbound, move_name
+from sym_move_seqs import MoveSequence
 
 
 def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
@@ -158,7 +159,6 @@ def next_corner_c_restriction(
 
 
 def next_edge_r_restriction(
-    n: int,
     next_r: z3.BoolRef,
     x: z3.ArithRef,
     y: z3.ArithRef,
@@ -184,7 +184,7 @@ def next_edge_r_restriction(
     )
 
 
-def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]] = []):
+def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it."""
@@ -295,7 +295,7 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
             solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
             solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
             solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
-            solver.add(next_edge_r_restriction(n, next_r, x, y, z, r, ma, mi, md))
+            solver.add(next_edge_r_restriction(next_r, x, y, z, r, ma, mi, md))
 
     # If we make a move at an index and axis, we cannot make a move at the same index
     # and axis for the next n moves, unless a different axis has been turned in the
@@ -336,18 +336,29 @@ def solve_for_k(puzzle: Puzzle, k: int, banned: list[list[tuple[int, int, int]]]
         for s2 in range(s1 + 1, k + 1):
             solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
-    # Ban any banned movesets.
-    for ban in banned:
-        solver.add(
-            z3.Not(
-                z3.And(
-                    [
-                        z3.And(mas[s] == ma, mis[s] == mi, mds[s] == md)
-                        for s, (ma, mi, md) in enumerate(ban)
-                    ]
+    def disallow_move_sequence(ms: MoveSequence):
+        """Return conditions of a move sequence not being allowed."""
+        return z3.And(
+            [
+                z3.Not(
+                    z3.And(
+                        [
+                            z3.And(
+                                mas[start + i] == ma,
+                                mis[start + i] == mi,
+                                mds[start + i] == md,
+                            )
+                            for i, (ma, mi, md) in enumerate(ms)
+                        ]
+                    )
                 )
-            )
+                for start in range(k - len(ms) + 1)
+            ]
         )
+
+    # Disallow the move sequences from the parameters.
+    for seq in disallowed:
+        solver.add(disallow_move_sequence(seq))
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
@@ -476,7 +487,7 @@ def solve(path: str, max_processes=cpu_count() - 1):
         "k": k,
         "moves": "impossible"
         if optimal_solution is None
-        else [move_name(puzzle.n, ma, mi, md) for ma, mi, md in optimal_solution],
+        else [move_name(ma, mi, md) for ma, mi, md in optimal_solution],
         "total_solve_time": str(total_solve_time),
         "total_prep_time": str(total_prep_time),
         "prep_times": {k: str(t) for k, t in sorted(prep_times.items())},

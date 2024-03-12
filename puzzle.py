@@ -49,7 +49,7 @@ def color_name(c: int) -> str:
     raise Exception(f"invalid color: {c}")
 
 
-def move_name(n: int, ma: int, mi: int, md: int) -> str:
+def move_name(ma: int, mi: int, md: int) -> str:
     """Convert a move to its canonical name."""
     if ma == 0:
         if md == 0:
