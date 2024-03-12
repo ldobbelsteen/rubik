@@ -12,7 +12,7 @@ def collect_all_solutions(path: str):
     def canonicalize(solution: MoveSequence):
         return ", ".join([move_name(ma, mi, md) for ma, mi, md in solution])
 
-    base_solution, base_result = solve(path)
+    base_solution, base_result = solve(path, write_stats_file=False)
     if base_solution is None:
         raise Exception("puzzle has no solution")
     print_stamped(f"base solution: {base_solution}")

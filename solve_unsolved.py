@@ -12,7 +12,7 @@ def solve_unsolved():
         if (
             os.path.isfile(path)
             and path.endswith(".txt")
-            and not os.path.isfile(f"{path}.solution")
+            and not os.path.isfile(f"{path}.stats")
         ):
             puzzles.append(path)
     for puzzle in natural_sorted(puzzles):

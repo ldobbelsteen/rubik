@@ -382,10 +382,12 @@ def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
     return moves, prep_time, solve_time
 
 
-def solve(path: str, max_processes=cpu_count() - 1) -> tuple[MoveSequence | None, dict]:
+def solve(
+    path: str, max_processes=cpu_count() - 1, write_stats_file=True
+) -> tuple[MoveSequence | None, dict]:
     """Compute the optimal solution for a puzzle in parallel for all possible values
-    of k within the upperbound. Returns a dict containing statistics of the solving
-    process and the result."""
+    of k within the upperbound. Returns the solution and a dict containing statistics
+    of the solving process."""
     print_stamped(f"solving '{path}'...")
 
     puzzle = Puzzle.from_file(path)
@@ -426,11 +428,11 @@ def solve(path: str, max_processes=cpu_count() - 1) -> tuple[MoveSequence | None
             spawn_new_process()
 
         while len(processes) > 0:
-            k, solution, prep_time, solve_time = output.get()
+            k, stats, prep_time, solve_time = output.get()
             prep_times[k] = prep_time
             solve_times[k] = solve_time
 
-            if solution is None:
+            if stats is None:
                 print_stamped(
                     f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep..."
                 )
@@ -448,7 +450,7 @@ def solve(path: str, max_processes=cpu_count() - 1) -> tuple[MoveSequence | None
 
                 # Update the optimal solution if it is better than the current.
                 if optimal_solution is None or k < len(optimal_solution):
-                    optimal_solution = solution
+                    optimal_solution = stats
 
                 # Filter out larger prospects, since we now know they are also SAT.
                 k_prospects = [kp for kp in k_prospects if kp < k]
@@ -480,7 +482,7 @@ def solve(path: str, max_processes=cpu_count() - 1) -> tuple[MoveSequence | None
             f"minimum k = {k} found in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
         )
 
-    return optimal_solution, {
+    stats = {
         "k": k,
         "moves": "impossible"
         if optimal_solution is None
@@ -493,9 +495,13 @@ def solve(path: str, max_processes=cpu_count() - 1) -> tuple[MoveSequence | None
         "k_upperbound": k_upperbound,
     }
 
+    if write_stats_file:
+        with open(f"{path}.stats", "w") as file:
+            file.write(json.dumps(stats, indent=4))
+
+    return optimal_solution, stats
+
 
 # e.g. python solve.py ./puzzles/n2-random7.txt
 if __name__ == "__main__":
-    _, res = solve(sys.argv[1])
-    with open(f"{sys.argv[1]}.solution", "w") as file:
-        file.write(json.dumps(res, indent=4))
+    solve(sys.argv[1])
