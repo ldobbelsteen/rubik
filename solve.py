@@ -8,7 +8,7 @@ import z3
 
 from misc import print_stamped
 from puzzle import Puzzle, default_k_upperbound, move_name
-from sym_move_seqs import MoveSequence, load_duplicate
+from sym_move_seqs import MoveSequence
 
 
 def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
@@ -358,10 +358,6 @@ def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
 
     # Disallow the move sequences from the parameters.
     for seq in disallowed:
-        solver.add(disallow_move_sequence(seq))
-
-    # Disallow computed duplicate symmetric move sequences.
-    for seq in load_duplicate(n):
         solver.add(disallow_move_sequence(seq))
 
     # Check model and return moves if sat.
