@@ -8,7 +8,7 @@ import z3
 
 from misc import print_stamped
 from puzzle import Puzzle, default_k_upperbound, move_name
-from sym_move_seqs import MoveSequence
+from sym_move_seqs import MoveSequence, load
 
 
 def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
@@ -184,7 +184,12 @@ def next_edge_r_restriction(
     )
 
 
-def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
+def solve_for_k(
+    puzzle: Puzzle,
+    k: int,
+    sym_move_depth: int,
+    disallowed: list[MoveSequence] = [],
+):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it."""
@@ -360,6 +365,11 @@ def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
     for seq in disallowed:
         solver.add(disallow_move_sequence(seq))
 
+    # Disallow symmetric move sequences up to the specified depth.
+    for syms in load(n, sym_move_depth).values():
+        for sym in syms:
+            solver.add(disallow_move_sequence(sym))
+
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
     solve_start = datetime.now()
@@ -383,7 +393,7 @@ def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
 
 
 def solve(
-    path: str, max_processes=cpu_count() - 1, write_stats_file=True
+    path: str, sym_move_depth=0, max_processes=cpu_count() - 1, write_stats_file=True
 ) -> tuple[MoveSequence | None, dict]:
     """Compute the optimal solution for a puzzle in parallel for all possible values
     of k within the upperbound. Returns the solution and a dict containing statistics
@@ -415,7 +425,7 @@ def solve(
                 k: int,
                 output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]],
             ):
-                solution, prep_time, solve_time = solve_for_k(puzzle, k)
+                solution, prep_time, solve_time = solve_for_k(puzzle, k, sym_move_depth)
                 output.put((k, solution, prep_time, solve_time))
 
             if len(k_prospects) > 0:
@@ -502,6 +512,11 @@ def solve(
     return optimal_solution, stats
 
 
-# e.g. python solve.py ./puzzles/n2-random7.txt
+# e.g. python solve.py ./puzzles/n2-random7.txt {sym_move_depth}
 if __name__ == "__main__":
-    solve(sys.argv[1])
+    if len(sys.argv) == 3:
+        solve(sys.argv[1], int(sys.argv[2]))
+    elif len(sys.argv) == 2:
+        solve(sys.argv[1])
+    else:
+        raise Exception("invalid number of arguments")

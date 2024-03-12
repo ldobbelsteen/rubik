@@ -6,7 +6,7 @@ from solve import solve, solve_for_k
 from sym_move_seqs import MoveSequence
 
 
-def collect_all_solutions(path: str):
+def collect_all_solutions(path: str, sym_move_depth=0):
     puzzle = Puzzle.from_file(path)
 
     def canonicalize(solution: MoveSequence):
@@ -21,7 +21,7 @@ def collect_all_solutions(path: str):
 
     solutions = [base_solution]
     while True:
-        solution, _, _ = solve_for_k(puzzle, k, solutions)
+        solution, _, _ = solve_for_k(puzzle, k, sym_move_depth, solutions)
         if solution is None:
             break
         solutions.append(solution)
@@ -30,6 +30,11 @@ def collect_all_solutions(path: str):
         print_stamped(f"new solution (canonical): {canonicalize(solution)}")
 
 
-# e.g. python collect_all_solutions.py ./puzzles/n2-random7.txt
+# e.g. python collect_all_solutions.py ./puzzles/n2-random7.txt {sym_move_depth}
 if __name__ == "__main__":
-    collect_all_solutions(sys.argv[1])
+    if len(sys.argv) == 3:
+        collect_all_solutions(sys.argv[1], int(sys.argv[2]))
+    elif len(sys.argv) == 2:
+        collect_all_solutions(sys.argv[1])
+    else:
+        raise Exception("invalid number of arguments")
