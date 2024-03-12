@@ -17,7 +17,7 @@ def compute(n: int, d: int | None = None):
     if d is None:
         d = default_k_upperbound(n)
 
-    lower = load_superfluous(n, d - 1)
+    lower = load_duplicate(n, d - 1)
     finished = Puzzle.finished(n)
     moves = list_all_moves(n)
 
@@ -32,12 +32,12 @@ def compute(n: int, d: int | None = None):
                 ):
                     return False
 
-        # Ascending index.
+        # Ascending index in same axis.
         for s in range(len(seq) - 1):
             if seq[s][0] == seq[s + 1][0] and seq[s][1] >= seq[s + 1][1]:
                 return False
 
-        # Ascending axes for consecutive center moves.
+        # Ascending axes for consecutive center half moves.
         if n == 3:
             for s in range(len(seq) - 1):
                 if (
@@ -126,7 +126,7 @@ def load(n: int, d: int | None = None) -> dict[MoveSequence, list[MoveSequence]]
     return result | load(n, d - 1)
 
 
-def load_superfluous(n: int, d: int | None = None) -> list[MoveSequence]:
+def load_duplicate(n: int, d: int | None = None) -> list[MoveSequence]:
     if d is None:
         d = default_k_upperbound(n)
     if d == 0:
@@ -143,7 +143,7 @@ def load_superfluous(n: int, d: int | None = None) -> list[MoveSequence]:
             sym: list[MoveSequence] = ast.literal_eval(sym_raw)
             result += sym
 
-    return result + load_superfluous(n, d - 1)
+    return result + load_duplicate(n, d - 1)
 
 
 # e.g. python sym_move_seqs.py {n}

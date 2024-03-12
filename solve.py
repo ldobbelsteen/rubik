@@ -8,7 +8,7 @@ import z3
 
 from misc import print_stamped
 from puzzle import Puzzle, default_k_upperbound, move_name
-from sym_move_seqs import MoveSequence
+from sym_move_seqs import MoveSequence, load_duplicate
 
 
 def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
@@ -318,7 +318,7 @@ def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
     for s in range(k - 1):
         solver.add(z3.Or(mas[s] != mas[s + 1], mis[s] < mis[s + 1]))
 
-    # Two subsequent center moves happen in ascending order of axis.
+    # Two subsequent center half moves happen in ascending order of axis.
     if n == 3:
         for s in range(k - 1):
             solver.add(
@@ -360,30 +360,33 @@ def solve_for_k(puzzle: Puzzle, k: int, disallowed: list[MoveSequence] = []):
     for seq in disallowed:
         solver.add(disallow_move_sequence(seq))
 
+    # Disallow computed duplicate symmetric move sequences.
+    for seq in load_duplicate(n):
+        solver.add(disallow_move_sequence(seq))
+
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
     solve_start = datetime.now()
     res = solver.check()
     solve_time = datetime.now() - solve_start
-    moves: list[tuple[int, int, int]] | None = None
+    moves: MoveSequence | None = None
 
     if res == z3.sat:
-        moves = []
         model = solver.model()
-        for s in range(k):
-            moves.append(
-                (
-                    model.get_interp(mas[s]).as_long(),
-                    model.get_interp(mis[s]).as_long(),
-                    model.get_interp(mds[s]).as_long(),
-                )
+        moves = tuple(
+            (
+                model.get_interp(mas[s]).as_long(),
+                model.get_interp(mis[s]).as_long(),
+                model.get_interp(mds[s]).as_long(),
             )
+            for s in range(k)
+        )
         assert len(moves) == k
 
     return moves, prep_time, solve_time
 
 
-def solve(path: str, max_processes=cpu_count() - 1):
+def solve(path: str, max_processes=cpu_count() - 1) -> tuple[MoveSequence | None, dict]:
     """Compute the optimal solution for a puzzle in parallel for all possible values
     of k within the upperbound. Returns a dict containing statistics of the solving
     process and the result."""
@@ -394,7 +397,7 @@ def solve(path: str, max_processes=cpu_count() - 1):
 
     with Manager() as manager:
         k_prospects = list(range(k_upperbound + 1))
-        optimal_solution: list[tuple[int, int, int]] | None = None
+        optimal_solution: MoveSequence | None = None
 
         # Times for each tried k.
         prep_times: dict[int, timedelta] = {}
@@ -404,17 +407,15 @@ def solve(path: str, max_processes=cpu_count() - 1):
         processes: list[tuple[Process, int]] = []
 
         # Queue for the processes to output results onto.
-        output: Queue[
-            tuple[int, list[tuple[int, int, int]] | None, timedelta, timedelta]
-        ] = manager.Queue()
+        output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]] = (
+            manager.Queue()
+        )
 
         def spawn_new_process():
             def solve_for_k_wrapper(
                 puzzle: Puzzle,
                 k: int,
-                output: Queue[
-                    tuple[int, list[tuple[int, int, int]] | None, timedelta, timedelta]
-                ],
+                output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]],
             ):
                 solution, prep_time, solve_time = solve_for_k(puzzle, k)
                 output.put((k, solution, prep_time, solve_time))

@@ -3,12 +3,13 @@ import sys
 from misc import print_stamped
 from puzzle import Puzzle, move_name
 from solve import solve, solve_for_k
+from sym_move_seqs import MoveSequence
 
 
 def collect_all_solutions(path: str):
     puzzle = Puzzle.from_file(path)
 
-    def canonicalize(solution: list[tuple[int, int, int]]):
+    def canonicalize(solution: MoveSequence):
         return ", ".join([move_name(ma, mi, md) for ma, mi, md in solution])
 
     base_solution, base_result = solve(path)
