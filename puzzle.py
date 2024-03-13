@@ -170,31 +170,32 @@ def facelet_cubie(n: int, f: int, y: int, x: int) -> tuple[int, int, int]:
             raise Exception(f"invalid face: {f}")
 
 
-# def coord_mapping(
-#     n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
-# ) -> tuple[int, int, int]:
-#     if ma == 0 and mi == y:
-#         if md == 0:
-#             return (z, y, n - 1 - x)  # clockwise
-#         elif md == 1:
-#             return (n - 1 - z, y, x)  # counterclockwise
-#         elif md == 2:
-#             return (n - 1 - x, y, n - 1 - z)  # 180 degree
-#     elif ma == 1 and mi == x:
-#         if md == 0:
-#             return (x, n - 1 - z, y)  # counterclockwise
-#         elif md == 1:
-#             return (x, z, n - 1 - y)  # clockwise
-#         elif md == 2:
-#             return (x, n - 1 - y, n - 1 - z)  # 180 degree
-#     elif ma == 2 and mi == z:
-#         if md == 0:
-#             return (y, n - 1 - x, z)  # clockwise
-#         elif md == 1:
-#             return (n - 1 - y, x, z)  # counterclockwise
-#         elif md == 2:
-#             return (n - 1 - x, n - 1 - y, z)  # 180 degree
-#     return (x, y, z)
+def generic_cubie_coord_mapping(
+    n: int, x: int, y: int, z: int, ma: int, mi: int, md: int
+) -> tuple[int, int, int]:
+    """Generic cubie coordinate mapping based on 90 or 180 degree rotation matrices."""
+    if ma == 0 and mi == y:
+        if md == 0:
+            return (z, y, n - 1 - x)  # clockwise
+        elif md == 1:
+            return (n - 1 - z, y, x)  # counterclockwise
+        elif md == 2:
+            return (n - 1 - x, y, n - 1 - z)  # 180 degree
+    elif ma == 1 and mi == x:
+        if md == 0:
+            return (x, n - 1 - z, y)  # counterclockwise
+        elif md == 1:
+            return (x, z, n - 1 - y)  # clockwise
+        elif md == 2:
+            return (x, n - 1 - y, n - 1 - z)  # 180 degree
+    elif ma == 2 and mi == z:
+        if md == 0:
+            return (y, n - 1 - x, z)  # clockwise
+        elif md == 1:
+            return (n - 1 - y, x, z)  # counterclockwise
+        elif md == 2:
+            return (n - 1 - x, n - 1 - y, z)  # 180 degree
+    return (x, y, z)
 
 
 def x_mapping(n: int, x: int, y: int, z: int, ma: int, mi: int, md: int) -> int:
