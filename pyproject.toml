@@ -1,7 +1,7 @@
 [project]
 name = "rubik"
 version = "0.2.0"
-dependencies = ["dd == 0.6.0", "Pillow == 10.2.0", "z3-solver == 4.12.5.0"]
+dependencies = ["dd == 0.6.0", "Pillow == 10.2.0", "z3-solver == 4.13.0.0"]
 
 [tool.ruff.lint]
 select = ["N", "I", "W", "E", "F", "ARG"]
