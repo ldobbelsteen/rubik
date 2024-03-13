@@ -1,5 +1,5 @@
+import argparse
 import itertools
-import sys
 
 from PIL import Image, ImageDraw
 
@@ -563,6 +563,8 @@ class Puzzle:
         im.show()
 
 
-# e.g. python puzzle.py ./puzzles/n2-random4.txt
 if __name__ == "__main__":
-    Puzzle.from_file(sys.argv[1]).print()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=str)
+    args = parser.parse_args()
+    Puzzle.from_file(args.path).print()

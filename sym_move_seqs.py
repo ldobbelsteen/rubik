@@ -1,6 +1,6 @@
+import argparse
 import ast
 import os
-import sys
 
 from generate import list_all_moves
 from misc import create_parent_directory
@@ -186,4 +186,8 @@ def load(n: int, d: int) -> dict[MoveSequence, list[MoveSequence]]:
 
 # e.g. python sym_move_seqs.py {n} {d}
 if __name__ == "__main__":
-    compute(int(sys.argv[1]), int(sys.argv[2]))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("n", type=int)
+    parser.add_argument("d", type=int)
+    args = parser.parse_args()
+    compute(args.n, args.d)

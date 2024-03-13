@@ -1,5 +1,5 @@
+import argparse
 import random
-import sys
 
 from misc import create_parent_directory
 from puzzle import SUPPORTED_NS, Puzzle, list_all_moves
@@ -23,6 +23,9 @@ def generate_puzzle(n: int, randomizations: int):
         file.write(p.to_str())
 
 
-# e.g. python generate.py {n} {randomization_count}
 if __name__ == "__main__":
-    generate_puzzle(int(sys.argv[1]), int(sys.argv[2]))
+    parser = argparse.ArgumentParser()
+    parser.add_argument("n", type=int)
+    parser.add_argument("randomizations", type=int)
+    args = parser.parse_args()
+    generate_puzzle(args.n, args.randomizations)
