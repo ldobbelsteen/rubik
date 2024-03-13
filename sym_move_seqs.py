@@ -54,17 +54,18 @@ def compute(n: int, d: int):
             if mas(s) == mas(s + 1) and mis(s) >= mis(s + 1):
                 return False
 
-        # Ascending axes for consecutive center half moves.
-        if n == 3:
-            for s in range(k - 1):
-                if (
-                    mis(s) == 1
-                    and mis(s + 1) == 1
-                    and mds(s) == 2
-                    and mds(s + 1) == 2
-                    and mas(s) >= mas(s + 1)
-                ):
-                    return False
+        # # NOTE: test 0
+        # # Ascending axes for consecutive center half moves.
+        # if n == 3:
+        #     for s in range(k - 1):
+        #         if (
+        #             mis(s) == 1
+        #             and mis(s + 1) == 1
+        #             and mds(s) == 2
+        #             and mds(s + 1) == 2
+        #             and mas(s) >= mas(s + 1)
+        #         ):
+        #             return False
 
         # # NOTE: test 1
         # if n == 3:

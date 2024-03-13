@@ -1,5 +1,5 @@
+import argparse
 import json
-import sys
 from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
@@ -188,6 +188,7 @@ def solve_for_k(
     puzzle: Puzzle,
     k: int,
     sym_move_depth: int,
+    only_larger_sym_moves: bool,
     disallowed: list[MoveSequence] = [],
 ):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
@@ -323,19 +324,6 @@ def solve_for_k(
     for s in range(k - 1):
         solver.add(z3.Or(mas[s] != mas[s + 1], mis[s] < mis[s + 1]))
 
-    # Two subsequent center half moves happen in ascending order of axis.
-    if n == 3:
-        for s in range(k - 1):
-            solver.add(
-                z3.Or(
-                    mis[s] != 1,
-                    mis[s + 1] != 1,
-                    mds[s] != 2,
-                    mds[s + 1] != 2,
-                    mas[s] < mas[s + 1],
-                )
-            )
-
     # States cannot be repeated.
     for s1 in range(k + 1):
         for s2 in range(s1 + 1, k + 1):
@@ -366,9 +354,10 @@ def solve_for_k(
         solver.add(disallow_move_sequence(seq))
 
     # Disallow symmetric move sequences up to the specified depth.
-    for syms in load(n, sym_move_depth).values():
+    for seq, syms in load(n, sym_move_depth).items():
         for sym in syms:
-            solver.add(disallow_move_sequence(sym))
+            if not only_larger_sym_moves or len(sym) > len(seq):
+                solver.add(disallow_move_sequence(sym))
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
@@ -393,7 +382,11 @@ def solve_for_k(
 
 
 def solve(
-    path: str, sym_move_depth=0, max_processes=cpu_count() - 1, write_stats_file=True
+    path: str,
+    sym_move_depth: int,
+    only_larger_sym_moves: bool,
+    max_processes: int,
+    write_stats_file: bool,
 ) -> tuple[MoveSequence | None, dict]:
     """Compute the optimal solution for a puzzle in parallel for all possible values
     of k within the upperbound. Returns the solution and a dict containing statistics
@@ -425,7 +418,9 @@ def solve(
                 k: int,
                 output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]],
             ):
-                solution, prep_time, solve_time = solve_for_k(puzzle, k, sym_move_depth)
+                solution, prep_time, solve_time = solve_for_k(
+                    puzzle, k, sym_move_depth, only_larger_sym_moves
+                )
                 output.put((k, solution, prep_time, solve_time))
 
             if len(k_prospects) > 0:
@@ -512,11 +507,18 @@ def solve(
     return optimal_solution, stats
 
 
-# e.g. python solve.py ./puzzles/n2-random7.txt {sym_move_depth}
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
-        solve(sys.argv[1], int(sys.argv[2]))
-    elif len(sys.argv) == 2:
-        solve(sys.argv[1])
-    else:
-        raise Exception("invalid number of arguments")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=str)
+    parser.add_argument("--sym-moves-dep", default=0, type=int)
+    parser.add_argument("--only-larger-sym-moves", default=True, type=bool)
+    parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
+    parser.add_argument("--write-stats-file", default=True, type=bool)
+    args = parser.parse_args()
+    solve(
+        args.path,
+        args.sym_moves_dep,
+        args.only_larger_sym_moves,
+        args.max_processes,
+        args.write_stats_file,
+    )

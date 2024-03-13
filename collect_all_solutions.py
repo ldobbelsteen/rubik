@@ -1,4 +1,5 @@
-import sys
+import argparse
+from multiprocessing import cpu_count
 
 from misc import print_stamped
 from puzzle import Puzzle, move_name
@@ -6,13 +7,20 @@ from solve import solve, solve_for_k
 from sym_move_seqs import MoveSequence
 
 
-def collect_all_solutions(path: str, sym_move_depth=0):
+def collect_all_solutions(
+    path: str,
+    sym_move_depth: int,
+    only_larger_sym_moves: bool,
+    max_processes: int,
+):
     puzzle = Puzzle.from_file(path)
 
     def canonicalize(solution: MoveSequence):
         return ", ".join([move_name(ma, mi, md) for ma, mi, md in solution])
 
-    base_solution, base_result = solve(path, write_stats_file=False)
+    base_solution, base_result = solve(
+        path, sym_move_depth, only_larger_sym_moves, max_processes, False
+    )
     if base_solution is None:
         raise Exception("puzzle has no solution")
     print_stamped(f"base solution: {base_solution}")
@@ -21,7 +29,9 @@ def collect_all_solutions(path: str, sym_move_depth=0):
 
     solutions = [base_solution]
     while True:
-        solution, _, _ = solve_for_k(puzzle, k, sym_move_depth, solutions)
+        solution, _, _ = solve_for_k(
+            puzzle, k, sym_move_depth, only_larger_sym_moves, solutions
+        )
         if solution is None:
             break
         solutions.append(solution)
@@ -30,11 +40,16 @@ def collect_all_solutions(path: str, sym_move_depth=0):
         print_stamped(f"new solution (canonical): {canonicalize(solution)}")
 
 
-# e.g. python collect_all_solutions.py ./puzzles/n2-random7.txt {sym_move_depth}
 if __name__ == "__main__":
-    if len(sys.argv) == 3:
-        collect_all_solutions(sys.argv[1], int(sys.argv[2]))
-    elif len(sys.argv) == 2:
-        collect_all_solutions(sys.argv[1])
-    else:
-        raise Exception("invalid number of arguments")
+    parser = argparse.ArgumentParser()
+    parser.add_argument("path", type=str)
+    parser.add_argument("--sym-moves-dep", default=0, type=int)
+    parser.add_argument("--only-larger-sym-moves", default=True, type=bool)
+    parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
+    args = parser.parse_args()
+    collect_all_solutions(
+        args.path,
+        args.sym_moves_dep,
+        args.only_larger_sym_moves,
+        args.max_processes,
+    )
