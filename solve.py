@@ -185,11 +185,7 @@ def next_edge_r_restriction(
 
 
 def solve_for_k(
-    puzzle: Puzzle,
-    k: int,
-    sym_move_depth: int,
-    only_larger_sym_moves: bool,
-    disallowed: list[MoveSequence] = [],
+    puzzle: Puzzle, k: int, sym_move_depth: int, disallowed: list[MoveSequence] = []
 ):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
@@ -369,8 +365,7 @@ def solve_for_k(
     # Disallow symmetric move sequences up to the specified depth.
     for seq, syms in load(n, sym_move_depth).items():
         for sym in syms:
-            if not only_larger_sym_moves or len(sym) > len(seq):
-                solver.add(disallow_move_sequence(sym))
+            solver.add(disallow_move_sequence(sym))
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
@@ -397,9 +392,8 @@ def solve_for_k(
 def solve(
     path: str,
     sym_move_depth: int,
-    only_larger_sym_moves: bool,
     max_processes: int,
-    write_stats_file: bool,
+    disable_stats_file: bool,
 ) -> tuple[MoveSequence | None, dict]:
     """Compute the optimal solution for a puzzle in parallel for all possible values
     of k within the upperbound. Returns the solution and a dict containing statistics
@@ -431,9 +425,7 @@ def solve(
                 k: int,
                 output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]],
             ):
-                solution, prep_time, solve_time = solve_for_k(
-                    puzzle, k, sym_move_depth, only_larger_sym_moves
-                )
+                solution, prep_time, solve_time = solve_for_k(puzzle, k, sym_move_depth)
                 output.put((k, solution, prep_time, solve_time))
 
             if len(k_prospects) > 0:
@@ -513,7 +505,7 @@ def solve(
         "k_upperbound": k_upperbound,
     }
 
-    if write_stats_file:
+    if not disable_stats_file:
         with open(f"{path}.stats", "w") as file:
             file.write(json.dumps(stats, indent=4))
 
@@ -524,14 +516,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
-    parser.add_argument("--only-larger-sym-moves", default=True, type=bool)
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
-    parser.add_argument("--write-stats-file", default=True, type=bool)
+    parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     solve(
         args.path,
         args.sym_moves_dep,
-        args.only_larger_sym_moves,
         args.max_processes,
-        args.write_stats_file,
+        args.disable_stats_file,
     )

@@ -10,7 +10,6 @@ from sym_move_seqs import MoveSequence
 def collect_all_solutions(
     path: str,
     sym_move_depth: int,
-    only_larger_sym_moves: bool,
     max_processes: int,
 ):
     puzzle = Puzzle.from_file(path)
@@ -18,9 +17,7 @@ def collect_all_solutions(
     def canonicalize(solution: MoveSequence):
         return ", ".join([move_name(ma, mi, md) for ma, mi, md in solution])
 
-    base_solution, base_result = solve(
-        path, sym_move_depth, only_larger_sym_moves, max_processes, False
-    )
+    base_solution, base_result = solve(path, sym_move_depth, max_processes, True)
     if base_solution is None:
         raise Exception("puzzle has no solution")
     print_stamped(f"base solution: {base_solution}")
@@ -29,9 +26,7 @@ def collect_all_solutions(
 
     solutions = [base_solution]
     while True:
-        solution, _, _ = solve_for_k(
-            puzzle, k, sym_move_depth, only_larger_sym_moves, solutions
-        )
+        solution, _, _ = solve_for_k(puzzle, k, sym_move_depth, solutions)
         if solution is None:
             break
         solutions.append(solution)
@@ -44,12 +39,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
-    parser.add_argument("--only-larger-sym-moves", default=True, type=bool)
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
     args = parser.parse_args()
     collect_all_solutions(
         args.path,
         args.sym_moves_dep,
-        args.only_larger_sym_moves,
         args.max_processes,
     )
