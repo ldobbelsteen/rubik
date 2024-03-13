@@ -9,7 +9,7 @@ from misc import rotate_list
 SUPPORTED_NS = {2, 3}
 
 # The global face ordering by which the desired rotation ordering is achieved.
-# First come top/bottom, second frontback and third left/right.
+# First come top/bottom, second front/back and third left/right.
 FACE_ORDERING = [4, 5, 0, 2, 3, 1]
 
 
