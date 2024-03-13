@@ -9,6 +9,7 @@ from sym_move_seqs import MoveSequence
 
 def collect_all_solutions(
     path: str,
+    move_skipping: bool,
     sym_move_depth: int,
     max_processes: int,
 ):
@@ -17,7 +18,9 @@ def collect_all_solutions(
     def canonicalize(solution: MoveSequence):
         return ", ".join([move_name(ma, mi, md) for ma, mi, md in solution])
 
-    base_solution, base_result = solve(path, sym_move_depth, max_processes, True)
+    base_solution, base_result = solve(
+        path, move_skipping, sym_move_depth, max_processes, True
+    )
     if base_solution is None:
         raise Exception("puzzle has no solution")
     print_stamped(f"base solution: {base_solution}")
@@ -26,7 +29,9 @@ def collect_all_solutions(
 
     solutions = [base_solution]
     while True:
-        solution, _, _ = solve_for_k(puzzle, k, sym_move_depth, solutions)
+        solution, _, _ = solve_for_k(
+            puzzle, k, move_skipping, sym_move_depth, solutions
+        )
         if solution is None:
             break
         solutions.append(solution)
@@ -38,11 +43,13 @@ def collect_all_solutions(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
+    parser.add_argument("--move-skipping", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
     args = parser.parse_args()
     collect_all_solutions(
         args.path,
+        args.move_skipping,
         args.sym_moves_dep,
         args.max_processes,
     )

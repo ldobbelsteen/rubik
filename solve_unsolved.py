@@ -8,6 +8,7 @@ from solve import solve
 
 def solve_unsolved(
     dir: str,
+    move_skipping: bool,
     sym_move_depth: int,
     max_processes: int,
     disable_stats_file: bool,
@@ -24,6 +25,7 @@ def solve_unsolved(
     for puzzle in natural_sorted(puzzles):
         solve(
             puzzle,
+            move_skipping,
             sym_move_depth,
             max_processes,
             disable_stats_file,
@@ -33,12 +35,14 @@ def solve_unsolved(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", type=str)
+    parser.add_argument("--move-skipping", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     solve_unsolved(
         args.path,
+        args.move_skipping,
         args.sym_moves_dep,
         args.max_processes,
         args.disable_stats_file,

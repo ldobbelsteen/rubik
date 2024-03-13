@@ -49,6 +49,150 @@ def next_x_restriction(
     )
 
 
+def next2_x_restriction(
+    n: int,
+    next_x: z3.ArithRef,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    ma1: z3.ArithRef,
+    mi1: z3.ArithRef,
+    md1: z3.ArithRef,
+    ma2: z3.ArithRef,
+    mi2: z3.ArithRef,
+    md2: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(ma1 == 0, mi1 == y),
+        z3.If(
+            md1 == 0,
+            z3.If(
+                z3.And(ma2 == 0, mi2 == y),
+                z3.If(md2 == 0, next_x == z, next_x == (n - 1) - z),
+                z3.If(
+                    z3.And(ma2 == 2, mi2 == z),
+                    z3.If(
+                        md2 == 0,
+                        next_x == y,
+                        z3.If(md2 == 1, next_x == (n - 1) - y, next_x == (n - 1) - z),
+                    ),
+                    next_x == z,
+                ),
+            ),
+            z3.If(
+                md1 == 1,
+                z3.If(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.If(
+                        md2 == 1,
+                        next_x == (n - 1) - z,
+                        next_x == z,
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 2, mi2 == z),
+                        z3.If(
+                            md2 == 0,
+                            next_x == y,
+                            z3.If(md2 == 1, next_x == (n - 1) - y, next_x == z),
+                        ),
+                        next_x == (n - 1) - z,
+                    ),
+                ),
+                z3.If(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.If(
+                        md2 == 0,
+                        next_x == z,
+                        z3.If(md2 == 1, next_x == (n - 1) - z, next_x == x),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 2, mi2 == z),
+                        z3.If(
+                            md2 == 0,
+                            next_x == y,
+                            z3.If(md2 == 1, next_x == (n - 1) - y, next_x == x),
+                        ),
+                        next_x == (n - 1) - x,
+                    ),
+                ),
+            ),
+        ),
+        z3.If(
+            z3.And(ma1 == 2, mi1 == z),
+            z3.If(
+                md1 == 0,
+                z3.If(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.If(
+                        md2 == 0,
+                        next_x == z,
+                        z3.If(md2 == 1, next_x == (n - 1) - z, next_x == (n - 1) - y),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 2, mi2 == z, md2 != 0),
+                        next_x == (n - 1) - y,
+                        next_x == y,
+                    ),
+                ),
+                z3.If(
+                    md1 == 1,
+                    z3.If(
+                        z3.And(ma2 == 0, mi2 == y),
+                        z3.If(
+                            md2 == 0,
+                            next_x == z,
+                            z3.If(md2 == 1, next_x == (n - 1) - z, next_x == y),
+                        ),
+                        z3.If(
+                            z3.And(ma2 == 2, mi2 == z, md2 != 1),
+                            next_x == y,
+                            next_x == (n - 1) - y,
+                        ),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 0, mi2 == y),
+                        z3.If(
+                            md2 == 0,
+                            next_x == z,
+                            z3.If(md2 == 1, next_x == (n - 1) - z, next_x == x),
+                        ),
+                        z3.If(
+                            z3.And(ma2 == 2, mi2 == z),
+                            z3.If(
+                                md2 == 0,
+                                next_x == y,
+                                z3.If(
+                                    md2 == 1,
+                                    next_x == (n - 1) - y,
+                                    next_x == x,
+                                ),
+                            ),
+                            next_x == (n - 1) - x,
+                        ),
+                    ),
+                ),
+            ),
+            z3.If(
+                z3.And(ma2 == 0, mi2 == y),
+                z3.If(
+                    md2 == 0,
+                    next_x == z,
+                    z3.If(md2 == 1, next_x == (n - 1) - z, next_x == (n - 1) - x),
+                ),
+                z3.If(
+                    z3.And(ma2 == 2, mi2 == z),
+                    z3.If(
+                        md2 == 0,
+                        next_x == y,
+                        z3.If(md2 == 1, next_x == (n - 1) - y, next_x == (n - 1) - x),
+                    ),
+                    next_x == x,
+                ),
+            ),
+        ),
+    )
+
+
 def next_y_restriction(
     n: int,
     next_y: z3.ArithRef,
@@ -74,6 +218,146 @@ def next_y_restriction(
                 z3.If(md == 1, next_y == x, next_y == (n - 1) - y),
             ),
             next_y == y,
+        ),
+    )
+
+
+def next2_y_restriction(
+    n: int,
+    next_y: z3.ArithRef,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    ma1: z3.ArithRef,
+    mi1: z3.ArithRef,
+    md1: z3.ArithRef,
+    ma2: z3.ArithRef,
+    mi2: z3.ArithRef,
+    md2: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(ma1 == 1, mi1 == x),
+        z3.If(
+            md1 == 0,
+            z3.If(
+                z3.And(ma2 == 1, mi2 == x),
+                z3.If(
+                    md2 == 0,
+                    next_y == (n - 1) - z,
+                    next_y == z,
+                ),
+                z3.If(
+                    z3.And(ma2 == 2, mi2 == z),
+                    z3.If(
+                        md2 == 0,
+                        next_y == (n - 1) - x,
+                        z3.If(md2 == 1, next_y == x, next_y == z),
+                    ),
+                    next_y == (n - 1) - z,
+                ),
+            ),
+            z3.If(
+                md1 == 1,
+                z3.If(
+                    z3.And(ma2 == 1, mi2 == x),
+                    z3.If(md2 == 1, next_y == z, next_y == (n - 1) - z),
+                    z3.If(
+                        z3.And(ma2 == 2, mi2 == z),
+                        z3.If(
+                            md2 == 0,
+                            next_y == (n - 1) - x,
+                            z3.If(md2 == 1, next_y == x, next_y == (n - 1) - z),
+                        ),
+                        next_y == z,
+                    ),
+                ),
+                z3.If(
+                    z3.And(ma2 == 1, mi2 == x),
+                    z3.If(
+                        md2 == 0,
+                        next_y == (n - 1) - z,
+                        z3.If(md2 == 1, next_y == z, next_y == y),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 2, mi2 == z),
+                        z3.If(
+                            md2 == 0,
+                            next_y == (n - 1) - x,
+                            z3.If(md2 == 1, next_y == x, next_y == y),
+                        ),
+                        next_y == (n - 1) - y,
+                    ),
+                ),
+            ),
+        ),
+        z3.If(
+            z3.And(ma1 == 2, mi1 == z),
+            z3.If(
+                md1 == 0,
+                z3.If(
+                    z3.And(ma2 == 1, mi2 == x),
+                    z3.If(
+                        md2 == 0,
+                        next_y == (n - 1) - z,
+                        z3.If(md2 == 1, next_y == z, next_y == x),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 2, mi2 == z, md2 != 0),
+                        next_y == x,
+                        next_y == (n - 1) - x,
+                    ),
+                ),
+                z3.If(
+                    md1 == 1,
+                    z3.If(
+                        z3.And(ma2 == 1, mi2 == x),
+                        z3.If(
+                            md2 == 0,
+                            next_y == (n - 1) - z,
+                            z3.If(md2 == 1, next_y == z, next_y == (n - 1) - x),
+                        ),
+                        z3.If(
+                            z3.And(ma2 == 2, mi2 == z),
+                            z3.If(md2 == 1, next_y == x, next_y == (n - 1) - x),
+                            next_y == x,
+                        ),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 1, mi2 == x),
+                        z3.If(
+                            md2 == 0,
+                            next_y == (n - 1) - z,
+                            z3.If(md2 == 1, next_y == z, next_y == y),
+                        ),
+                        z3.If(
+                            z3.And(ma2 == 2, mi2 == z),
+                            z3.If(
+                                md2 == 0,
+                                next_y == (n - 1) - x,
+                                z3.If(md2 == 1, next_y == x, next_y == y),
+                            ),
+                            next_y == (n - 1) - y,
+                        ),
+                    ),
+                ),
+            ),
+            z3.If(
+                z3.And(ma2 == 1, mi2 == x),
+                z3.If(
+                    md2 == 0,
+                    next_y == (n - 1) - z,
+                    z3.If(md2 == 1, next_y == z, next_y == (n - 1) - y),
+                ),
+                z3.If(
+                    z3.And(ma2 == 2, mi2 == z),
+                    z3.If(
+                        md2 == 0,
+                        next_y == (n - 1) - x,
+                        z3.If(md2 == 1, next_y == x, next_y == (n - 1) - y),
+                    ),
+                    next_y == y,
+                ),
+            ),
         ),
     )
 
@@ -107,6 +391,148 @@ def next_z_restriction(
     )
 
 
+def next2_z_restriction(
+    n: int,
+    next_z: z3.ArithRef,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    ma1: z3.ArithRef,
+    mi1: z3.ArithRef,
+    md1: z3.ArithRef,
+    ma2: z3.ArithRef,
+    mi2: z3.ArithRef,
+    md2: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(ma1 == 0, mi1 == y),
+        z3.If(
+            md1 == 0,
+            z3.If(
+                z3.And(ma2 == 0, mi2 == y),
+                z3.If(md2 == 0, next_z == (n - 1) - x, next_z == x),
+                z3.If(
+                    z3.And(ma2 == 1, mi2 == x),
+                    z3.If(
+                        md2 == 0,
+                        next_z == y,
+                        z3.If(md2 == 1, next_z == (n - 1) - y, next_z == x),
+                    ),
+                    next_z == (n - 1) - x,
+                ),
+            ),
+            z3.If(
+                md1 == 1,
+                z3.If(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.If(
+                        md2 == 0,
+                        next_z == (n - 1) - x,
+                        z3.If(md2 == 1, next_z == x, next_z == (n - 1) - x),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 1, mi2 == x),
+                        z3.If(
+                            md2 == 0,
+                            next_z == y,
+                            z3.If(
+                                md2 == 1, next_z == (n - 1) - y, next_z == (n - 1) - x
+                            ),
+                        ),
+                        next_z == x,
+                    ),
+                ),
+                z3.If(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.If(
+                        md2 == 0,
+                        next_z == (n - 1) - x,
+                        z3.If(md2 == 1, next_z == x, next_z == z),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 1, mi2 == x),
+                        z3.If(
+                            md2 == 0,
+                            next_z == y,
+                            z3.If(md2 == 1, next_z == (n - 1) - y, next_z == z),
+                        ),
+                        next_z == (n - 1) - z,
+                    ),
+                ),
+            ),
+        ),
+        z3.If(
+            z3.And(ma1 == 1, mi1 == x),
+            z3.If(
+                md1 == 0,
+                z3.If(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.If(
+                        md2 == 0,
+                        next_z == (n - 1) - x,
+                        z3.If(md2 == 1, next_z == x, next_z == (n - 1) - y),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 1, mi2 == x),
+                        z3.If(md2 == 0, next_z == y, next_z == (n - 1) - y),
+                        next_z == y,
+                    ),
+                ),
+                z3.If(
+                    md1 == 1,
+                    z3.If(
+                        z3.And(ma2 == 0, mi2 == y),
+                        z3.If(
+                            md2 == 0,
+                            next_z == (n - 1) - x,
+                            z3.If(md2 == 1, next_z == x, next_z == y),
+                        ),
+                        z3.If(
+                            z3.And(ma2 == 1, mi2 == x),
+                            z3.If(md2 == 1, next_z == (n - 1) - y, next_z == y),
+                            next_z == (n - 1) - y,
+                        ),
+                    ),
+                    z3.If(
+                        z3.And(ma2 == 0, mi2 == y),
+                        z3.If(
+                            md2 == 0,
+                            next_z == (n - 1) - x,
+                            z3.If(md2 == 1, next_z == x, next_z == z),
+                        ),
+                        z3.If(
+                            z3.And(ma2 == 1, mi2 == x),
+                            z3.If(
+                                md2 == 0,
+                                next_z == y,
+                                z3.If(md2 == 1, next_z == (n - 1) - y, next_z == z),
+                            ),
+                            next_z == (n - 1) - z,
+                        ),
+                    ),
+                ),
+            ),
+            z3.If(
+                z3.And(ma2 == 0, mi2 == y),
+                z3.If(
+                    md2 == 0,
+                    next_z == (n - 1) - x,
+                    z3.If(md2 == 1, next_z == x, next_z == (n - 1) - z),
+                ),
+                z3.If(
+                    z3.And(ma2 == 1, mi2 == x),
+                    z3.If(
+                        md2 == 0,
+                        next_z == y,
+                        z3.If(md2 == 1, next_z == (n - 1) - y, next_z == (n - 1) - z),
+                    ),
+                    next_z == z,
+                ),
+            ),
+        ),
+    )
+
+
 def next_corner_r_restriction(
     next_r: z3.ArithRef,
     x: z3.ArithRef,
@@ -134,6 +560,88 @@ def next_corner_r_restriction(
     )
 
 
+def next2_corner_r_restriction(
+    next_r: z3.ArithRef,
+    x: z3.ArithRef,
+    z: z3.ArithRef,
+    r: z3.ArithRef,
+    c: z3.BoolRef,
+    ma1: z3.ArithRef,
+    mi1: z3.ArithRef,
+    md1: z3.ArithRef,
+    ma2: z3.ArithRef,
+    mi2: z3.ArithRef,
+    md2: z3.ArithRef,
+):
+    # Condition for next_r == (r + 1) % 3
+    add_one = z3.If(r == 0, next_r == 1, z3.If(r == 1, next_r == 2, next_r == 0))
+
+    # Condition for next_r == (r - 1) % 3
+    minus_one = z3.If(r == 0, next_r == 2, z3.If(r == 1, next_r == 0, next_r == 1))
+
+    after_add_one = z3.If(
+        md2 != 2,
+        z3.If(
+            z3.And(ma2 == 1, mi2 == x),
+            z3.If(c, next_r == r, minus_one),
+            z3.If(
+                z3.And(ma2 == 2, mi2 == z), z3.If(c, minus_one, next_r == r), add_one
+            ),
+        ),
+        add_one,
+    )
+
+    after_minus_one = z3.If(
+        md2 != 2,
+        z3.If(
+            z3.And(ma2 == 1, mi2 == x),
+            z3.If(c, add_one, next_r == r),
+            z3.If(
+                z3.And(ma2 == 2, mi2 == z), z3.If(c, next_r == r, add_one), minus_one
+            ),
+        ),
+        minus_one,
+    )
+
+    return z3.If(
+        md1 != 2,
+        z3.If(
+            z3.And(ma1 == 1, mi1 == x),
+            z3.If(c, after_minus_one, after_add_one),
+            z3.If(
+                z3.And(ma1 == 2, mi1 == z),
+                z3.If(c, after_add_one, after_minus_one),
+                z3.If(
+                    md2 != 2,
+                    z3.If(
+                        z3.And(ma2 == 1, mi2 == x),
+                        z3.If(c, minus_one, add_one),
+                        z3.If(
+                            z3.And(ma2 == 2, mi2 == z),
+                            z3.If(c, add_one, minus_one),
+                            next_r == r,
+                        ),
+                    ),
+                    next_r == r,
+                ),
+            ),
+        ),
+        z3.If(
+            md2 != 2,
+            z3.If(
+                z3.And(ma2 == 1, mi2 == x),
+                z3.If(c, minus_one, add_one),
+                z3.If(
+                    z3.And(ma2 == 2, mi2 == z),
+                    z3.If(c, add_one, minus_one),
+                    next_r == r,
+                ),
+            ),
+            next_r == r,
+        ),
+    )
+
+
 def next_corner_c_restriction(
     next_c: z3.BoolRef,
     x: z3.ArithRef,
@@ -155,6 +663,55 @@ def next_corner_c_restriction(
         ),
         next_c != c,
         next_c == c,
+    )
+
+
+def next2_corner_c_restriction(
+    next_c: z3.BoolRef,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    c: z3.BoolRef,
+    ma1: z3.ArithRef,
+    mi1: z3.ArithRef,
+    md1: z3.ArithRef,
+    ma2: z3.ArithRef,
+    mi2: z3.ArithRef,
+    md2: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(
+            md1 != 2,
+            z3.Or(
+                z3.And(ma1 == 0, mi1 == y),
+                z3.And(ma1 == 1, mi1 == x),
+                z3.And(ma1 == 2, mi1 == z),
+            ),
+        ),
+        z3.If(
+            z3.And(
+                md2 != 2,
+                z3.Or(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.And(ma2 == 1, mi2 == x),
+                    z3.And(ma2 == 2, mi2 == z),
+                ),
+            ),
+            next_c == c,
+            next_c != c,
+        ),
+        z3.If(
+            z3.And(
+                md2 != 2,
+                z3.Or(
+                    z3.And(ma2 == 0, mi2 == y),
+                    z3.And(ma2 == 1, mi2 == x),
+                    z3.And(ma2 == 2, mi2 == z),
+                ),
+            ),
+            next_c != c,
+            next_c == c,
+        ),
     )
 
 
@@ -184,8 +741,67 @@ def next_edge_r_restriction(
     )
 
 
+def next2_edge_r_restriction(
+    next_r: z3.BoolRef,
+    x: z3.ArithRef,
+    y: z3.ArithRef,
+    z: z3.ArithRef,
+    r: z3.BoolRef,
+    ma1: z3.ArithRef,
+    mi1: z3.ArithRef,
+    md1: z3.ArithRef,
+    ma2: z3.ArithRef,
+    mi2: z3.ArithRef,
+    md2: z3.ArithRef,
+):
+    return z3.If(
+        z3.And(
+            md1 != 2,
+            z3.Or(
+                z3.And(ma1 == 2, mi1 == z),
+                z3.And(
+                    mi1 == 1,
+                    z3.Or(z3.And(ma1 == 0, mi1 == y), z3.And(ma1 == 1, mi1 == x)),
+                ),
+            ),
+        ),
+        z3.If(
+            z3.And(
+                md2 != 2,
+                z3.Or(
+                    z3.And(ma2 == 2, mi2 == z),
+                    z3.And(
+                        mi2 == 1,
+                        z3.Or(z3.And(ma2 == 0, mi2 == y), z3.And(ma2 == 1, mi2 == x)),
+                    ),
+                ),
+            ),
+            next_r == r,
+            next_r != r,
+        ),
+        z3.If(
+            z3.And(
+                md2 != 2,
+                z3.Or(
+                    z3.And(ma2 == 2, mi2 == z),
+                    z3.And(
+                        mi2 == 1,
+                        z3.Or(z3.And(ma2 == 0, mi2 == y), z3.And(ma2 == 1, mi2 == x)),
+                    ),
+                ),
+            ),
+            next_r != r,
+            next_r == r,
+        ),
+    )
+
+
 def solve_for_k(
-    puzzle: Puzzle, k: int, sym_move_depth: int, disallowed: list[MoveSequence] = []
+    puzzle: Puzzle,
+    k: int,
+    move_skipping: bool,
+    sym_move_depth: int,
+    disallowed: list[MoveSequence] = [],
 ):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
@@ -277,27 +893,82 @@ def solve_for_k(
     # Restrict cubicle states according to moves.
     for s in range(k):
         ma, mi, md = mas[s], mis[s], mds[s]
+        move_skipping_single = k % 2 == 1 and s == (k - 1)
 
         for i, (x, y, z, r, c) in enumerate(corners[s]):
-            next_x, next_y, next_z, next_r, next_c = corners[s + 1][i]
-            solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
-            solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
-            solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
-            solver.add(next_corner_r_restriction(next_r, x, z, r, c, ma, mi, md))
-            solver.add(next_corner_c_restriction(next_c, x, y, z, c, ma, mi, md))
+            if not move_skipping or move_skipping_single:
+                next_x, next_y, next_z, next_r, next_c = corners[s + 1][i]
+                solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
+                solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
+                solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
+                solver.add(next_corner_r_restriction(next_r, x, z, r, c, ma, mi, md))
+                solver.add(next_corner_c_restriction(next_c, x, y, z, c, ma, mi, md))
+            elif s % 2 == 0:
+                next_x, next_y, next_z, next_r, next_c = corners[s + 2][i]
+                ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
+                solver.add(
+                    next2_x_restriction(n, next_x, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_y_restriction(n, next_y, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_z_restriction(n, next_z, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_corner_r_restriction(
+                        next_r, x, z, r, c, ma, mi, md, ma2, mi2, md2
+                    )
+                )
+                solver.add(
+                    next2_corner_c_restriction(
+                        next_c, x, y, z, c, ma, mi, md, ma2, mi2, md2
+                    )
+                )
 
         for i, (x, y, z) in enumerate(centers[s]):
-            next_x, next_y, next_z = centers[s + 1][i]
-            solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
-            solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
-            solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
+            if not move_skipping or move_skipping_single:
+                next_x, next_y, next_z = centers[s + 1][i]
+                solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
+                solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
+                solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
+            elif s % 2 == 0:
+                next_x, next_y, next_z = centers[s + 2][i]
+                ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
+                solver.add(
+                    next2_x_restriction(n, next_x, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_y_restriction(n, next_y, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_z_restriction(n, next_z, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
 
         for i, (x, y, z, r) in enumerate(edges[s]):
-            next_x, next_y, next_z, next_r = edges[s + 1][i]
-            solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
-            solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
-            solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
-            solver.add(next_edge_r_restriction(next_r, x, y, z, r, ma, mi, md))
+            if not move_skipping or move_skipping_single:
+                next_x, next_y, next_z, next_r = edges[s + 1][i]
+                solver.add(next_x_restriction(n, next_x, x, y, z, ma, mi, md))
+                solver.add(next_y_restriction(n, next_y, x, y, z, ma, mi, md))
+                solver.add(next_z_restriction(n, next_z, x, y, z, ma, mi, md))
+                solver.add(next_edge_r_restriction(next_r, x, y, z, r, ma, mi, md))
+            elif s % 2 == 0:
+                next_x, next_y, next_z, next_r = edges[s + 2][i]
+                ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
+                solver.add(
+                    next2_x_restriction(n, next_x, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_y_restriction(n, next_y, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_z_restriction(n, next_z, x, y, z, ma, mi, md, ma2, mi2, md2)
+                )
+                solver.add(
+                    next2_edge_r_restriction(
+                        next_r, x, y, z, r, ma, mi, md, ma2, mi2, md2
+                    )
+                )
 
     # If we make a move at an index and axis, we cannot make a move at the same index
     # and axis for the next n moves, unless a different axis has been turned in the
@@ -391,6 +1062,7 @@ def solve_for_k(
 
 def solve(
     path: str,
+    move_skipping: bool,
     sym_move_depth: int,
     max_processes: int,
     disable_stats_file: bool,
@@ -425,7 +1097,9 @@ def solve(
                 k: int,
                 output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]],
             ):
-                solution, prep_time, solve_time = solve_for_k(puzzle, k, sym_move_depth)
+                solution, prep_time, solve_time = solve_for_k(
+                    puzzle, k, move_skipping, sym_move_depth
+                )
                 output.put((k, solution, prep_time, solve_time))
 
             if len(k_prospects) > 0:
@@ -515,12 +1189,14 @@ def solve(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
+    parser.add_argument("--move-skipping", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     solve(
         args.path,
+        args.move_skipping,
         args.sym_moves_dep,
         args.max_processes,
         args.disable_stats_file,
