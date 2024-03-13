@@ -324,6 +324,19 @@ def solve_for_k(
     for s in range(k - 1):
         solver.add(z3.Or(mas[s] != mas[s + 1], mis[s] < mis[s + 1]))
 
+    # Two subsequent center half moves happen in ascending order of axis.
+    if n == 3:
+        for s in range(k - 1):
+            solver.add(
+                z3.Or(
+                    mis[s] != 1,
+                    mis[s + 1] != 1,
+                    mds[s] != 2,
+                    mds[s + 1] != 2,
+                    mas[s] < mas[s + 1],
+                )
+            )
+
     # States cannot be repeated.
     for s1 in range(k + 1):
         for s2 in range(s1 + 1, k + 1):
