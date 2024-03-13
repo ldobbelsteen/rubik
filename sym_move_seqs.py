@@ -66,6 +66,54 @@ def compute(n: int, d: int):
                 ):
                     return False
 
+        # # NOTE: test 1
+        # if n == 3:
+        #     for s in range(k - 2):
+        #         if ext_seq[s] == (0, 1, 2):
+        #             if mis(s + 1) == 1 and mds(s + 1) == 2:
+        #                 if mas(s + 2) == 0 and mis(s + 2) == 0:
+        #                     return False
+        #                 if mis(s + 2) == 1 and mds(s + 2) != 2:
+        #                     return False
+
+        # # NOTE: test 2
+        # if n == 3:
+        #     for s in range(k - 2):
+        #         if ext_seq[s] == (1, 1, 2):
+        #             if (
+        #                 (mas(s + 1) == 0 and mis(s + 1) == 0)
+        #                 or (mas(s + 1) == 1 and mis(s + 1) == 2)
+        #                 or (mas(s + 1) == 2 and mis(s + 1) == 1 and mds(s + 1) != 2)
+        #             ):
+        #                 if ext_seq[s + 2] == (0, 1, 2):
+        #                     return False
+
+        # # NOTE: test 3
+        # if n == 3:
+        #     for s in range(k - 2):
+        #         if ext_seq[s] == (1, 1, 2):
+        #             if ext_seq[s + 1] == (2, 1, 2):
+        #                 if mas(s + 1) == 1 and mis(s + 2) == 0:
+        #                     return False
+        #                 if mas(s + 2) != 2 and mis(s + 2) == 1 and mds(s + 2) != 2:
+        #                     return False
+
+        # # NOTE: test 4
+        # if n == 3:
+        #     for s in range(k - 2):
+        #         if mas(s) == 2 and mis(s) == 1 and mds(s) != 2:
+        #             if mas(s + 1) != 2 and mis(s + 1) == 1 and mds(s + 1) == 2:
+        #                 if ext_seq[s + 2] == (2, 1, 2):
+        #                     return False
+
+        # # NOTE: test 5
+        # if n == 3:
+        #     for s in range(k - 2):
+        #         if mas(s) == 1 and mis(s) == 1 and mds(s) != 2:
+        #             if ext_seq[s + 1] == (0, 1, 2):
+        #                 if ext_seq[s + 2] == (1, 1, 2):
+        #                     return False
+
         # Disallow symmetric move sequences from lower depths.
         for sym in prev_symmetrical:
             start = k - len(sym)
