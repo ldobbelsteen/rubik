@@ -4,7 +4,7 @@ import os
 
 from generate import list_all_moves
 from misc import create_parent_directory
-from puzzle import Puzzle
+from puzzle import Puzzle, move_name
 
 Move = tuple[int, int, int]
 MoveSequence = tuple[Move, ...]
@@ -164,7 +164,13 @@ def compute(n: int, d: int):
         create_parent_directory(path)
         with open(path, "w") as file:
             for seq, syms in output:
-                file.write(f"{str(seq)}\t{str(syms)}\n")
+                canonicalize = False
+                if canonicalize:
+                    canon_seq = tuple([move_name(*s) for s in seq])
+                    canon_syms = [tuple([move_name(*s) for s in seq]) for seq in syms]
+                    file.write(f"{str(canon_seq)}\t{str(canon_syms)}\n")
+                else:
+                    file.write(f"{str(seq)}\t{str(syms)}\n")
 
 
 def load(n: int, d: int) -> dict[MoveSequence, list[MoveSequence]]:
