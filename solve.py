@@ -99,7 +99,7 @@ def next_z_restriction(
             z3.And(ma == 1, mi == x),
             z3.If(
                 md == 0,
-                next_z == next_z == y,
+                next_z == y,
                 z3.If(md == 1, next_z == (n - 1) - y, next_z == (n - 1) - z),
             ),
             next_z == z,
