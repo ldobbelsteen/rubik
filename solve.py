@@ -7,7 +7,7 @@ from queue import Queue
 import z3
 
 from misc import print_stamped
-from puzzle import Puzzle, default_k_upperbound, move_name
+from puzzle import Puzzle, gods_number, move_name
 from sym_move_seqs import MoveSequence, load
 
 
@@ -1073,7 +1073,7 @@ def solve(
     print_stamped(f"solving '{path}'...")
 
     puzzle = Puzzle.from_file(path)
-    k_upperbound = default_k_upperbound(puzzle.n)
+    k_upperbound = gods_number(puzzle.n)
 
     with Manager() as manager:
         k_prospects = list(range(k_upperbound + 1))

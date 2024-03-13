@@ -80,14 +80,16 @@ def list_all_moves(n: int):
     return list(itertools.product(range(3), range(n), range(3)))
 
 
-def default_k_upperbound(n: int):
+def gods_number(n: int):
     match n:
+        case 1:
+            return 0
         case 2:
-            return 11  # God's Number
+            return 11
         case 3:
-            return 20  # God's Number
+            return 20
         case _:
-            raise Exception(f"k upperbound of {n} not set")
+            raise Exception(f"god's number not known for n = {n}")
 
 
 def cubie_type(n: int, x: int, y: int, z: int):
