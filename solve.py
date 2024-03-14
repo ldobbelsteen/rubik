@@ -6,7 +6,7 @@ from queue import Queue
 
 import z3
 
-import move_mappers
+import mappers
 from misc import gods_number, print_stamped
 from puzzle import Puzzle, move_name
 from sym_move_seqs import MoveSequence, load
@@ -122,11 +122,11 @@ def solve_for_k(
         for i, (x, y, z, r, c) in enumerate(corners[s]):
             if not move_skipping or move_skipping_single:
                 next_x, next_y, next_z, next_r, next_c = corners[s + 1][i]
-                solver.add(move_mappers.z3_corner_x(n, x, y, z, ma, mi, md, next_x))
-                solver.add(move_mappers.z3_corner_y(n, x, y, z, ma, mi, md, next_y))
-                solver.add(move_mappers.z3_corner_z(n, x, y, z, ma, mi, md, next_z))
-                solver.add(move_mappers.z3_corner_r(n, x, z, r, c, ma, mi, md, next_r))
-                solver.add(move_mappers.z3_corner_c(n, x, y, z, c, ma, mi, md, next_c))
+                solver.add(mappers.z3_corner_x(n, x, y, z, ma, mi, md, next_x))
+                solver.add(mappers.z3_corner_y(n, x, y, z, ma, mi, md, next_y))
+                solver.add(mappers.z3_corner_z(n, x, y, z, ma, mi, md, next_z))
+                solver.add(mappers.z3_corner_r(n, x, z, r, c, ma, mi, md, next_r))
+                solver.add(mappers.z3_corner_c(n, x, y, z, c, ma, mi, md, next_c))
             elif s % 2 == 0:
                 next_x, next_y, next_z, next_r, next_c = corners[s + 2][i]
                 ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
@@ -135,8 +135,8 @@ def solve_for_k(
         for i, (a, h) in enumerate(centers[s]):
             if not move_skipping or move_skipping_single:
                 next_a, next_h = centers[s + 1][i]
-                solver.add(move_mappers.z3_center_a(a, ma, mi, md, next_a))
-                solver.add(move_mappers.z3_center_h(a, h, ma, mi, md, next_h))
+                solver.add(mappers.z3_center_a(a, ma, mi, md, next_a))
+                solver.add(mappers.z3_center_h(a, h, ma, mi, md, next_h))
             elif s % 2 == 0:
                 next_a, next_h = centers[s + 2][i]
                 ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
@@ -145,10 +145,10 @@ def solve_for_k(
         for i, (x, y, z, r) in enumerate(edges[s]):
             if not move_skipping or move_skipping_single:
                 next_x, next_y, next_z, next_r = edges[s + 1][i]
-                solver.add(move_mappers.z3_edge_x(n, x, y, z, ma, mi, md, next_x))
-                solver.add(move_mappers.z3_edge_y(n, x, y, z, ma, mi, md, next_y))
-                solver.add(move_mappers.z3_edge_z(n, x, y, z, ma, mi, md, next_z))
-                solver.add(move_mappers.z3_edge_r(x, y, z, r, ma, mi, md, next_r))
+                solver.add(mappers.z3_edge_x(n, x, y, z, ma, mi, md, next_x))
+                solver.add(mappers.z3_edge_y(n, x, y, z, ma, mi, md, next_y))
+                solver.add(mappers.z3_edge_z(n, x, y, z, ma, mi, md, next_z))
+                solver.add(mappers.z3_edge_r(x, y, z, r, ma, mi, md, next_r))
             elif s % 2 == 0:
                 next_x, next_y, next_z, next_r = edges[s + 2][i]
                 ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]

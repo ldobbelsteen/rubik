@@ -3,7 +3,7 @@ import itertools
 
 from PIL import Image, ImageDraw
 
-import move_mappers
+import mappers
 from misc import rotate_list
 
 Corner = tuple[bool, bool, bool, int, bool]  # (x, y, z, r, c)
@@ -387,25 +387,25 @@ class Puzzle:
     def execute_move(self, ma: int, mi: int, md: int):
         for i, (x, y, z, r, c) in enumerate(self.corners):
             self.corners[i] = (
-                move_mappers.corner_x(self.n, x, y, z, ma, mi, md),
-                move_mappers.corner_y(self.n, x, y, z, ma, mi, md),
-                move_mappers.corner_z(self.n, x, y, z, ma, mi, md),
-                move_mappers.corner_r(self.n, x, z, r, c, ma, mi, md),
-                move_mappers.corner_c(self.n, x, y, z, c, ma, mi, md),
+                mappers.corner_x(self.n, x, y, z, ma, mi, md),
+                mappers.corner_y(self.n, x, y, z, ma, mi, md),
+                mappers.corner_z(self.n, x, y, z, ma, mi, md),
+                mappers.corner_r(self.n, x, z, r, c, ma, mi, md),
+                mappers.corner_c(self.n, x, y, z, c, ma, mi, md),
             )
 
         for i, (a, h) in enumerate(self.centers):
             self.centers[i] = (
-                move_mappers.center_a(a, ma, mi, md),
-                move_mappers.center_h(a, h, ma, mi, md),
+                mappers.center_a(a, ma, mi, md),
+                mappers.center_h(a, h, ma, mi, md),
             )
 
         for i, (x, y, z, r) in enumerate(self.edges):
             self.edges[i] = (
-                move_mappers.edge_x(self.n, x, y, z, ma, mi, md),
-                move_mappers.edge_y(self.n, x, y, z, ma, mi, md),
-                move_mappers.edge_z(self.n, x, y, z, ma, mi, md),
-                move_mappers.edge_r(x, y, z, r, ma, mi, md),
+                mappers.edge_x(self.n, x, y, z, ma, mi, md),
+                mappers.edge_y(self.n, x, y, z, ma, mi, md),
+                mappers.edge_z(self.n, x, y, z, ma, mi, md),
+                mappers.edge_r(x, y, z, r, ma, mi, md),
             )
 
     def facelet_color(self, ff: int, fy: int, fx: int) -> int:
