@@ -6,8 +6,9 @@ from misc import natural_sorted
 from solve import solve
 
 
-def solve_unsolved(
+def solve_all(
     dir: str,
+    skip_solved: bool,
     move_skipping: bool,
     sym_move_depth: int,
     max_processes: int,
@@ -16,12 +17,10 @@ def solve_unsolved(
     puzzles: list[str] = []
     for filename in os.listdir(dir):
         path = os.path.join(dir, filename)
-        if (
-            os.path.isfile(path)
-            and path.endswith(".txt")
-            and not os.path.isfile(f"{path}.stats")
-        ):
-            puzzles.append(path)
+        if os.path.isfile(path) and path.endswith(".txt"):
+            if not skip_solved or not os.path.isfile(f"{path}.stats"):
+                puzzles.append(path)
+
     for puzzle in natural_sorted(puzzles):
         solve(
             puzzle,
@@ -35,13 +34,15 @@ def solve_unsolved(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("dir", type=str)
+    parser.add_argument("--skip-solved", action=argparse.BooleanOptionalAction)
     parser.add_argument("--move-skipping", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
-    solve_unsolved(
+    solve_all(
         args.path,
+        args.skip_solved,
         args.move_skipping,
         args.sym_moves_dep,
         args.max_processes,
