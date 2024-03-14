@@ -32,3 +32,15 @@ def rotate_list(ls: list[int]):
     """Rotate a list by appending its last element to the front."""
     last = ls.pop()
     ls.insert(0, last)
+
+
+def gods_number(n: int):
+    match n:
+        case 1:
+            return 0
+        case 2:
+            return 11
+        case 3:
+            return 20
+        case _:
+            raise Exception(f"god's number not known for n = {n}")

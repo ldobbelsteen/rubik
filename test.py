@@ -3,29 +3,75 @@ import random
 import unittest
 
 from generate import list_all_moves
-from puzzle import Puzzle, cubie_colors, cubie_type, facelet_cubie
+from puzzle import (
+    SUPPORTED_NS,
+    Cubicles,
+    Puzzle,
+    center_to_coord,
+    coord_to_center,
+    coord_to_corner,
+    coord_to_edge,
+    corner_to_coord,
+    cubicle_colors,
+    cubicle_type,
+    edge_to_coord,
+    facelet_cubicle,
+)
 
 
 class Testing(unittest.TestCase):
-    def test_cubie_type(self):
-        self.assertEqual(cubie_type(2, 1, 1, 1), 0)
-        self.assertEqual(cubie_type(3, 1, 1, 1), -1)
-        self.assertEqual(cubie_type(3, 2, 2, 2), 0)
-        self.assertEqual(cubie_type(3, 1, 2, 1), 1)
-        self.assertEqual(cubie_type(3, 1, 2, 2), 2)
+    def test_cubicle_type(self):
+        self.assertEqual(cubicle_type(2, 1, 1, 1), 0)
+        self.assertEqual(cubicle_type(3, 1, 1, 1), -1)
+        self.assertEqual(cubicle_type(3, 2, 2, 2), 0)
+        self.assertEqual(cubicle_type(3, 1, 2, 1), 1)
+        self.assertEqual(cubicle_type(3, 1, 2, 2), 2)
 
-    def test_cubie_colors(self):
-        for n in range(2, 10):
-            self.assertEqual(cubie_colors(n, 0, 0, 0), [5, 0, 3])
-            self.assertEqual(cubie_colors(3, 2, 2, 2), [4, 2, 1])
-        self.assertEqual(cubie_colors(3, 1, 2, 1), [4])
-        self.assertEqual(cubie_colors(3, 2, 2, 1), [4, 1])
+    def test_cubicle_colors(self):
+        for n in SUPPORTED_NS:
+            self.assertEqual(cubicle_colors(n, 0, 0, 0), [5, 0, 3])
+            self.assertEqual(cubicle_colors(3, 2, 2, 2), [4, 2, 1])
+        self.assertEqual(cubicle_colors(3, 1, 2, 1), [4])
+        self.assertEqual(cubicle_colors(3, 2, 2, 1), [4, 1])
 
-    def test_facelet_cubie(self):
-        self.assertEqual(facelet_cubie(2, 0, 1, 1), (1, 1, 0))
-        self.assertEqual(facelet_cubie(3, 2, 2, 1), (1, 2, 2))
-        self.assertEqual(facelet_cubie(3, 4, 2, 2), (2, 2, 2))
-        self.assertEqual(facelet_cubie(3, 5, 2, 1), (1, 0, 0))
+    def test_facelet_cubicle(self):
+        self.assertEqual(facelet_cubicle(2, 0, 1, 1), (1, 1, 0))
+        self.assertEqual(facelet_cubicle(3, 2, 2, 1), (1, 2, 2))
+        self.assertEqual(facelet_cubicle(3, 4, 2, 2), (2, 2, 2))
+        self.assertEqual(facelet_cubicle(3, 5, 2, 1), (1, 0, 0))
+
+    def test_encoding_decoding(self):
+        for n in SUPPORTED_NS:
+            for x in range(n):
+                for y in range(n):
+                    for z in range(n):
+                        match cubicle_type(n, x, y, z):
+                            case 0:
+                                self.assertEqual(
+                                    (x, y, z),
+                                    corner_to_coord(n, coord_to_corner(n, x, y, z)),
+                                )
+                            case 1:
+                                self.assertEqual(
+                                    (x, y, z),
+                                    center_to_coord(n, coord_to_center(n, x, y, z)),
+                                )
+                            case 2:
+                                self.assertEqual(
+                                    (x, y, z),
+                                    edge_to_coord(coord_to_edge(x, y, z)),
+                                )
+
+    def test_finished_cubicles(self):
+        cubicles = Cubicles(2)
+        self.assertEqual(len(cubicles.corners), 8)
+        self.assertEqual(len(cubicles.centers), 0)
+        self.assertEqual(len(cubicles.edges), 0)
+
+        cubicles = Cubicles(3)
+        self.assertEqual(len(cubicles.corners), 8)
+        self.assertEqual(len(cubicles.centers), 6)
+        self.assertEqual(len(cubicles.edges), 12)
 
     def test_puzzle_parsing(self):
         dir = "./puzzles"
