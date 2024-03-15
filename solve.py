@@ -207,7 +207,7 @@ def solve_for_k(
         moves = tuple(
             (
                 model.get_interp(axs[s]).as_long(),
-                model.get_interp(his[s]).as_long(),
+                z3.is_true(model.get_interp(his[s])),
                 model.get_interp(drs[s]).as_long(),
             )
             for s in range(k)
