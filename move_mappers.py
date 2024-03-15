@@ -196,7 +196,7 @@ def z3_corner_r(
     return z3.If(
         dr != 2,
         z3.If(
-            z3.And(ax == 1, hi == x_hi),
+            z3.And(ax == 0, hi == x_hi),
             z3.If(cw, minus_one, add_one),
             z3.If(
                 z3.And(ax == 2, hi == z_hi),
