@@ -12,7 +12,7 @@ from puzzle import MoveSeq, Puzzle, move_name
 from tools import gods_number, print_stamped
 
 
-def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
+def z3_int(solver: z3.Optimize, name: str, low: int, high: int) -> z3.ArithRef:
     """Create Z3 integer and add its value range to the solver. The range is
     inclusive on low and exclusive on high."""
     var = z3.Int(name)
