@@ -59,18 +59,24 @@ def z3_corner_x_hi(
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.BoolRef,
+    next_x_hi: z3.BoolRef,
 ):
     return (
         z3.If(
             z3.And(ax == 1, hi == y_hi),
-            z3.If(dr == 0, next != z_hi, z3.If(dr == 1, next == z_hi, next != x_hi)),
+            z3.If(
+                dr == 0,
+                next_x_hi != z_hi,
+                z3.If(dr == 1, next_x_hi == z_hi, next_x_hi != x_hi),
+            ),
             z3.If(
                 z3.And(ax == 2, hi == z_hi),
                 z3.If(
-                    dr == 0, next == y_hi, z3.If(dr == 1, next != y_hi, next != x_hi)
+                    dr == 0,
+                    next_x_hi == y_hi,
+                    z3.If(dr == 1, next_x_hi != y_hi, next_x_hi != x_hi),
                 ),
-                next == x_hi,
+                next_x_hi == x_hi,
             ),
         ),
     )
@@ -101,18 +107,24 @@ def z3_corner_y_hi(
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.BoolRef,
+    next_y_hi: z3.BoolRef,
 ):
     return (
         z3.If(
             z3.And(ax == 0, hi == x_hi),
-            z3.If(dr == 0, next == z_hi, z3.If(dr == 1, next != z_hi, next != y_hi)),
+            z3.If(
+                dr == 0,
+                next_y_hi == z_hi,
+                z3.If(dr == 1, next_y_hi != z_hi, next_y_hi != y_hi),
+            ),
             z3.If(
                 z3.And(ax == 2, hi == z_hi),
                 z3.If(
-                    dr == 0, next != x_hi, z3.If(dr == 1, next == x_hi, next != y_hi)
+                    dr == 0,
+                    next_y_hi != x_hi,
+                    z3.If(dr == 1, next_y_hi == x_hi, next_y_hi != y_hi),
                 ),
-                next == y_hi,
+                next_y_hi == y_hi,
             ),
         ),
     )
@@ -143,18 +155,24 @@ def z3_corner_z_hi(
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.BoolRef,
+    next_z_hi: z3.BoolRef,
 ):
     return (
         z3.If(
             z3.And(ax == 0, hi == x_hi),
-            z3.If(dr == 0, next != y_hi, z3.If(dr == 1, next == y_hi, next != z_hi)),
+            z3.If(
+                dr == 0,
+                next_z_hi != y_hi,
+                z3.If(dr == 1, next_z_hi == y_hi, next_z_hi != z_hi),
+            ),
             z3.If(
                 z3.And(ax == 1, hi == y_hi),
                 z3.If(
-                    dr == 0, next == x_hi, z3.If(dr == 1, next != x_hi, next != z_hi)
+                    dr == 0,
+                    next_z_hi == x_hi,
+                    z3.If(dr == 1, next_z_hi != x_hi, next_z_hi != z_hi),
                 ),
-                next == z_hi,
+                next_z_hi == z_hi,
             ),
         ),
     )
@@ -185,13 +203,13 @@ def z3_corner_r(
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.ArithRef,
+    next_r: z3.ArithRef,
 ):
     # Condition for next == (r + 1) % 3
-    add_one = z3.If(r == 0, next == 1, z3.If(r == 1, next == 2, next == 0))
+    add_one = z3.If(r == 0, next_r == 1, z3.If(r == 1, next_r == 2, next_r == 0))
 
     # Condition for next == (r - 1) % 3
-    minus_one = z3.If(r == 0, next == 2, z3.If(r == 1, next == 0, next == 1))
+    minus_one = z3.If(r == 0, next_r == 2, z3.If(r == 1, next_r == 0, next_r == 1))
 
     return z3.If(
         dr != 2,
@@ -201,10 +219,10 @@ def z3_corner_r(
             z3.If(
                 z3.And(ax == 2, hi == z_hi),
                 z3.If(cw, add_one, minus_one),
-                next == r,
+                next_r == r,
             ),
         ),
-        next == r,
+        next_r == r,
     )
 
 
@@ -226,7 +244,7 @@ def z3_corner_cw(
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.BoolRef,
+    next_cw: z3.BoolRef,
 ):
     return z3.If(
         z3.And(
@@ -237,175 +255,198 @@ def z3_corner_cw(
                 z3.And(ax == 2, hi == z_hi),
             ),
         ),
-        next != cw,
-        next == cw,
+        next_cw != cw,
+        next_cw == cw,
     )
 
 
-def edge_x(n: int, x: int, y: int, z: int, ax: int, hi: bool, dr: int) -> int:
-    if ax == 1 and ((hi and y == n - 1) or (not hi and y == 0)):
-        if dr == 0:
-            return n - 1 - z
-        elif dr == 1:
-            return z
-        elif dr == 2:
-            return n - 1 - x
-    elif ax == 2 and ((hi and z == n - 1) or (not hi and z == 0)):
-        if dr == 0:
-            return y
-        elif dr == 1:
-            return n - 1 - y
-        elif dr == 2:
-            return n - 1 - x
-    return x
+def edge_a(a: int, x_hi: bool, y_hi: bool, ax: int, hi: bool, dr: int) -> int:
+    if dr != 2:
+        if a == 0:
+            if ax == 1 and hi == y_hi:
+                return 2
+            elif ax == 2 and hi == x_hi:
+                return 1
+        elif a == 1:
+            if ax == 0 and hi == x_hi:
+                return 2
+            elif ax == 2 and hi == y_hi:
+                return 0
+        elif a == 2:
+            if ax == 0 and hi == x_hi:
+                return 1
+            elif ax == 1 and hi == y_hi:
+                return 0
+    return a
 
 
-def z3_edge_x(
-    n: int,
-    x: z3.ArithRef,
-    y: z3.ArithRef,
-    z: z3.ArithRef,
+def z3_edge_a(
+    a: z3.ArithRef,
+    x_hi: z3.BoolRef,
+    y_hi: z3.BoolRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.ArithRef,
+    next_a: z3.ArithRef,
 ):
     return z3.If(
-        z3.And(ax == 1, z3.If(hi, y == n - 1, y == 0)),
+        dr != 2,
         z3.If(
-            dr == 0, next == (n - 1) - z, z3.If(dr == 1, next == z, next == (n - 1) - x)
-        ),
-        z3.If(
-            z3.And(ax == 2, z3.If(hi, z == n - 1, z == 0)),
+            a == 0,
             z3.If(
-                dr == 0,
-                next == y,
-                z3.If(dr == 1, next == (n - 1) - y, next == (n - 1) - x),
+                z3.And(ax == 1, hi == y_hi),
+                next_a == 2,
+                z3.If(z3.And(ax == 2, hi == x_hi), next_a == 1, next_a == a),
             ),
-            next == x,
+            z3.If(
+                a == 1,
+                z3.If(
+                    z3.And(ax == 0, hi == x_hi),
+                    next_a == 2,
+                    z3.If(z3.And(ax == 2, hi == y_hi), next_a == 0, next_a == a),
+                ),
+                z3.If(
+                    z3.And(ax == 0, hi == x_hi),
+                    next_a == 1,
+                    z3.If(z3.And(ax == 1, hi == y_hi), next_a == 0, next_a == a),
+                ),
+            ),
         ),
+        next_a == a,
     )
 
 
-def edge_y(n: int, x: int, y: int, z: int, ax: int, hi: bool, dr: int) -> int:
-    if ax == 0 and ((hi and x == n - 1) or (not hi and x == 0)):
-        if dr == 0:
-            return z
-        elif dr == 1:
-            return n - 1 - z
-        elif dr == 2:
-            return n - 1 - y
-    elif ax == 2 and ((hi and z == n - 1) or (not hi and z == 0)):
-        if dr == 0:
-            return n - 1 - x
-        elif dr == 1:
-            return x
-        elif dr == 2:
-            return n - 1 - y
-    return y
+def edge_x_hi(a: int, x_hi: bool, y_hi: bool, ax: int, hi: bool, dr: int) -> bool:
+    if a == 0:
+        if ax == 1 and hi == y_hi and dr != 1:
+            return not x_hi
+        elif ax == 2 and hi == x_hi:
+            if dr == 0:
+                return y_hi
+            elif dr == 1:
+                return not y_hi
+    elif a == 1:
+        if ax == 2 and hi == y_hi:
+            if dr == 2:
+                return not x_hi
+            else:
+                return y_hi
+    elif a == 2:
+        if ax == 1 and hi == y_hi:
+            if dr != 0:
+                return not x_hi
+    return x_hi
 
 
-def z3_edge_y(
-    n: int,
-    x: z3.ArithRef,
-    y: z3.ArithRef,
-    z: z3.ArithRef,
+def z3_edge_x_hi(
+    a: z3.ArithRef,
+    x_hi: z3.BoolRef,
+    y_hi: z3.BoolRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.ArithRef,
+    next_x_hi: z3.BoolRef,
 ):
     return z3.If(
-        z3.And(ax == 0, z3.If(hi, x == n - 1, x == 0)),
+        a == 0,
         z3.If(
-            dr == 0, next == z, z3.If(dr == 1, next == (n - 1) - z, next == (n - 1) - y)
+            z3.And(ax == 1, hi == y_hi, dr != 1),
+            next_x_hi != x_hi,
+            z3.If(
+                z3.And(ax == 2, hi == x_hi),
+                z3.If(
+                    dr == 0,
+                    next_x_hi == y_hi,
+                    z3.If(dr == 1, next_x_hi != y_hi, next_x_hi == x_hi),
+                ),
+                next_x_hi == x_hi,
+            ),
         ),
         z3.If(
-            z3.And(ax == 2, z3.If(hi, z == n - 1, z == 0)),
+            z3.And(a == 1, ax == 2, hi == y_hi),
+            z3.If(dr == 2, next_x_hi != x_hi, next_x_hi == y_hi),
             z3.If(
-                dr == 0,
-                next == (n - 1) - x,
-                z3.If(dr == 1, next == x, next == (n - 1) - y),
+                z3.And(a == 2, ax == 1, hi == y_hi, dr != 0),
+                next_x_hi != x_hi,
+                next_x_hi == x_hi,
             ),
-            next == y,
         ),
     )
 
 
-def edge_z(n: int, x: int, y: int, z: int, ax: int, hi: bool, dr: int) -> int:
-    if ax == 0 and ((hi and x == n - 1) or (not hi and x == 0)):
-        if dr == 0:
-            return n - 1 - y
-        elif dr == 1:
-            return y
-        elif dr == 2:
-            return n - 1 - z
-    elif ax == 1 and ((hi and y == n - 1) or (not hi and y == 0)):
-        if dr == 0:
-            return x
-        elif dr == 1:
-            return n - 1 - x
-        elif dr == 2:
-            return n - 1 - z
-    return z
+def edge_y_hi(a: int, x_hi: bool, y_hi: bool, ax: int, hi: bool, dr: int) -> bool:
+    if a == 0:
+        if ax == 2 and hi == x_hi:
+            if dr == 2:
+                return not y_hi
+            else:
+                return x_hi
+    elif a == 1:
+        if ax == 0 and hi == x_hi:
+            if dr != 0:
+                return not y_hi
+        elif ax == 2 and hi == y_hi:
+            if dr == 0:
+                return not x_hi
+            elif dr == 1:
+                return x_hi
+    elif a == 2:
+        if ax == 0 and hi == x_hi:
+            if dr != 1:
+                return not y_hi
+    return y_hi
 
 
-def z3_edge_z(
-    n: int,
-    x: z3.ArithRef,
-    y: z3.ArithRef,
-    z: z3.ArithRef,
+def z3_edge_y_hi(
+    a: z3.ArithRef,
+    x_hi: z3.BoolRef,
+    y_hi: z3.BoolRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-    next: z3.ArithRef,
+    next_y_hi: z3.BoolRef,
 ):
     return z3.If(
-        z3.And(ax == 0, z3.If(hi, x == n - 1, x == 0)),
+        z3.And(a == 0, ax == 2, hi == x_hi),
+        z3.If(dr == 2, next_y_hi != y_hi, next_y_hi == x_hi),
         z3.If(
-            dr == 0,
-            next == (n - 1) - y,
-            z3.If(dr == 1, next == y, next == (n - 1) - z),
-        ),
-        z3.If(
-            z3.And(ax == 1, z3.If(hi, y == n - 1, y == 0)),
+            a == 1,
             z3.If(
-                dr == 0,
-                next == x,
-                z3.If(dr == 1, next == (n - 1) - x, next == (n - 1) - z),
+                z3.And(ax == 0, hi == x_hi, dr != 0),
+                next_y_hi != y_hi,
+                z3.If(
+                    z3.And(ax == 2, hi == y_hi),
+                    z3.If(
+                        dr == 0,
+                        next_y_hi != x_hi,
+                        z3.If(dr == 1, next_y_hi == x_hi, next_y_hi == y_hi),
+                    ),
+                    next_y_hi == y_hi,
+                ),
             ),
-            next == z,
+            z3.If(
+                z3.And(a == 2, ax == 0, hi == x_hi, dr != 1),
+                next_y_hi != y_hi,
+                next_y_hi == y_hi,
+            ),
         ),
     )
 
 
-def edge_r(n: int, x: int, z: int, r: bool, ax: int, hi: bool, dr: int) -> bool:
-    if dr != 2 and (
-        (ax == 0 and ((hi and x == n - 1) or (not hi and x == 0)))
-        or (ax == 2 and ((hi and z == n - 1) or (not hi and z == 0)))
-    ):
+def edge_r(a: int, next_a: int, r: bool) -> bool:
+    if (a == 0 and next_a == 1) or (a == 1 and next_a == 0):
         return not r
     return r
 
 
 def z3_edge_r(
-    n: int,
-    x: z3.ArithRef,
-    z: z3.ArithRef,
+    a: z3.ArithRef,
+    next_a: z3.ArithRef,
     r: z3.BoolRef,
-    ax: z3.ArithRef,
-    hi: z3.BoolRef,
-    dr: z3.ArithRef,
-    next: z3.BoolRef,
+    next_r: z3.BoolRef,
 ):
     return z3.If(
-        z3.And(
-            dr != 2,
-            z3.Or(
-                z3.And(ax == 0, z3.If(hi, x == n - 1, x == 0)),
-                z3.And(ax == 2, z3.If(hi, z == n - 1, z == 0)),
-            ),
-        ),
-        next != r,
-        next == r,
+        z3.Or(z3.And(a == 0, next_a == 1), z3.And(a == 1, next_a == 0)),
+        next_r != r,
+        next_r == r,
     )

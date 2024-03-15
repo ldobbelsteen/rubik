@@ -55,9 +55,9 @@ def solve_for_k(
     edges = [
         [
             (
-                z3_int(solver, f"edge({x},{y},{z}) s({s}) x", 0, n),
-                z3_int(solver, f"edge({x},{y},{z}) s({s}) y", 0, n),
-                z3_int(solver, f"edge({x},{y},{z}) s({s}) z", 0, n),
+                z3_int(solver, f"edge({x},{y},{z}) s({s}) a", 0, 3),
+                z3.Bool(f"edge({x},{y},{z}) s({s}) x_hi"),
+                z3.Bool(f"edge({x},{y},{z}) s({s}) y_hi"),
                 z3.Bool(f"edge({x},{y},{z}) s({s}) r"),
             )
             for x, y, z, _ in cubicles.edges
@@ -129,15 +129,19 @@ def solve_for_k(
                 # TODO: implement once stacked mappers are ready
 
         # Add restrictions for the edge cubies.
-        for i, (x, y, z, r) in enumerate(edges[s]):
+        for i, (a, x_hi, y_hi, r) in enumerate(edges[s]):
             if not move_stacking or move_stacking_single:
-                next_x, next_y, next_z, next_r = edges[s + 1][i]
-                solver.add(move_mappers.z3_edge_x(n, x, y, z, ax, hi, dr, next_x))
-                solver.add(move_mappers.z3_edge_y(n, x, y, z, ax, hi, dr, next_y))
-                solver.add(move_mappers.z3_edge_z(n, x, y, z, ax, hi, dr, next_z))
-                solver.add(move_mappers.z3_edge_r(n, x, z, r, ax, hi, dr, next_r))
+                next_a, next_x_hi, next_y_hi, next_r = edges[s + 1][i]
+                solver.add(move_mappers.z3_edge_a(a, x_hi, y_hi, ax, hi, dr, next_a))
+                solver.add(
+                    move_mappers.z3_edge_x_hi(a, x_hi, y_hi, ax, hi, dr, next_x_hi)
+                )
+                solver.add(
+                    move_mappers.z3_edge_y_hi(a, x_hi, y_hi, ax, hi, dr, next_y_hi)
+                )
+                solver.add(move_mappers.z3_edge_r(a, next_a, r, next_r))
             elif s % 2 == 0:
-                next_x, next_y, next_z, next_r = edges[s + 2][i]
+                next_a, next_x_hi, next_y_hi, next_r = edges[s + 2][i]
                 ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
                 # TODO: implement once stacked mappers are ready
 

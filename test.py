@@ -60,7 +60,7 @@ class Testing(unittest.TestCase):
                             case 2:
                                 self.assertEqual(
                                     cubicle,
-                                    decode_edge(encode_edge(cubicle)),
+                                    decode_edge(n, encode_edge(n, cubicle)),
                                 )
 
     def test_finished_cubicles_sizes(self):
