@@ -6,10 +6,10 @@ from queue import Queue
 
 import z3
 
-import mappers
-from misc import gods_number, print_stamped
-from puzzle import Puzzle, move_name
-from sym_move_seqs import MoveSequence, load
+import move_mappers
+from move_symmetries import load
+from puzzle import MoveSeq, Puzzle, move_name
+from tools import gods_number, print_stamped
 
 
 def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
@@ -24,9 +24,9 @@ def z3_int(solver: z3.Optimize, name: str, low: int, high: int):
 def solve_for_k(
     puzzle: Puzzle,
     k: int,
-    move_skipping: bool,
+    move_stacking: bool,
     sym_move_depth: int,
-    disallowed: list[MoveSequence] = [],
+    banned: list[MoveSeq] = [],
 ):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
@@ -36,9 +36,9 @@ def solve_for_k(
 
     n = puzzle.n
     finished = Puzzle.finished(n)
-    cubicles = finished.cubicles
+    cubicles = finished.finished_state
 
-    # Nested lists representing the n × n × n cube for each state.
+    # Nested lists representing the cube at each state.
     corners = [
         [
             (
@@ -49,16 +49,6 @@ def solve_for_k(
                 z3.Bool(f"corner({x},{y},{z}) s({s}) c"),
             )
             for x, y, z, _, _ in cubicles.corners
-        ]
-        for s in range(k + 1)
-    ]
-    centers = [
-        [
-            (
-                z3_int(solver, f"center({a},{h}) s({s}) a", 0, 3),
-                z3.Bool(f"center({a},{h}) s({s}) s"),
-            )
-            for a, h in cubicles.centers
         ]
         for s in range(k + 1)
     ]
@@ -76,37 +66,32 @@ def solve_for_k(
     ]
 
     # Variables which together indicate the move at each state.
-    mas = [z3_int(solver, f"s({s}) ma", 0, 3) for s in range(k)]
-    mis = [z3_int(solver, f"s({s}) mi", 0, n) for s in range(k)]
-    mds = [z3_int(solver, f"s({s}) md", 0, 3) for s in range(k)]
+    axs = [z3_int(solver, f"s({s}) ax", 0, 3) for s in range(k)]
+    his = [z3.Bool(f"s({s}) hi") for s in range(k)]
+    drs = [z3_int(solver, f"s({s}) dr", 0, 3) for s in range(k)]
 
     def fix_state(s: int, puzzle: Puzzle):
         """Return conditions of a state being equal to a puzzle object."""
-        conds: list[z3.BoolRef | bool] = []
-        for i, (x, y, z, r, c) in enumerate(corners[s]):
-            px, py, pz, pr, pc = puzzle.corners[i]
-            conds.extend([x == px, y == py, z == pz, r == pr, c == pc])
-        for i, (a, h) in enumerate(centers[s]):
-            pa, ph = puzzle.centers[i]
-            conds.extend([a == pa, h == ph])
-        for i, (x, y, z, r) in enumerate(edges[s]):
-            px, py, pz, pr = puzzle.edges[i]
-            conds.extend([x == px, y == py, z == pz, r == pr])
-        return conds
+        # TODO: assert that puzzle centers are aligned.
+        conditions: list[z3.BoolRef | bool] = []
+        for c1, c2 in zip(corners[s], puzzle.corner_states):
+            for v1, v2 in zip(c1, c2):
+                conditions.append(v1 == v2)
+        for e1, e2 in zip(edges[s], puzzle.edge_states):
+            for v1, v2 in zip(e1, e2):
+                conditions.append(v1 == v2)
+        return conditions
 
     def identical_states(s1: int, s2: int):
         """Return conditions of two states being equal."""
-        conds: list[z3.BoolRef | bool] = []
-        for i, (x1, y1, z1, r1, c1) in enumerate(corners[s1]):
-            x2, y2, z2, r2, c2 = corners[s2][i]
-            conds.extend([x1 == x2, y1 == y2, z1 == z2, r1 == r2, c1 == c2])
-        for i, (a1, h1) in enumerate(centers[s1]):
-            a2, h2 = centers[s2][i]
-            conds.extend([a1 == a2, h1 == h2])
-        for i, (x1, y1, z1, r1) in enumerate(edges[s1]):
-            x2, y2, z2, r2 = edges[s2][i]
-            conds.extend([x1 == x2, y1 == y2, z1 == z2, r1 == r2])
-        return conds
+        conditions: list[z3.BoolRef | bool] = []
+        for c1, c2 in zip(corners[s1], corners[s2]):
+            for v1, v2 in zip(c1, c2):
+                conditions.append(v1 == v2)
+        for e1, e2 in zip(edges[s1], edges[s2]):
+            for v1, v2 in zip(e1, e2):
+                conditions.append(v1 == v2)
+        return conditions
 
     # Fix the first state to the puzzle state.
     solver.add(z3.And(fix_state(0, puzzle)))
@@ -114,86 +99,74 @@ def solve_for_k(
     # Fix the last state to the finished state.
     solver.add(z3.And(fix_state(-1, finished)))
 
-    # Restrict cubicle states according to moves.
+    # Restrict cubie states according to moves.
     for s in range(k):
-        ma, mi, md = mas[s], mis[s], mds[s]
-        move_skipping_single = k % 2 == 1 and s == (k - 1)
+        ax, hi, dr = axs[s], his[s], drs[s]
+        move_stacking_single = k % 2 == 1 and s == (k - 1)
 
-        for i, (x, y, z, r, c) in enumerate(corners[s]):
-            if not move_skipping or move_skipping_single:
-                next_x, next_y, next_z, next_r, next_c = corners[s + 1][i]
-                solver.add(mappers.z3_corner_x(n, x, y, z, ma, mi, md, next_x))
-                solver.add(mappers.z3_corner_y(n, x, y, z, ma, mi, md, next_y))
-                solver.add(mappers.z3_corner_z(n, x, y, z, ma, mi, md, next_z))
-                solver.add(mappers.z3_corner_r(n, x, z, r, c, ma, mi, md, next_r))
-                solver.add(mappers.z3_corner_c(n, x, y, z, c, ma, mi, md, next_c))
+        # Add restrictions for the corner cubies.
+        for i, (x_hi, y_hi, z_hi, r, cw) in enumerate(corners[s]):
+            if not move_stacking or move_stacking_single:
+                next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 1][i]
+                solver.add(
+                    move_mappers.z3_corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_x_hi)
+                )
+                solver.add(
+                    move_mappers.z3_corner_y_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_y_hi)
+                )
+                solver.add(
+                    move_mappers.z3_corner_z_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_z_hi)
+                )
+                solver.add(
+                    move_mappers.z3_corner_r(x_hi, z_hi, r, cw, ax, hi, dr, next_r)
+                )
+                solver.add(
+                    move_mappers.z3_corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr, next_cw)
+                )
             elif s % 2 == 0:
-                next_x, next_y, next_z, next_r, next_c = corners[s + 2][i]
-                ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
-                # TODO
+                next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 2][i]
+                ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
+                # TODO: implement once stacked mappers are ready
 
-        for i, (a, h) in enumerate(centers[s]):
-            if not move_skipping or move_skipping_single:
-                next_a, next_h = centers[s + 1][i]
-                solver.add(mappers.z3_center_a(a, ma, mi, md, next_a))
-                solver.add(mappers.z3_center_h(a, h, ma, mi, md, next_h))
-            elif s % 2 == 0:
-                next_a, next_h = centers[s + 2][i]
-                ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
-                # TODO
-
+        # Add restrictions for the edge cubies.
         for i, (x, y, z, r) in enumerate(edges[s]):
-            if not move_skipping or move_skipping_single:
+            if not move_stacking or move_stacking_single:
                 next_x, next_y, next_z, next_r = edges[s + 1][i]
-                solver.add(mappers.z3_edge_x(n, x, y, z, ma, mi, md, next_x))
-                solver.add(mappers.z3_edge_y(n, x, y, z, ma, mi, md, next_y))
-                solver.add(mappers.z3_edge_z(n, x, y, z, ma, mi, md, next_z))
-                solver.add(mappers.z3_edge_r(x, y, z, r, ma, mi, md, next_r))
+                solver.add(move_mappers.z3_edge_x(n, x, y, z, ax, hi, dr, next_x))
+                solver.add(move_mappers.z3_edge_y(n, x, y, z, ax, hi, dr, next_y))
+                solver.add(move_mappers.z3_edge_z(n, x, y, z, ax, hi, dr, next_z))
+                solver.add(move_mappers.z3_edge_r(n, x, z, r, ax, hi, dr, next_r))
             elif s % 2 == 0:
                 next_x, next_y, next_z, next_r = edges[s + 2][i]
-                ma2, mi2, md2 = mas[s + 1], mis[s + 1], mds[s + 1]
-                # TODO
+                ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
+                # TODO: implement once stacked mappers are ready
 
-    # If we make a move at an index and axis, we cannot make a move at the same index
-    # and axis for the next n moves, unless a different axis has been turned in the
-    # meantime.
+    # Subsequent moves in the same axis have fixed side order: first low, then high.
+    for s in range(k - 1):
+        solver.add(z3.Or(axs[s] != axs[s + 1], z3.And(z3.Not(his[s]), his[s + 1])))
+
+    # If we make a move at an axis and side, we cannot make a move at the same axis and
+    # side for two moves, unless a different axis has been turned in th meantime.
     for s in range(k - 1):
         solver.add(
             z3.And(
                 [
                     z3.Or(
-                        mas[f] != mas[s],
-                        mis[f] != mis[s],
-                        z3.Or([mas[s] != mas[b] for b in range(s + 1, f)]),
+                        axs[f] != axs[s],
+                        his[f] != his[s],
+                        z3.Or([axs[s] != axs[b] for b in range(s + 1, f)]),
                     )
-                    for f in range(s + 1, min(s + n + 1, k))
+                    for f in range(s + 1, min(s + 3, k))
                 ]
             )
         )
-
-    # All subsequent moves in the same axis happen in ascending order of index.
-    for s in range(k - 1):
-        solver.add(z3.Or(mas[s] != mas[s + 1], mis[s] < mis[s + 1]))
-
-    # Two subsequent center half moves happen in ascending order of axis.
-    if n == 3:
-        for s in range(k - 1):
-            solver.add(
-                z3.Or(
-                    mis[s] != 1,
-                    mis[s + 1] != 1,
-                    mds[s] != 2,
-                    mds[s + 1] != 2,
-                    mas[s] < mas[s + 1],
-                )
-            )
 
     # States cannot be repeated.
     for s1 in range(k + 1):
         for s2 in range(s1 + 1, k + 1):
             solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
-    def disallow_move_sequence(ms: MoveSequence):
+    def ban_move_sequence(ms: MoveSeq):
         """Return conditions of a move sequence not being allowed."""
         return z3.And(
             [
@@ -201,9 +174,9 @@ def solve_for_k(
                     z3.And(
                         [
                             z3.And(
-                                mas[start + i] == ma,
-                                mis[start + i] == mi,
-                                mds[start + i] == md,
+                                axs[start + i] == ma,
+                                his[start + i] == mi,
+                                drs[start + i] == md,
                             )
                             for i, (ma, mi, md) in enumerate(ms)
                         ]
@@ -213,29 +186,29 @@ def solve_for_k(
             ]
         )
 
-    # Disallow the move sequences from the parameters.
-    for seq in disallowed:
-        solver.add(disallow_move_sequence(seq))
+    # Ban the move sequences from the parameters.
+    for seq in banned:
+        solver.add(ban_move_sequence(seq))
 
-    # Disallow symmetric move sequences up to the specified depth.
+    # Ban computed symmetric move sequences up to the specified depth.
     for seq, syms in load(n, sym_move_depth).items():
         for sym in syms:
-            solver.add(disallow_move_sequence(sym))
+            solver.add(ban_move_sequence(sym))
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
     solve_start = datetime.now()
     res = solver.check()
     solve_time = datetime.now() - solve_start
-    moves: MoveSequence | None = None
+    moves: MoveSeq | None = None
 
     if res == z3.sat:
         model = solver.model()
         moves = tuple(
             (
-                model.get_interp(mas[s]).as_long(),
-                model.get_interp(mis[s]).as_long(),
-                model.get_interp(mds[s]).as_long(),
+                model.get_interp(axs[s]).as_long(),
+                model.get_interp(his[s]).as_long(),
+                model.get_interp(drs[s]).as_long(),
             )
             for s in range(k)
         )
@@ -246,11 +219,11 @@ def solve_for_k(
 
 def solve(
     path: str,
-    move_skipping: bool,
+    move_stacking: bool,
     sym_move_depth: int,
     max_processes: int,
     disable_stats_file: bool,
-) -> tuple[MoveSequence | None, dict]:
+) -> tuple[MoveSeq | None, dict]:
     """Compute the optimal solution for a puzzle in parallel for all possible values
     of k within the upperbound. Returns the solution and a dict containing statistics
     of the solving process."""
@@ -261,7 +234,7 @@ def solve(
 
     with Manager() as manager:
         k_prospects = list(range(k_upperbound + 1))
-        optimal_solution: MoveSequence | None = None
+        optimal_solution: MoveSeq | None = None
 
         # Times for each tried k.
         prep_times: dict[int, timedelta] = {}
@@ -271,7 +244,7 @@ def solve(
         processes: list[tuple[Process, int]] = []
 
         # Queue for the processes to output results onto.
-        output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]] = (
+        output: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]] = (
             manager.Queue()
         )
 
@@ -279,10 +252,10 @@ def solve(
             def solve_for_k_wrapper(
                 puzzle: Puzzle,
                 k: int,
-                output: Queue[tuple[int, MoveSequence | None, timedelta, timedelta]],
+                output: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]],
             ):
                 solution, prep_time, solve_time = solve_for_k(
-                    puzzle, k, move_skipping, sym_move_depth
+                    puzzle, k, move_stacking, sym_move_depth
                 )
                 output.put((k, solution, prep_time, solve_time))
 
@@ -354,7 +327,7 @@ def solve(
         "k": k,
         "moves": "impossible"
         if optimal_solution is None
-        else [move_name(ma, mi, md) for ma, mi, md in optimal_solution],
+        else [move_name(move) for move in optimal_solution],
         "total_solve_time": str(total_solve_time),
         "total_prep_time": str(total_prep_time),
         "prep_times": {k: str(t) for k, t in sorted(prep_times.items())},
@@ -373,14 +346,14 @@ def solve(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
-    parser.add_argument("--move-skipping", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--move-stacking", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     solve(
         args.path,
-        args.move_skipping,
+        args.move_stacking,
         args.sym_moves_dep,
         args.max_processes,
         args.disable_stats_file,

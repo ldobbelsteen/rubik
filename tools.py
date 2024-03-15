@@ -35,6 +35,7 @@ def rotate_list(ls: list[int]):
 
 
 def gods_number(n: int):
+    """Return the known God number for a specific n."""
     match n:
         case 1:
             return 0
@@ -43,4 +44,4 @@ def gods_number(n: int):
         case 3:
             return 20
         case _:
-            raise Exception(f"god's number not known for n = {n}")
+            raise Exception(f"God's number not known for n = {n}")
