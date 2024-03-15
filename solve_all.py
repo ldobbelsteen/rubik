@@ -35,7 +35,7 @@ def solve_all(
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("dir", default=PUZZLE_DIR, type=str)
+    parser.add_argument("--dir", default=PUZZLE_DIR, type=str)
     parser.add_argument("--skip-solved", action=argparse.BooleanOptionalAction)
     parser.add_argument("--move-stacking", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
@@ -43,7 +43,7 @@ if __name__ == "__main__":
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     solve_all(
-        args.path,
+        args.dir,
         args.skip_solved,
         args.move_stacking,
         args.sym_moves_dep,
