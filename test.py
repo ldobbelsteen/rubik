@@ -4,14 +4,13 @@ import unittest
 
 from generate_random import PUZZLE_DIR, all_moves
 from puzzle import (
+    DEFAULT_CENTER_COLORS,
     FinishedState,
     Puzzle,
     cubicle_colors,
     cubicle_type,
-    decode_center,
     decode_corner,
     decode_edge,
-    encode_center,
     encode_corner,
     encode_edge,
     facelet_cubicle,
@@ -28,11 +27,11 @@ class Testing(unittest.TestCase):
         self.assertEqual(cubicle_type(3, (1, 2, 2)), 2)
 
     def test_cubicle_colors(self):
-        self.assertEqual(cubicle_colors(2, (0, 0, 0)), [5, 0, 3])
-        self.assertEqual(cubicle_colors(3, (0, 0, 0)), [5, 0, 3])
-        self.assertEqual(cubicle_colors(3, (2, 2, 2)), [4, 2, 1])
-        self.assertEqual(cubicle_colors(3, (1, 2, 1)), [4])
-        self.assertEqual(cubicle_colors(3, (2, 2, 1)), [4, 1])
+        self.assertEqual(cubicle_colors(2, (0, 0, 0), DEFAULT_CENTER_COLORS), [5, 0, 3])
+        self.assertEqual(cubicle_colors(3, (0, 0, 0), DEFAULT_CENTER_COLORS), [5, 0, 3])
+        self.assertEqual(cubicle_colors(3, (2, 2, 2), DEFAULT_CENTER_COLORS), [4, 2, 1])
+        self.assertEqual(cubicle_colors(3, (1, 2, 1), DEFAULT_CENTER_COLORS), [4])
+        self.assertEqual(cubicle_colors(3, (2, 2, 1), DEFAULT_CENTER_COLORS), [4, 1])
 
     def test_facelet_cubicle(self):
         self.assertEqual(facelet_cubicle(2, (0, 1, 1)), (1, 1, 0))
@@ -52,11 +51,6 @@ class Testing(unittest.TestCase):
                                     cubicle,
                                     decode_corner(n, encode_corner(n, cubicle)),
                                 )
-                            case 1:
-                                self.assertEqual(
-                                    cubicle,
-                                    decode_center(n, encode_center(n, cubicle)),
-                                )
                             case 2:
                                 self.assertEqual(
                                     cubicle,
@@ -66,12 +60,10 @@ class Testing(unittest.TestCase):
     def test_finished_cubicles_sizes(self):
         cubicles = FinishedState(2)
         self.assertEqual(len(cubicles.corners), 8)
-        self.assertEqual(len(cubicles.centers), 0)
         self.assertEqual(len(cubicles.edges), 0)
 
         cubicles = FinishedState(3)
         self.assertEqual(len(cubicles.corners), 8)
-        self.assertEqual(len(cubicles.centers), 6)
         self.assertEqual(len(cubicles.edges), 12)
 
     def test_puzzle_parsing(self):
@@ -88,7 +80,7 @@ class Testing(unittest.TestCase):
             moves = all_moves()
             random.shuffle(moves)
 
-            state = Puzzle.finished(n)
+            state = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
             states = []
 
             # Execute the moves and store the states before each move.

@@ -2,7 +2,7 @@ import argparse
 import os
 import random
 
-from puzzle import Puzzle, all_moves
+from puzzle import DEFAULT_CENTER_COLORS, Puzzle, all_moves
 from tools import create_parent_directory
 
 PUZZLE_DIR = "./puzzles"
@@ -17,7 +17,7 @@ def generate_random(n: int, randomizations: int):
     path = os.path.join(PUZZLE_DIR, f"n{n}-random{randomizations}.txt")
     create_parent_directory(path)
 
-    puzzle = Puzzle.finished(n)
+    puzzle = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
     moves = all_moves()
 
     for _ in range(randomizations):

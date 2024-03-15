@@ -33,10 +33,7 @@ def solve_for_k(
     it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
     solver = z3.Optimize()
-
     n = puzzle.n
-    finished = Puzzle.finished(n)
-    cubicles = finished.finished_state
 
     # Nested lists representing the cube at each state.
     corners = [
@@ -48,7 +45,7 @@ def solve_for_k(
                 z3_int(solver, f"corner({x},{y},{z}) s({s}) r", 0, 3),
                 z3.Bool(f"corner({x},{y},{z}) s({s}) c"),
             )
-            for x, y, z, _, _ in cubicles.corners
+            for x, y, z, _, _ in puzzle.finished_state.corners
         ]
         for s in range(k + 1)
     ]
@@ -60,7 +57,7 @@ def solve_for_k(
                 z3.Bool(f"edge({x},{y},{z}) s({s}) y_hi"),
                 z3.Bool(f"edge({x},{y},{z}) s({s}) r"),
             )
-            for x, y, z, _ in cubicles.edges
+            for x, y, z, _ in puzzle.finished_state.edges
         ]
         for s in range(k + 1)
     ]
@@ -72,7 +69,6 @@ def solve_for_k(
 
     def fix_state(s: int, puzzle: Puzzle):
         """Return conditions of a state being equal to a puzzle object."""
-        # TODO: assert that puzzle centers are aligned.
         conditions: list[z3.BoolRef | bool] = []
         for c1, c2 in zip(corners[s], puzzle.corner_states):
             for v1, v2 in zip(c1, c2):
@@ -97,6 +93,7 @@ def solve_for_k(
     solver.add(z3.And(fix_state(0, puzzle)))
 
     # Fix the last state to the finished state.
+    finished = Puzzle.finished(n, puzzle.center_colors)
     solver.add(z3.And(fix_state(-1, finished)))
 
     # Restrict cubie states according to moves.

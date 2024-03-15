@@ -3,7 +3,7 @@ import ast
 import os
 
 from generate_random import all_moves
-from puzzle import MoveSeq, Puzzle, move_name, parse_move
+from puzzle import DEFAULT_CENTER_COLORS, MoveSeq, Puzzle, move_name, parse_move
 from tools import create_parent_directory
 
 
@@ -12,7 +12,7 @@ def file_path(n: int, d: int):
 
 
 def compute(n: int, d: int):
-    finished = Puzzle.finished(n)
+    finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
     moves = all_moves()
 
     # To keep track of the encountered states and which steps were taken to get there.
