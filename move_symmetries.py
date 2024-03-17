@@ -52,6 +52,38 @@ def compute(n: int, d: int):
                 ):
                     return False
 
+        if n == 3:
+            for s in range(k - 3):
+                # dr == 2 everywhere
+                if (
+                    drs(s) == 2
+                    and drs(s + 1) == 2
+                    and drs(s + 2) == 2
+                    and drs(s + 3) == 2
+                ):
+                    # axis pattern XYYX where X != Y
+                    if (
+                        axs(s) == axs(s + 3)
+                        and axs(s + 1) == axs(s + 2)
+                        and axs(s) != axs(s + 1)
+                    ):
+                        # if either (!hi[0] && !hi[1]) or (hi[0] && !hi[1]) then
+                        # disallowed, since they are equivalent to (hi[0] && hi[1]) and
+                        # (!hi[0] && hi[1]) respectively
+                        if not his(s + 3):
+                            return False
+
+                    # axis pattern XXYY where X != Y
+                    if (
+                        axs(s) == axs(s + 1)
+                        and axs(s + 2) == axs(s + 3)
+                        and axs(s + 1) != axs(s + 2)
+                    ):
+                        # axis has to be increasing, so disallow
+                        # this works since the axis are commutative in this case
+                        if axs(s + 1) > axs(s + 2):
+                            return False
+
         for sym in prev_symmetrical:
             start = k - len(sym)
             if start >= 0:

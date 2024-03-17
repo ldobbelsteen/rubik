@@ -162,6 +162,35 @@ def solve_for_k(
             )
         )
 
+    # For four consecutive half moves, there are the following two requirements:
+    # 1. If the moves have axis pattern XYYX, then the first and last moves have a fixed
+    #    side order: first low, then high OR first high, then high.
+    # 2. If the moves have axis pattern XXYY, then X < Y, since they are commutative.
+    for s in range(k - 3):
+        solver.add(
+            z3.Implies(
+                z3.And(drs[s] == 2, drs[s + 1] == 2, drs[s + 2] == 2, drs[s + 3] == 2),
+                z3.And(
+                    z3.Implies(
+                        z3.And(
+                            axs[s] == axs[s + 3],
+                            axs[s + 1] == axs[s + 2],
+                            axs[s] != axs[s + 1],
+                        ),
+                        his[s + 3],
+                    ),
+                    z3.Implies(
+                        z3.And(
+                            axs[s] == axs[s + 1],
+                            axs[s + 2] == axs[s + 3],
+                            axs[s + 1] != axs[s + 2],
+                        ),
+                        axs[s + 1] < axs[s + 2],
+                    ),
+                ),
+            )
+        )
+
     # States cannot be repeated.
     for s1 in range(k + 1):
         for s2 in range(s1 + 1, k + 1):
