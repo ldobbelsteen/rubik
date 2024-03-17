@@ -39,7 +39,8 @@ class Testing(unittest.TestCase):
         self.assertEqual(facelet_cubicle(3, (4, 2, 2)), (2, 2, 2))
         self.assertEqual(facelet_cubicle(3, (5, 2, 1)), (1, 0, 0))
 
-    def test_encoding_decoding(self):
+    def test_encoding_decoding_cubies(self):
+        """Test whether encoding and decoding cubie coordinates is bijective."""
         for n in [2, 3]:
             for x in range(n):
                 for y in range(n):
@@ -57,7 +58,9 @@ class Testing(unittest.TestCase):
                                     decode_edge(n, encode_edge(n, cubicle)),
                                 )
 
-    def test_finished_cubicles_sizes(self):
+    def test_finished_state_sizes(self):
+        """Test whether the number of corners and edges in
+        the finished state class make sense."""
         cubicles = FinishedState(2)
         self.assertEqual(len(cubicles.corners), 8)
         self.assertEqual(len(cubicles.edges), 0)
@@ -67,6 +70,7 @@ class Testing(unittest.TestCase):
         self.assertEqual(len(cubicles.edges), 12)
 
     def test_puzzle_parsing(self):
+        """Test whether parsing and serializing puzzles is bijective."""
         for filename in os.listdir(PUZZLE_DIR):
             if filename.endswith(".txt"):
                 path = os.path.join(PUZZLE_DIR, filename)
@@ -74,7 +78,8 @@ class Testing(unittest.TestCase):
                     puzzle = file.read()
                     self.assertEqual(Puzzle.from_str(puzzle).to_str(), puzzle)
 
-    def test_puzzle_move_execution(self):
+    def test_move_consistency(self):
+        """Test whether executing moves and reverting them is bijective."""
         for n in [2, 3]:
             # Take a random permutation of all possible moves.
             moves = all_moves()
