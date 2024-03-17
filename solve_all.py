@@ -3,8 +3,9 @@ import os
 from multiprocessing import cpu_count
 
 from generate_random import PUZZLE_DIR
+from puzzle import Puzzle
 from solve import solve
-from tools import natural_sorted
+from tools import gods_number, natural_sorted, print_stamped
 
 
 def solve_all(
@@ -16,21 +17,26 @@ def solve_all(
     disable_stats_file: bool,
 ):
     """Solve all puzzles in a directory. Already solved puzzles can be filtered out."""
-    puzzles: list[str] = []
+    puzzle_paths: list[str] = []
     for filename in os.listdir(dir):
         path = os.path.join(dir, filename)
         if os.path.isfile(path) and path.endswith(".txt"):
             if not skip_solved or not os.path.isfile(f"{path}.stats"):
-                puzzles.append(path)
+                puzzle_paths.append(path)
 
-    for puzzle in natural_sorted(puzzles):
-        solve(
+    for path in natural_sorted(puzzle_paths):
+        print_stamped(f"solving '{path}'")
+        puzzle = Puzzle.from_file(path)
+        stats = solve(
             puzzle,
             move_stacking,
             sym_move_depth,
             max_processes,
-            disable_stats_file,
+            gods_number(puzzle.n),
+            True,
         )
+        if not disable_stats_file:
+            stats.write_to_file(path)
 
 
 if __name__ == "__main__":

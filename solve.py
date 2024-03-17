@@ -1,5 +1,4 @@
 import argparse
-import json
 from datetime import datetime, timedelta
 from multiprocessing import Manager, Process, cpu_count
 from queue import Queue
@@ -8,7 +7,8 @@ import z3
 
 import move_mappers
 from move_symmetries import load
-from puzzle import MoveSeq, Puzzle, move_name
+from puzzle import MoveSeq, Puzzle
+from stats import Stats
 from tools import gods_number, print_stamped
 
 
@@ -250,27 +250,23 @@ def solve_for_k(
 
 
 def solve(
-    path: str,
+    puzzle: Puzzle,
     move_stacking: bool,
     sym_move_depth: int,
     max_processes: int,
-    disable_stats_file: bool,
-) -> tuple[MoveSeq | None, dict]:
+    k_upperbound: int,
+    print_steps: bool,
+) -> Stats:
     """Compute the optimal solution for a puzzle in parallel for all possible values
-    of k within the upperbound. Returns the solution and a dict containing statistics
-    of the solving process."""
-    print_stamped(f"solving '{path}'...")
-
-    puzzle = Puzzle.from_file(path)
-    k_upperbound = gods_number(puzzle.n)
+    of k within the upperbound."""
 
     with Manager() as manager:
-        k_prospects = list(range(k_upperbound + 1))
-        optimal_solution: MoveSeq | None = None
+        if k_upperbound is None:
+            k_upperbound = gods_number(puzzle.n)
+        stats = Stats(None, max_processes, k_upperbound)
 
-        # Times for each tried k.
-        prep_times: dict[int, timedelta] = {}
-        solve_times: dict[int, timedelta] = {}
+        # All values for k we still want to test.
+        k_prospects = list(range(stats.k_upperbound + 1))
 
         # List of running processes and their k.
         processes: list[tuple[Process, int]] = []
@@ -301,78 +297,50 @@ def solve(
             spawn_new_process()
 
         while len(processes) > 0:
-            k, stats, prep_time, solve_time = output.get()
-            prep_times[k] = prep_time
-            solve_times[k] = solve_time
+            kp, sol, prep_time, solve_time = output.get()
+            stats.register_solution(kp, sol, prep_time, solve_time)
 
-            if stats is None:
-                print_stamped(
-                    f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep..."
-                )
+            if sol is None:
+                if print_steps:
+                    print_stamped(
+                        f"k = {kp}: UNSAT found in {solve_time} with {prep_time} prep"
+                    )
 
                 # Kill the process that returned this result and replace it.
                 for i in reversed(range(len(processes))):
-                    if processes[i][1] == k:
+                    if processes[i][1] == kp:
                         process, _ = processes.pop(i)
                         process.kill()
                         spawn_new_process()
             else:
-                print_stamped(
-                    f"k = {k}: SAT found in {solve_time} with {prep_time} prep..."
-                )
+                if print_steps:
+                    print_stamped(
+                        f"k = {kp}: SAT found in {solve_time} with {prep_time} prep"
+                    )
 
-                # Update the optimal solution if it is better than the current.
-                if optimal_solution is None or k < len(optimal_solution):
-                    optimal_solution = stats
-
-                # Filter out larger prospects, since we now know they are also SAT.
-                k_prospects = [kp for kp in k_prospects if kp < k]
+                # Filter out larger prospects, since we are only interested in lower ks.
+                k_prospects = [k for k in k_prospects if k < kp]
 
                 # Kill the process that returned this result and any processes solving
                 # larger prospects, and replace them.
                 for i in reversed(range(len(processes))):
-                    if processes[i][1] >= k:
+                    if processes[i][1] >= kp:
                         process, _ = processes.pop(i)
                         process.kill()
                         spawn_new_process()
 
-    if optimal_solution is None:
-        k = "n/a"
-        total_solve_time = sum(solve_times.values(), timedelta())
-        total_prep_time = sum(prep_times.values(), timedelta())
-        print_stamped(
-            f"foud no k ≤ {k_upperbound} to be possible in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
-        )
+    if stats.solution is None:
+        if print_steps:
+            print_stamped(
+                f"foud no k ≤ {stats.k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
+            )
     else:
-        k = len(optimal_solution)
-        total_solve_time = sum(
-            [v for kp, v in solve_times.items() if kp <= k], timedelta()
-        )
-        total_prep_time = sum(
-            [v for kp, v in prep_times.items() if kp <= k], timedelta()
-        )
-        print_stamped(
-            f"minimum k = {k} found in {total_solve_time} with {total_prep_time} prep"  # noqa: E501
-        )
+        if print_steps:
+            print_stamped(
+                f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
+            )
 
-    stats = {
-        "k": k,
-        "moves": "impossible"
-        if optimal_solution is None
-        else [move_name(move) for move in optimal_solution],
-        "total_solve_time": str(total_solve_time),
-        "total_prep_time": str(total_prep_time),
-        "prep_times": {k: str(t) for k, t in sorted(prep_times.items())},
-        "solve_times": {k: str(t) for k, t in sorted(solve_times.items())},
-        "max_processes": max_processes,
-        "k_upperbound": k_upperbound,
-    }
-
-    if not disable_stats_file:
-        with open(f"{path}.stats", "w") as file:
-            file.write(json.dumps(stats, indent=4))
-
-    return optimal_solution, stats
+    return stats
 
 
 if __name__ == "__main__":
@@ -383,10 +351,15 @@ if __name__ == "__main__":
     parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
-    solve(
-        args.path,
+
+    puzzle = Puzzle.from_file(args.path)
+    stats = solve(
+        puzzle,
         args.move_stacking,
         args.sym_moves_dep,
         args.max_processes,
-        args.disable_stats_file,
+        gods_number(puzzle.n),
+        True,
     )
+    if not args.disable_stats_file:
+        stats.write_to_file(args.path)

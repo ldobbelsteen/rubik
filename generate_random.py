@@ -8,14 +8,11 @@ from tools import create_parent_directory
 PUZZLE_DIR = "./puzzles"
 
 
-def generate_random(n: int, randomizations: int):
+def generate_random(n: int, randomizations: int, write_to_file: bool) -> Puzzle:
     """Generate a random puzzle by taking a specified number of random moves
-    on a finished puzzle. The result is output to file."""
+    on a finished puzzle. The result is optionally output to file."""
     if n != 2 and n != 3:
         raise Exception(f"n = {n} not supported")
-
-    path = os.path.join(PUZZLE_DIR, f"n{n}-random{randomizations}.txt")
-    create_parent_directory(path)
 
     puzzle = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
     moves = all_moves()
@@ -24,8 +21,13 @@ def generate_random(n: int, randomizations: int):
         move = random.choice(moves)
         puzzle.execute_move(move)
 
-    with open(path, "w") as file:
-        file.write(puzzle.to_str())
+    if write_to_file:
+        path = os.path.join(PUZZLE_DIR, f"n{n}-random{randomizations}.txt")
+        create_parent_directory(path)
+        with open(path, "w") as file:
+            file.write(puzzle.to_str())
+
+    return puzzle
 
 
 if __name__ == "__main__":
@@ -33,4 +35,4 @@ if __name__ == "__main__":
     parser.add_argument("n", type=int)
     parser.add_argument("randomizations", type=int)
     args = parser.parse_args()
-    generate_random(args.n, args.randomizations)
+    generate_random(args.n, args.randomizations, True)
