@@ -147,7 +147,7 @@ def solve_for_k(
         solver.add(z3.Or(axs[s] != axs[s + 1], z3.And(z3.Not(his[s]), his[s + 1])))
 
     # If we make a move at an axis and side, we cannot make a move at the same axis and
-    # side for two moves, unless a different axis has been turned in th meantime.
+    # side for two moves, unless a different axis has been turned in the meantime.
     for s in range(k - 1):
         solver.add(
             z3.And(
