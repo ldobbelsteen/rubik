@@ -1,1 +1,2 @@
+[lint]
 select = ["N", "I", "W", "E", "F", "ARG"]

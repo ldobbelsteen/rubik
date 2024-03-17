@@ -121,9 +121,10 @@ def solve_for_k(
                     move_mappers.z3_corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr, next_cw)
                 )
             elif s % 2 == 0:
-                next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 2][i]
-                ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
                 # TODO: implement once stacked mappers are ready
+                # next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 2][i]
+                # ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
+                pass
 
         # Add restrictions for the edge cubies.
         for i, (a, x_hi, y_hi, r) in enumerate(edges[s]):
@@ -138,9 +139,10 @@ def solve_for_k(
                 )
                 solver.add(move_mappers.z3_edge_r(a, next_a, r, next_r))
             elif s % 2 == 0:
-                next_a, next_x_hi, next_y_hi, next_r = edges[s + 2][i]
-                ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
                 # TODO: implement once stacked mappers are ready
+                # next_a, next_x_hi, next_y_hi, next_r = edges[s + 2][i]
+                # ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
+                pass
 
     # Subsequent moves in the same axis have fixed side order: first low, then high.
     for s in range(k - 1):
