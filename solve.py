@@ -232,6 +232,17 @@ def solve_for_k(
         for s2 in range(s1 + 1, k + 1):
             solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
+    # # Theorem 11.1a: sum x_i = 0 mod 3
+    # for s in range(k + 1):
+    #     corner_sum = reduce(operator.add, [r for _, _, _, r, _ in corners[s]])
+    #     solver.add(corner_sum % 3 == 0)
+
+    # # Theorem 11.1b: sum y_i = 0 mod 2
+    # for s in range(k + 1):
+    #     if len(edges[s]) > 0:
+    #         edge_sum = reduce(operator.add, [r for _, _, _, r in edges[s]])
+    #         solver.add(edge_sum % 2 == 0)
+
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
     solve_start = datetime.now()
