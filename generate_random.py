@@ -19,7 +19,7 @@ def generate_random(n: int, randomizations: int, write_to_file: bool) -> Puzzle:
 
     for _ in range(randomizations):
         move = random.choice(moves)
-        puzzle.execute_move(move)
+        puzzle = puzzle.execute_move(move)
 
     if write_to_file:
         path = os.path.join(PUZZLE_DIR, f"n{n}-random{randomizations}.txt")

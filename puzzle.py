@@ -300,6 +300,30 @@ def corner_clockwise(corner: CornerState) -> bool:
     )
 
 
+def corner_mapping(corner: CornerState, move: Move) -> CornerState:
+    x_hi, y_hi, z_hi, r, cw = corner
+    ax, hi, dr = move
+    return (
+        move_mappers.corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr),
+        move_mappers.corner_y_hi(x_hi, y_hi, z_hi, ax, hi, dr),
+        move_mappers.corner_z_hi(x_hi, y_hi, z_hi, ax, hi, dr),
+        move_mappers.corner_r(x_hi, z_hi, r, cw, ax, hi, dr),
+        move_mappers.corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr),
+    )
+
+
+def edge_mapping(edge: EdgeState, move: Move) -> EdgeState:
+    a, x_hi, y_hi, r = edge
+    ax, hi, dr = move
+    next_a = move_mappers.edge_a(a, x_hi, y_hi, ax, hi, dr)
+    return (
+        next_a,
+        move_mappers.edge_x_hi(a, x_hi, y_hi, ax, hi, dr),
+        move_mappers.edge_y_hi(a, x_hi, y_hi, ax, hi, dr),
+        move_mappers.edge_r(a, next_a, r),
+    )
+
+
 class FinishedState:
     def __init__(self, n: int):
         self.n = n
@@ -431,15 +455,6 @@ class Puzzle:
             center_colors,
         )
 
-    def copy(self):
-        return Puzzle(
-            self.n,
-            self.finished_state,
-            self.corner_states.copy(),
-            self.edge_states.copy(),
-            self.center_colors,
-        )
-
     def __eq__(self, other: "Puzzle"):
         return (
             self.n == other.n
@@ -476,26 +491,14 @@ class Puzzle:
 
         return "".join([str(c) for c in flattened])
 
-    def execute_move(self, move: Move):
-        ax, hi, dr = move
-
-        for i, (x_hi, y_hi, z_hi, r, cw) in enumerate(self.corner_states):
-            self.corner_states[i] = (
-                move_mappers.corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr),
-                move_mappers.corner_y_hi(x_hi, y_hi, z_hi, ax, hi, dr),
-                move_mappers.corner_z_hi(x_hi, y_hi, z_hi, ax, hi, dr),
-                move_mappers.corner_r(x_hi, z_hi, r, cw, ax, hi, dr),
-                move_mappers.corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr),
-            )
-
-        for i, (a, x_hi, y_hi, r) in enumerate(self.edge_states):
-            next_a = move_mappers.edge_a(a, x_hi, y_hi, ax, hi, dr)
-            self.edge_states[i] = (
-                next_a,
-                move_mappers.edge_x_hi(a, x_hi, y_hi, ax, hi, dr),
-                move_mappers.edge_y_hi(a, x_hi, y_hi, ax, hi, dr),
-                move_mappers.edge_r(a, next_a, r),
-            )
+    def execute_move(self, move: Move) -> "Puzzle":
+        return Puzzle(
+            self.n,
+            self.finished_state,
+            [corner_mapping(c, move) for c in self.corner_states],
+            [edge_mapping(e, move) for e in self.edge_states],
+            self.center_colors,
+        )
 
     def facelet_color(self, facelet: FaceletCoords) -> int:
         cubicle = facelet_cubicle(self.n, facelet)

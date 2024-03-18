@@ -96,8 +96,7 @@ def symmetric_bfs_iteration(
             if skip:
                 continue
 
-            puz = prev_puz.copy()
-            puz.execute_move(move)
+            puz = prev_puz.execute_move(move)
 
             if puz in encountered:
                 enc_seq = encountered[puz]

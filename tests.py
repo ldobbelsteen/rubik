@@ -91,14 +91,14 @@ class Testing(unittest.TestCase):
 
             # Execute the moves and store the states before each move.
             for move in moves:
-                states.append(state.copy())
-                state.execute_move(move)
+                states.append(state)
+                state = state.execute_move(move)
 
             # Execute the inverted moves and check whether we get the same states.
             moves.reverse()
             states.reverse()
             for i, move in enumerate(moves):
-                state.execute_move(inverse_move(move))
+                state = state.execute_move(inverse_move(move))
                 self.assertEqual(state, states[i])
 
     def test_solution_correctness(self):
@@ -112,7 +112,7 @@ class Testing(unittest.TestCase):
                 # The solution should be an actual solution
                 assert stats.solution is not None
                 for move in stats.solution:
-                    puzzle.execute_move(move)
+                    puzzle = puzzle.execute_move(move)
                 self.assertEqual(puzzle, Puzzle.finished(n, puzzle.center_colors))
 
 
