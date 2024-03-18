@@ -147,7 +147,7 @@ def solve_for_k(
     # Symmetric move filter #1
     # Subsequent moves in the same axis have fixed side order: first low, then high.
     for s in range(k - 1):
-        solver.add(z3.Or(axs[s] != axs[s + 1], z3.And(z3.Not(his[s]), his[s + 1])))
+        solver.add(z3.Implies(axs[s] == axs[s + 1], z3.And(z3.Not(his[s]), his[s + 1])))
 
     # Symmetric move filter #2
     # If we make a move at an axis and side, we cannot make a move at the same axis and
@@ -156,9 +156,8 @@ def solve_for_k(
         solver.add(
             z3.And(
                 [
-                    z3.Or(
-                        axs[f] != axs[s],
-                        his[f] != his[s],
+                    z3.Implies(
+                        z3.And(axs[f] == axs[s], his[f] == his[s]),
                         z3.Or([axs[s] != axs[b] for b in range(s + 1, f)]),
                     )
                     for f in range(s + 1, min(s + 3, k))
