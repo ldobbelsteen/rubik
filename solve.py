@@ -12,7 +12,7 @@ from stats import Stats
 from tools import gods_number, print_stamped
 
 
-def z3_int(solver: z3.Optimize, name: str, low: int, high: int) -> z3.ArithRef:
+def z3_int(solver: z3.Solver, name: str, low: int, high: int) -> z3.ArithRef:
     """Create Z3 integer and add its value range to the solver. The range is
     inclusive on low and exclusive on high."""
     var = z3.Int(name)
@@ -32,7 +32,7 @@ def solve_for_k(
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
-    solver = z3.Optimize()
+    solver = z3.SolverFor("QF_FD")
     n = puzzle.n
 
     # Nested lists representing the cube at each state.
