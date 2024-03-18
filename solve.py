@@ -144,10 +144,12 @@ def solve_for_k(
                 # ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
                 pass
 
+    # Symmetric move filter #1
     # Subsequent moves in the same axis have fixed side order: first low, then high.
     for s in range(k - 1):
         solver.add(z3.Or(axs[s] != axs[s + 1], z3.And(z3.Not(his[s]), his[s + 1])))
 
+    # Symmetric move filter #2
     # If we make a move at an axis and side, we cannot make a move at the same axis and
     # side for two moves, unless a different axis has been turned in the meantime.
     for s in range(k - 1):
@@ -164,39 +166,38 @@ def solve_for_k(
             )
         )
 
+    # Symmetric move filters #3 and #4
     # For four consecutive half moves, there are the following two requirements:
     # 1. If the moves have axis pattern XYYX, then the first and last moves have a fixed
     #    side order: first low, then high OR first high, then high.
     # 2. If the moves have axis pattern XXYY, then X < Y, since they are commutative.
-    for s in range(k - 3):
-        solver.add(
-            z3.Implies(
-                z3.And(drs[s] == 2, drs[s + 1] == 2, drs[s + 2] == 2, drs[s + 3] == 2),
-                z3.And(
-                    z3.Implies(
-                        z3.And(
-                            axs[s] == axs[s + 3],
-                            axs[s + 1] == axs[s + 2],
-                            axs[s] != axs[s + 1],
-                        ),
-                        his[s + 3],
+    if n == 3:
+        for s in range(k - 3):
+            solver.add(
+                z3.Implies(
+                    z3.And(
+                        drs[s] == 2, drs[s + 1] == 2, drs[s + 2] == 2, drs[s + 3] == 2
                     ),
-                    z3.Implies(
-                        z3.And(
-                            axs[s] == axs[s + 1],
-                            axs[s + 2] == axs[s + 3],
-                            axs[s + 1] != axs[s + 2],
+                    z3.And(
+                        z3.Implies(
+                            z3.And(
+                                axs[s] == axs[s + 3],
+                                axs[s + 1] == axs[s + 2],
+                                axs[s] != axs[s + 1],
+                            ),
+                            his[s + 3],
                         ),
-                        axs[s + 1] < axs[s + 2],
+                        z3.Implies(
+                            z3.And(
+                                axs[s] == axs[s + 1],
+                                axs[s + 2] == axs[s + 3],
+                                axs[s + 1] != axs[s + 2],
+                            ),
+                            axs[s + 1] < axs[s + 2],
+                        ),
                     ),
-                ),
+                )
             )
-        )
-
-    # States cannot be repeated.
-    for s1 in range(k + 1):
-        for s2 in range(s1 + 1, k + 1):
-            solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
     def ban_move_sequence(ms: MoveSeq):
         """Return conditions of a move sequence not being allowed."""
@@ -219,13 +220,18 @@ def solve_for_k(
         )
 
     # Ban the move sequences from the parameters.
-    for seq in banned:
-        solver.add(ban_move_sequence(seq))
+    for b in banned:
+        solver.add(ban_move_sequence(b))
 
     # Ban computed symmetric move sequences up to the specified depth.
-    for seq, syms in load(n, sym_move_depth).items():
+    for _, syms in load(n, sym_move_depth).items():
         for sym in syms:
             solver.add(ban_move_sequence(sym))
+
+    # States cannot be repeated.
+    for s1 in range(k + 1):
+        for s2 in range(s1 + 1, k + 1):
+            solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
