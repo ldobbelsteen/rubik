@@ -50,7 +50,7 @@ class Stats:
             )
 
     def to_dict(self):
-        result = {}
+        result: dict[str, str | int | list[str] | dict[int, str]] = {}
 
         k = self.k()
         if k:
@@ -59,8 +59,8 @@ class Stats:
         if self.solution is not None:
             result["moves"] = [move_name(move) for move in self.solution]
 
-        result["total_prep_time"] = self.total_prep_time()
-        result["total_solve_time"] = self.total_solve_time()
+        result["total_prep_time"] = str(self.total_prep_time())
+        result["total_solve_time"] = str(self.total_solve_time())
         result["prep_times"] = {k: str(t) for k, t in sorted(self.prep_times.items())}
         result["solve_times"] = {k: str(t) for k, t in sorted(self.solve_times.items())}
         result["max_processes"] = self.max_processes
