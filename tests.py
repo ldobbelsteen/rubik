@@ -106,7 +106,7 @@ class Testing(unittest.TestCase):
         for n in [2, 3]:
             for randomizations in range(5):
                 puzzle = generate_random(n, randomizations, False)
-                stats = solve(puzzle, False, 0, 1, randomizations, False)
+                stats = solve(puzzle, randomizations, 1, False, 0, False)
                 self.assertIsNotNone(stats.solution)
 
                 # The solution should be an actual solution

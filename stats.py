@@ -5,17 +5,17 @@ from puzzle import MoveSeq, move_name
 
 
 class Stats:
-    def __init__(self, solution: MoveSeq | None, max_processes: int, k_upperbound: int):
-        self.solution = solution
+    def __init__(self, max_processes: int, k_upperbound: int):
         self.max_processes = max_processes
         self.k_upperbound = k_upperbound
 
+        self.solution = None
         self.prep_times: dict[int, timedelta] = {}
         self.solve_times: dict[int, timedelta] = {}
 
     def register_solution(
         self,
-        k_prospect: int,
+        k: int,
         solution: MoveSeq | None,
         prep_time: timedelta,
         solve_time: timedelta,
@@ -25,9 +25,9 @@ class Stats:
         ):
             self.solution = solution
 
-        assert k_prospect not in self.prep_times and k_prospect not in self.solve_times
-        self.prep_times[k_prospect] = prep_time
-        self.solve_times[k_prospect] = solve_time
+        assert k not in self.prep_times and k not in self.solve_times
+        self.prep_times[k] = prep_time
+        self.solve_times[k] = solve_time
 
     def k(self):
         if self.solution is not None:
@@ -63,8 +63,8 @@ class Stats:
         result["total_solve_time"] = str(self.total_solve_time())
         result["prep_times"] = {k: str(t) for k, t in sorted(self.prep_times.items())}
         result["solve_times"] = {k: str(t) for k, t in sorted(self.solve_times.items())}
-        result["max_processes"] = self.max_processes
         result["k_upperbound"] = self.k_upperbound
+        result["max_processes"] = self.max_processes
 
         return result
 

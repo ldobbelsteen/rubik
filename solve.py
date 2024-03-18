@@ -267,28 +267,18 @@ def solve_for_k(
 
 def solve(
     puzzle: Puzzle,
+    k_upperbound: int,
+    max_processes: int,
     move_stacking: bool,
     sym_move_depth: int,
-    max_processes: int,
-    k_upperbound: int,
-    print_steps: bool,
+    print_info: bool,
 ) -> Stats:
-    """Compute the optimal solution for a puzzle in parallel for all possible values
-    of k within the upperbound."""
-
+    """Compute the optimal solution for a puzzle within an upperbound."""
     with Manager() as manager:
-        if k_upperbound is None:
-            k_upperbound = gods_number(puzzle.n)
-        stats = Stats(None, max_processes, k_upperbound)
-
-        # All values for k we still want to test.
+        stats = Stats(max_processes, k_upperbound)
         k_prospects = list(range(stats.k_upperbound + 1))
-
-        # List of running processes and their k.
-        processes: list[tuple[Process, int]] = []
-
-        # Queue for the processes to output results onto.
-        output: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]] = (
+        processes: dict[int, Process] = {}
+        results: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]] = (
             manager.Queue()
         )
 
@@ -296,62 +286,59 @@ def solve(
             def solve_for_k_wrapper(
                 puzzle: Puzzle,
                 k: int,
-                output: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]],
+                results: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]],
             ):
                 solution, prep_time, solve_time = solve_for_k(
                     puzzle, k, move_stacking, sym_move_depth
                 )
-                output.put((k, solution, prep_time, solve_time))
+                results.put((k, solution, prep_time, solve_time))
 
             if len(k_prospects) > 0:
                 k = k_prospects.pop(0)
-                process = Process(target=solve_for_k_wrapper, args=(puzzle, k, output))
-                processes.append((process, k))
+                process = Process(target=solve_for_k_wrapper, args=(puzzle, k, results))
+                processes[k] = process
                 process.start()
 
         for _ in range(max_processes):
             spawn_new_process()
 
         while len(processes) > 0:
-            kp, sol, prep_time, solve_time = output.get()
-            stats.register_solution(kp, sol, prep_time, solve_time)
+            k, sol, prep_time, solve_time = results.get()
+            stats.register_solution(k, sol, prep_time, solve_time)
 
             if sol is None:
-                if print_steps:
+                if print_info:
                     print_stamped(
-                        f"k = {kp}: UNSAT found in {solve_time} with {prep_time} prep"
+                        f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep"
                     )
 
                 # Kill the process that returned this result and replace it.
-                for i in reversed(range(len(processes))):
-                    if processes[i][1] == kp:
-                        process, _ = processes.pop(i)
-                        process.kill()
-                        spawn_new_process()
+                processes.pop(k).kill()
+                spawn_new_process()
+
             else:
-                if print_steps:
+                if print_info:
                     print_stamped(
-                        f"k = {kp}: SAT found in {solve_time} with {prep_time} prep"
+                        f"k = {k}: SAT found in {solve_time} with {prep_time} prep"
                     )
 
                 # Filter out larger prospects, since we are only interested in lower ks.
-                k_prospects = [k for k in k_prospects if k < kp]
+                k_prospects = [kp for kp in k_prospects if kp < k]
 
                 # Kill the process that returned this result and any processes solving
                 # larger prospects, and replace them.
-                for i in reversed(range(len(processes))):
-                    if processes[i][1] >= kp:
-                        process, _ = processes.pop(i)
-                        process.kill()
+                for kr in list(processes.keys()):
+                    if kr >= k:
+                        processes.pop(kr).kill()
                         spawn_new_process()
 
     if stats.solution is None:
-        if print_steps:
+        if print_info:
             print_stamped(
                 f"foud no k ≤ {stats.k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
     else:
-        if print_steps:
+        if print_info:
             print_stamped(
                 f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
@@ -371,10 +358,10 @@ if __name__ == "__main__":
     puzzle = Puzzle.from_file(args.path)
     stats = solve(
         puzzle,
+        gods_number(puzzle.n),
+        args.max_processes,
         args.move_stacking,
         args.sym_moves_dep,
-        args.max_processes,
-        gods_number(puzzle.n),
         True,
     )
     if not args.disable_stats_file:

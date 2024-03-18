@@ -29,10 +29,10 @@ def solve_all(
         puzzle = Puzzle.from_file(path)
         stats = solve(
             puzzle,
+            gods_number(puzzle.n),
+            max_processes,
             move_stacking,
             sym_move_depth,
-            max_processes,
-            gods_number(puzzle.n),
             True,
         )
         if not disable_stats_file:
