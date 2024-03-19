@@ -152,7 +152,11 @@ def compute(n: int, max_d: int):
         # This asserts whether we don't filter too many symmetric moves such that
         # some puzzle states that are reachable when not filtering cannot be reached
         # when filtering.
-        assert len(encountered_filtered) == len(encountered_unfiltered)
+        for state, seq in encountered_unfiltered.items():
+            if state not in encountered_filtered:
+                raise Exception(
+                    f"filtered out erroneously: {[move_name(m) for m in seq]}"
+                )
 
         # Write found filtered symmetrical sequences to file.
         output = [(k, sorted(v)) for k, v in new_symmetrical_filtered.items()]
