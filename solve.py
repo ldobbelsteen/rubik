@@ -40,14 +40,19 @@ def solve_for_k(
     z3.set_param("parallel.enable", True)
     z3.set_param("parallel.threads.max", max_threads)
     solver = z3.Then(
-        z3.Tactic("elim-term-ite"),
         z3.Tactic("simplify"),
         z3.Tactic("solve-eqs"),
+        z3.Tactic("aig"),
+        # z3.Tactic("dom-simplify"),
+        # z3.Tactic("purify-arith"),
         # z3.Tactic("lia2pb"),
-        # z3.Tactic("card2bv"),
+        # z3.Tactic("pb2bv"),
         # z3.Tactic("lia2card"),
+        # z3.Tactic("card2bv"),
         # z3.Tactic("bit-blast"),
         # z3.Tactic("propagate-bv-bounds"),
+        # z3.Tactic("blast-term-ite"),
+        # z3.Tactic("elim-term-ite"),
         z3.Tactic("pqffd"),
         # z3.Tactic("sat-preprocess"),
         # z3.Tactic("sat"),
