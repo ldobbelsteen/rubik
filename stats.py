@@ -5,8 +5,8 @@ from puzzle import MoveSeq, move_name
 
 
 class Stats:
-    def __init__(self, max_processes: int, k_upperbound: int):
-        self.max_processes = max_processes
+    def __init__(self, max_threads: int, k_upperbound: int):
+        self.max_threads = max_threads
         self.k_upperbound = k_upperbound
 
         self.solution = None
@@ -64,7 +64,7 @@ class Stats:
         result["prep_times"] = {k: str(t) for k, t in sorted(self.prep_times.items())}
         result["solve_times"] = {k: str(t) for k, t in sorted(self.solve_times.items())}
         result["k_upperbound"] = self.k_upperbound
-        result["max_processes"] = self.max_processes
+        result["max_threads"] = self.max_threads
 
         return result
 

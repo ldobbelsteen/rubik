@@ -1,7 +1,6 @@
 import argparse
-from datetime import datetime, timedelta
-from multiprocessing import Manager, Process, cpu_count
-from queue import Queue
+from datetime import datetime
+from multiprocessing import cpu_count
 
 import z3
 
@@ -12,7 +11,9 @@ from stats import Stats
 from tools import gods_number, print_stamped
 
 
-def z3_int(solver: z3.Solver, name: str, low: int, high: int) -> z3.ArithRef:
+def z3_int(
+    solver: z3.Solver | z3.Optimize, name: str, low: int, high: int
+) -> z3.ArithRef:
     """Create Z3 integer and add its value range to the solver. The range is
     inclusive on low and exclusive on high."""
     var = z3.Int(name)
@@ -24,6 +25,7 @@ def z3_int(solver: z3.Solver, name: str, low: int, high: int) -> z3.ArithRef:
 def solve_for_k(
     puzzle: Puzzle,
     k: int,
+    max_threads: int,
     move_stacking: bool,
     sym_move_depth: int,
     banned: list[MoveSeq] = [],
@@ -32,8 +34,24 @@ def solve_for_k(
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it."""
     prep_start = datetime.now()
-    solver = z3.SolverFor("QF_FD")
     n = puzzle.n
+
+    # Configure Z3.
+    z3.set_param("parallel.enable", True)
+    z3.set_param("parallel.threads.max", max_threads)
+    solver = z3.Then(
+        z3.Tactic("simplify"),
+        z3.Tactic("solve-eqs"),
+        # z3.Tactic("lia2pb"),
+        # z3.Tactic("card2bv"),
+        # z3.Tactic("lia2card"),
+        # z3.Tactic("bit-blast"),
+        # z3.Tactic("propagate-bv-bounds"),
+        # z3.Tactic("elim-term-ite"),
+        z3.Tactic("pqffd"),
+        # z3.Tactic("sat-preprocess"),
+        # z3.Tactic("sat"),
+    ).solver()
 
     # Nested lists representing the cube at each state.
     corners = [
@@ -268,77 +286,43 @@ def solve_for_k(
 def solve(
     puzzle: Puzzle,
     k_upperbound: int,
-    max_processes: int,
+    max_threads: int,
     move_stacking: bool,
     sym_move_depth: int,
     print_info: bool,
 ) -> Stats:
     """Compute the optimal solution for a puzzle within an upperbound."""
-    with Manager() as manager:
-        stats = Stats(max_processes, k_upperbound)
-        k_prospects = list(range(stats.k_upperbound + 1))
-        processes: dict[int, Process] = {}
-        results: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]] = (
-            manager.Queue()
+    stats = Stats(max_threads, k_upperbound)
+
+    for k in range(k_upperbound + 1):
+        solution, prep_time, solve_time = solve_for_k(
+            puzzle,
+            k,
+            max_threads,
+            move_stacking,
+            sym_move_depth,
         )
 
-        def spawn_new_process():
-            def solve_for_k_wrapper(
-                puzzle: Puzzle,
-                k: int,
-                results: Queue[tuple[int, MoveSeq | None, timedelta, timedelta]],
-            ):
-                solution, prep_time, solve_time = solve_for_k(
-                    puzzle, k, move_stacking, sym_move_depth
+        stats.register_solution(k, solution, prep_time, solve_time)
+
+        if solution is None:
+            if print_info:
+                print_stamped(
+                    f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep"
                 )
-                results.put((k, solution, prep_time, solve_time))
+        else:
+            if print_info:
+                print_stamped(
+                    f"k = {k}: SAT found in {solve_time} with {prep_time} prep"
+                )
+            break
 
-            if len(k_prospects) > 0:
-                k = k_prospects.pop(0)
-                process = Process(target=solve_for_k_wrapper, args=(puzzle, k, results))
-                processes[k] = process
-                process.start()
-
-        for _ in range(max_processes):
-            spawn_new_process()
-
-        while len(processes) > 0:
-            k, sol, prep_time, solve_time = results.get()
-            stats.register_solution(k, sol, prep_time, solve_time)
-
-            if sol is None:
-                if print_info:
-                    print_stamped(
-                        f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep"
-                    )
-
-                # Kill the process that returned this result and replace it.
-                processes.pop(k).kill()
-                spawn_new_process()
-
-            else:
-                if print_info:
-                    print_stamped(
-                        f"k = {k}: SAT found in {solve_time} with {prep_time} prep"
-                    )
-
-                # Filter out larger prospects, since we are only interested in lower ks.
-                k_prospects = [kp for kp in k_prospects if kp < k]
-
-                # Kill the process that returned this result and any processes solving
-                # larger prospects, and replace them.
-                for kr in list(processes.keys()):
-                    if kr >= k:
-                        processes.pop(kr).kill()
-                        spawn_new_process()
-
-    if stats.solution is None:
-        if print_info:
+    if print_info:
+        if stats.solution is None:
             print_stamped(
                 f"foud no k ≤ {stats.k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
-    else:
-        if print_info:
+        else:
             print_stamped(
                 f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
@@ -351,7 +335,7 @@ if __name__ == "__main__":
     parser.add_argument("path", type=str)
     parser.add_argument("--move-stacking", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
-    parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
+    parser.add_argument("--max-threads", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
@@ -359,7 +343,7 @@ if __name__ == "__main__":
     stats = solve(
         puzzle,
         gods_number(puzzle.n),
-        args.max_processes,
+        args.max_threads,
         args.move_stacking,
         args.sym_moves_dep,
         True,

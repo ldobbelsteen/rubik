@@ -13,7 +13,7 @@ def solve_all(
     skip_solved: bool,
     move_stacking: bool,
     sym_move_depth: int,
-    max_processes: int,
+    max_threads: int,
     disable_stats_file: bool,
 ):
     """Solve all puzzles in a directory. Already solved puzzles can be filtered out."""
@@ -30,7 +30,7 @@ def solve_all(
         stats = solve(
             puzzle,
             gods_number(puzzle.n),
-            max_processes,
+            max_threads,
             move_stacking,
             sym_move_depth,
             True,
@@ -45,7 +45,7 @@ if __name__ == "__main__":
     parser.add_argument("--skip-solved", action=argparse.BooleanOptionalAction)
     parser.add_argument("--move-stacking", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
-    parser.add_argument("--max-processes", default=cpu_count() - 1, type=int)
+    parser.add_argument("--max-threads", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
     solve_all(
@@ -53,6 +53,6 @@ if __name__ == "__main__":
         args.skip_solved,
         args.move_stacking,
         args.sym_moves_dep,
-        args.max_processes,
+        args.max_threads,
         args.disable_stats_file,
     )
