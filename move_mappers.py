@@ -61,23 +61,21 @@ def z3_corner_x_hi(
     dr: z3.ArithRef,
     next_x_hi: z3.BoolRef,
 ):
-    return (
+    return z3.If(
+        z3.And(ax == 1, hi == y_hi),
         z3.If(
-            z3.And(ax == 1, hi == y_hi),
+            dr == 0,
+            next_x_hi != z_hi,
+            z3.If(dr == 1, next_x_hi == z_hi, next_x_hi != x_hi),
+        ),
+        z3.If(
+            z3.And(ax == 2, hi == z_hi),
             z3.If(
                 dr == 0,
-                next_x_hi != z_hi,
-                z3.If(dr == 1, next_x_hi == z_hi, next_x_hi != x_hi),
+                next_x_hi == y_hi,
+                z3.If(dr == 1, next_x_hi != y_hi, next_x_hi != x_hi),
             ),
-            z3.If(
-                z3.And(ax == 2, hi == z_hi),
-                z3.If(
-                    dr == 0,
-                    next_x_hi == y_hi,
-                    z3.If(dr == 1, next_x_hi != y_hi, next_x_hi != x_hi),
-                ),
-                next_x_hi == x_hi,
-            ),
+            next_x_hi == x_hi,
         ),
     )
 
@@ -109,23 +107,21 @@ def z3_corner_y_hi(
     dr: z3.ArithRef,
     next_y_hi: z3.BoolRef,
 ):
-    return (
+    return z3.If(
+        z3.And(ax == 0, hi == x_hi),
         z3.If(
-            z3.And(ax == 0, hi == x_hi),
+            dr == 0,
+            next_y_hi == z_hi,
+            z3.If(dr == 1, next_y_hi != z_hi, next_y_hi != y_hi),
+        ),
+        z3.If(
+            z3.And(ax == 2, hi == z_hi),
             z3.If(
                 dr == 0,
-                next_y_hi == z_hi,
-                z3.If(dr == 1, next_y_hi != z_hi, next_y_hi != y_hi),
+                next_y_hi != x_hi,
+                z3.If(dr == 1, next_y_hi == x_hi, next_y_hi != y_hi),
             ),
-            z3.If(
-                z3.And(ax == 2, hi == z_hi),
-                z3.If(
-                    dr == 0,
-                    next_y_hi != x_hi,
-                    z3.If(dr == 1, next_y_hi == x_hi, next_y_hi != y_hi),
-                ),
-                next_y_hi == y_hi,
-            ),
+            next_y_hi == y_hi,
         ),
     )
 
@@ -157,23 +153,21 @@ def z3_corner_z_hi(
     dr: z3.ArithRef,
     next_z_hi: z3.BoolRef,
 ):
-    return (
+    return z3.If(
+        z3.And(ax == 0, hi == x_hi),
         z3.If(
-            z3.And(ax == 0, hi == x_hi),
+            dr == 0,
+            next_z_hi != y_hi,
+            z3.If(dr == 1, next_z_hi == y_hi, next_z_hi != z_hi),
+        ),
+        z3.If(
+            z3.And(ax == 1, hi == y_hi),
             z3.If(
                 dr == 0,
-                next_z_hi != y_hi,
-                z3.If(dr == 1, next_z_hi == y_hi, next_z_hi != z_hi),
+                next_z_hi == x_hi,
+                z3.If(dr == 1, next_z_hi != x_hi, next_z_hi != z_hi),
             ),
-            z3.If(
-                z3.And(ax == 1, hi == y_hi),
-                z3.If(
-                    dr == 0,
-                    next_z_hi == x_hi,
-                    z3.If(dr == 1, next_z_hi != x_hi, next_z_hi != z_hi),
-                ),
-                next_z_hi == z_hi,
-            ),
+            next_z_hi == z_hi,
         ),
     )
 
