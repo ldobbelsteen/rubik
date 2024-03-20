@@ -99,6 +99,21 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
                 ):
                     return False
 
+    # Symmetric move filter #6
+    if n == 3:
+        for s in range(k - 4):
+            if (
+                axs(s) == axs(s + 2)
+                and axs(s + 1) == axs(s + 3)
+                and axs(s + 3) == axs(s + 4)
+                and drs(s) == drs(s + 2)
+                and his(s) == his(s + 2)
+                and drs(s) == 2
+                and drs(s + 3) != 2
+                and drs(s + 3) == drs(s + 4)
+            ):
+                return False
+
     return True
 
 
