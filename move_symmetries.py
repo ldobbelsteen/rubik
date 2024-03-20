@@ -102,6 +102,20 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
                 if drs(s + 4) == 2 and axs(s + 4) == axs(s) and his(s + 4) == his(s):
                     return False
 
+    # # Symmetric move filter #7
+    # if n == 3:
+    #     for s in range(k - 4):
+    #         if (
+    #             (axs(s) == axs(s + 1) or axs(s) == axs(s + 3))
+    #             and (axs(s) != axs(s + 2))
+    #             and (axs(s + 1) == axs(s + 2) or axs(s + 2) == axs(s + 3))
+    #             and drs(s) == 2
+    #             and drs(s + 2) == 2
+    #             and (drs(s + 1) == 2 or drs(s + 3) == 2)
+    #         ):
+    #             if axs(s) == axs(s + 4):
+    #                 return False
+
     return True
 
 
@@ -160,48 +174,47 @@ def compute(n: int, max_d: int):
     encountered_filtered: dict[Puzzle, MoveSeq] = {finished: tuple()}
 
     # The new puzzle states encountered in the previous iteration.
-    prev_layer_unfiltered: set[Puzzle] = {finished}
-    prev_layer_filtered: set[Puzzle] = {finished}
+    layer_unfiltered: set[Puzzle] = {finished}
+    layer_filtered: set[Puzzle] = {finished}
 
     # The symmetrical move sequences encountered in previous iterations combined.
-    prev_symmetrical_unfiltered: set[MoveSeq] = set()
-    prev_symmetrical_filtered: set[MoveSeq] = set()
+    symmetrical_unfiltered: set[MoveSeq] = set()
+    symmetrical_filtered: set[MoveSeq] = set()
 
     # Perform BFS for both unfiltered and filtered.
     for d in range(1, max_d + 1):
-        prev_layer_unfiltered, new_symmetrical_unfiltered = symmetric_bfs_iteration(
+        layer_unfiltered, new_symmetrical_unfiltered = symmetric_bfs_iteration(
             n,
             encountered_unfiltered,
-            prev_symmetrical_unfiltered,
-            prev_layer_unfiltered,
+            symmetrical_unfiltered,
+            layer_unfiltered,
             False,
         )
 
-        prev_layer_filtered, new_symmetrical_filtered = symmetric_bfs_iteration(
+        layer_filtered, new_symmetrical_filtered = symmetric_bfs_iteration(
             n,
             encountered_filtered,
-            prev_symmetrical_filtered,
-            prev_layer_filtered,
+            symmetrical_filtered,
+            layer_filtered,
             True,
         )
 
         # This asserts whether we don't filter too many symmetric moves such that
         # some puzzle states that are reachable when not filtering cannot be reached
         # when filtering.
-        unfiltered_states = set(encountered_unfiltered)
-        filtered_states = set(encountered_filtered)
-        for state in unfiltered_states - filtered_states:
-            m = encountered_unfiltered[state]
-            seqs = (
-                {m}
-                if m not in new_symmetrical_unfiltered
-                else new_symmetrical_unfiltered[m] | {m}
-            )
-            seqs_canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
-            raise Exception(
-                f"erroneously filtered one of these sequences:\n{seqs_canon}"
-            )
-        for state in filtered_states - unfiltered_states:
+        if layer_unfiltered != layer_filtered:
+            for state in layer_unfiltered - layer_filtered:
+                m = encountered_unfiltered[state]
+                seqs = (
+                    {m}
+                    if m not in new_symmetrical_unfiltered
+                    else new_symmetrical_unfiltered[m] | {m}
+                )
+                seqs_canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
+                raise Exception(
+                    f"erroneously filtered one of these sequences:\n{seqs_canon}"
+                )
+        for state in layer_filtered - layer_unfiltered:
             m = encountered_filtered[state]
             seqs = (
                 {m}
