@@ -13,8 +13,11 @@ from puzzle import (
 from tools import create_parent_directory
 
 
-def file_path(n: int, d: int):
-    return f"./move_symmetries/n{n}-d{d}.txt"
+def file_path(n: int, d: int, filtered: bool):
+    if filtered:
+        return f"./move_symmetries/n{n}-d{d}.txt"
+    else:
+        return f"./move_symmetries/n{n}-d{d}-unfiltered.txt"
 
 
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
@@ -116,7 +119,7 @@ def symmetric_bfs_iteration(
     return new_layer, new_symmetrical
 
 
-def compute(n: int, max_d: int):
+def compute(n: int, max_d: int, write_unfiltered: bool):
     finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
 
     # To keep track of the encountered states and which steps were taken to get there.
@@ -133,7 +136,7 @@ def compute(n: int, max_d: int):
 
     # Perform BFS for both unfiltered and filtered.
     for d in range(1, max_d + 1):
-        prev_layer_unfiltered, _ = symmetric_bfs_iteration(
+        prev_layer_unfiltered, new_symmetrical_unfiltered = symmetric_bfs_iteration(
             n,
             encountered_unfiltered,
             prev_symmetrical_unfiltered,
@@ -158,25 +161,37 @@ def compute(n: int, max_d: int):
                     f"filtered out erroneously: {[move_name(m) for m in seq]}"
                 )
 
-        # Write found filtered symmetrical sequences to file.
-        output = [(k, sorted(v)) for k, v in new_symmetrical_filtered.items()]
-        output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
-        path = file_path(n, d)
+        # Write found filtered symmetric move sequences to file.
+        path = file_path(n, d, True)
         create_parent_directory(path)
+        filtered = [(k, sorted(v)) for k, v in new_symmetrical_filtered.items()]
+        filtered.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
         with open(path, "w") as file:
-            for seq, syms in output:
+            for seq, syms in filtered:
                 seq_canon = tuple([move_name(s) for s in seq])
                 syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
                 file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
+
+        # Optionally also write the unfiltered symmetric move sequences to file.
+        if write_unfiltered:
+            path = file_path(n, d, False)
+            create_parent_directory(path)
+            unfiltered = [(k, sorted(v)) for k, v in new_symmetrical_unfiltered.items()]
+            unfiltered.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
+            with open(path, "w") as file:
+                for seq, syms in unfiltered:
+                    seq_canon = tuple([move_name(s) for s in seq])
+                    syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
+                    file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
 
 
 def load(n: int, d: int) -> dict[MoveSeq, list[MoveSeq]]:
     if d <= 0:
         return {}
 
-    path = file_path(n, d)
+    path = file_path(n, d, True)
     if not os.path.isfile(path):
-        compute(n, d)
+        compute(n, d, False)
 
     result: dict[MoveSeq, list[MoveSeq]] = {}
     with open(path, "r") as file:
@@ -195,5 +210,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("n", type=int)
     parser.add_argument("d", type=int)
+    parser.add_argument("--write-unfiltered", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
-    compute(args.n, args.d)
+    compute(args.n, args.d, args.write_unfiltered)
