@@ -139,7 +139,7 @@ def compute(n: int, max_d: int):
                 skip = False
                 for ban in banned:
                     start = len(new_path) - len(ban)
-                    if start >= 0 and ban == tuple(new_path[start:]):
+                    if start >= 0 and ban == new_path[start:]:
                         skip = True
                         break
                 if skip:
