@@ -211,7 +211,7 @@ def compute(n: int, max_d: int):
                     else new_symmetrical_unfiltered[m] | {m}
                 )
                 seqs_canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
-                raise Exception(f"erroneously filtered at least one:\n{seqs_canon}")
+                raise Exception(f"unreachable state when filtering:\n{seqs_canon}")
             for state in layer_filtered - layer_unfiltered:
                 m = encountered_filtered[state]
                 seqs = (
@@ -220,7 +220,9 @@ def compute(n: int, max_d: int):
                     else new_symmetrical_filtered[m] | {m}
                 )
                 seqs_canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
-                raise Exception(f"extra state reachable when filtering:\n{seqs_canon}")
+                raise Exception(
+                    f"reachable state only when filtering:\n{seqs_canon}\n{seqs}"
+                )
 
         # Write found filtered symmetric move sequences to file.
         path = file_path(n, d, True)
