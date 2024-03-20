@@ -192,19 +192,25 @@ def compute(n: int, max_d: int):
         filtered_states = set(encountered_filtered)
         for state in unfiltered_states - filtered_states:
             m = encountered_unfiltered[state]
-            seqs = [
-                tuple([move_name(m) for m in seq])
-                for seq in new_symmetrical_unfiltered[m] | {m}
-            ]
-            raise Exception(f"erroneously filtered one of these sequences:\n{seqs}")
+            seqs = (
+                {m}
+                if m not in new_symmetrical_unfiltered
+                else new_symmetrical_unfiltered[m] | {m}
+            )
+            seqs_canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
+            raise Exception(
+                f"erroneously filtered one of these sequences:\n{seqs_canon}"
+            )
         for state in filtered_states - unfiltered_states:
             m = encountered_filtered[state]
-            seqs = [
-                tuple([move_name(m) for m in seq])
-                for seq in new_symmetrical_filtered[m] | {m}
-            ]
+            seqs = (
+                {m}
+                if m not in new_symmetrical_filtered
+                else new_symmetrical_filtered[m] | {m}
+            )
+            seqs_canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
             raise Exception(
-                f"state reachable when filtering not reachable when not:\n{seqs}"
+                f"state reachable when filtering not reachable when not:\n{seqs_canon}"
             )
 
         # Write found filtered symmetric move sequences to file.
