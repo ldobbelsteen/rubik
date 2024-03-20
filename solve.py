@@ -33,6 +33,7 @@ def solve_for_k(
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it."""
+    finished = Puzzle.finished(puzzle.n, puzzle.center_colors)
     prep_start = datetime.now()
     n = puzzle.n
 
@@ -68,7 +69,7 @@ def solve_for_k(
                 z3_int(solver, f"corner({x},{y},{z}) s({s}) r", 0, 3),
                 z3.Bool(f"corner({x},{y},{z}) s({s}) c"),
             )
-            for x, y, z, _, _ in puzzle.finished_state.corners
+            for x, y, z, _, _ in finished.corner_states
         ]
         for s in range(k + 1)
     ]
@@ -80,7 +81,7 @@ def solve_for_k(
                 z3.Bool(f"edge({x},{y},{z}) s({s}) y_hi"),
                 z3.Bool(f"edge({x},{y},{z}) s({s}) r"),
             )
-            for x, y, z, _ in puzzle.finished_state.edges
+            for x, y, z, _ in finished.edge_states
         ]
         for s in range(k + 1)
     ]

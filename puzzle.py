@@ -22,7 +22,7 @@ FACE_ORDERING = [4, 5, 0, 2, 3, 1]
 
 
 # The default center cubie colors of a cube.
-DEFAULT_CENTER_COLORS = [0, 1, 2, 3, 4, 5]
+DEFAULT_CENTER_COLORS = (0, 1, 2, 3, 4, 5)
 
 
 def face_name(f: int) -> str:
@@ -191,7 +191,7 @@ def cubicle_type(n: int, cubicle: CubicleCoords):
 
 
 def cubicle_colors(
-    n: int, cubicle: CubicleCoords, center_colors: list[int]
+    n: int, cubicle: CubicleCoords, center_colors: tuple[int, ...]
 ) -> list[int]:
     """Get the list of colors of a cubicle in a finished puzzle. The list is sorted
     by the global face ordering."""
@@ -246,10 +246,12 @@ def facelet_cubicle(n: int, facelet: FaceletCoords) -> CubicleCoords:
     raise Exception(f"invalid face: {f}")
 
 
-def extract_center_colors(n: int, facelet_colors: list[list[list[int]]]) -> list[int]:
+def extract_center_colors(
+    n: int, facelet_colors: list[list[list[int]]]
+) -> tuple[int, ...]:
     """Get the center colors of each face. Only works for n = 3."""
     assert n == 3
-    return [facelet_colors[f][1][1] for f in range(6)]
+    return tuple([facelet_colors[f][1][1] for f in range(6)])
 
 
 def encode_corner(n: int, corner: CubicleCoords) -> CornerState:
@@ -324,40 +326,15 @@ def edge_mapping(edge: EdgeState, move: Move) -> EdgeState:
     )
 
 
-class FinishedState:
-    def __init__(self, n: int):
-        self.n = n
-        self.corners: list[CornerState] = []
-        self.edges: list[EdgeState] = []
-
-        for x in range(n):
-            for y in range(n):
-                for z in range(n):
-                    cubicle = (x, y, z)
-                    match cubicle_type(n, cubicle):
-                        case 0:
-                            self.corners.append(encode_corner(n, cubicle))
-                        case 2:
-                            self.edges.append(encode_edge(n, cubicle))
-
-    def corner_idx(self, corner: CubicleCoords):
-        return self.corners.index(encode_corner(self.n, corner))
-
-    def edge_idx(self, edge: CubicleCoords):
-        return self.edges.index(encode_edge(self.n, edge))
-
-
 class Puzzle:
     def __init__(
         self,
         n: int,
-        finished_state: FinishedState,
-        corner_states: list[CornerState],
-        edge_states: list[EdgeState],
-        center_colors: list[int],
+        corner_states: tuple[CornerState, ...],
+        edge_states: tuple[EdgeState, ...],
+        center_colors: tuple[int, ...],
     ):
         self.n = n
-        self.finished_state = finished_state
         self.corner_states = corner_states
         self.edge_states = edge_states
         self.center_colors = center_colors
@@ -389,15 +366,15 @@ class Puzzle:
 
     @staticmethod
     def from_facelet_colors(n: int, facelet_colors: list[list[list[int]]]):
-        finished = FinishedState(n)
         if n == 3:
             center_colors = extract_center_colors(n, facelet_colors)
         else:
             center_colors = DEFAULT_CENTER_COLORS
+        finished = Puzzle.finished(n, center_colors)
 
         # Extract the cubicle colors from the facelet representation.
-        corner_colors = [[] for _ in finished.corners]
-        edge_colors = [[] for _ in finished.edges]
+        corner_colors = [[] for _ in finished.corner_states]
+        edge_colors = [[] for _ in finished.edge_states]
         for ff in FACE_ORDERING:
             for fy in range(n):
                 for fx in range(n):
@@ -405,18 +382,18 @@ class Puzzle:
                     cubicle = facelet_cubicle(n, facelet)
                     match cubicle_type(n, cubicle):
                         case 0:
-                            corner_colors[finished.corner_idx(cubicle)].append(
-                                facelet_colors[ff][fy][fx]
-                            )
+                            corner_colors[
+                                finished.corner_states.index(encode_corner(n, cubicle))
+                            ].append(facelet_colors[ff][fy][fx])
                         case 2:
-                            edge_colors[finished.edge_idx(cubicle)].append(
-                                facelet_colors[ff][fy][fx]
-                            )
+                            edge_colors[
+                                finished.edge_states.index(encode_edge(n, cubicle))
+                            ].append(facelet_colors[ff][fy][fx])
 
-        corner_states: list[CornerState | None] = [None] * len(finished.corners)
-        for i, corner in enumerate(finished.corners):
+        corner_states: list[CornerState | None] = [None] * len(finished.corner_states)
+        for i, corner in enumerate(finished.corner_states):
             colors = corner_colors[i]
-            for i2, corner2 in enumerate(finished.corners):
+            for i2, corner2 in enumerate(finished.corner_states):
                 colors2 = cubicle_colors(n, decode_corner(n, corner2), center_colors)
                 if set(colors) == set(colors2):
                     x_hi, y_hi, z_hi, _, _ = corner
@@ -428,10 +405,10 @@ class Puzzle:
             else:
                 raise Exception(f"corner '{corner}' could not be mapped")
 
-        edge_states: list[EdgeState | None] = [None] * len(finished.edges)
-        for i, edge in enumerate(finished.edges):
+        edge_states: list[EdgeState | None] = [None] * len(finished.edge_states)
+        for i, edge in enumerate(finished.edge_states):
             colors = edge_colors[i]
-            for i2, edge2 in enumerate(finished.edges):
+            for i2, edge2 in enumerate(finished.edge_states):
                 colors2 = cubicle_colors(n, decode_edge(n, edge2), center_colors)
                 if set(colors) == set(colors2):
                     a, x_hi, y_hi, _ = edge
@@ -442,16 +419,29 @@ class Puzzle:
             else:
                 raise Exception(f"edge '{edge}' could not be mapped")
 
-        return Puzzle(n, finished, corner_states, edge_states, center_colors)  # type: ignore
+        corners = tuple([s for s in corner_states if s is not None])
+        edges = tuple([s for s in edge_states if s is not None])
+        assert len(corners) == len(corner_states) and len(edges) == len(edge_states)
+        return Puzzle(n, corners, edges, center_colors)
 
     @staticmethod
-    def finished(n: int, center_colors: list[int]):
-        finished = FinishedState(n)
+    def finished(n: int, center_colors: tuple[int, ...]):
+        corners: list[CornerState] = []
+        edges: list[EdgeState] = []
+        for x in range(n):
+            for y in range(n):
+                for z in range(n):
+                    cubicle = (x, y, z)
+                    match cubicle_type(n, cubicle):
+                        case 0:
+                            corners.append(encode_corner(n, cubicle))
+                        case 2:
+                            edges.append(encode_edge(n, cubicle))
+
         return Puzzle(
             n,
-            finished,
-            finished.corners.copy(),
-            finished.edges.copy(),
+            tuple(corners),
+            tuple(edges),
             center_colors,
         )
 
@@ -464,14 +454,7 @@ class Puzzle:
         )
 
     def __hash__(self):
-        return hash(
-            (
-                self.n,
-                tuple(self.corner_states),
-                tuple(self.edge_states),
-                tuple(self.center_colors),
-            )
-        )
+        return hash((self.n, self.corner_states, self.edge_states, self.center_colors))
 
     def to_str(self):
         facelet_colors = [
@@ -494,18 +477,18 @@ class Puzzle:
     def execute_move(self, move: Move) -> "Puzzle":
         return Puzzle(
             self.n,
-            self.finished_state,
-            [corner_mapping(c, move) for c in self.corner_states],
-            [edge_mapping(e, move) for e in self.edge_states],
+            tuple([corner_mapping(c, move) for c in self.corner_states]),
+            tuple([edge_mapping(e, move) for e in self.edge_states]),
             self.center_colors,
         )
 
     def facelet_color(self, facelet: FaceletCoords) -> int:
+        finished = Puzzle.finished(self.n, self.center_colors)
         cubicle = facelet_cubicle(self.n, facelet)
 
         match cubicle_type(self.n, cubicle):
             case 0:
-                for i, corner in enumerate(self.finished_state.corners):
+                for i, corner in enumerate(finished.corner_states):
                     origin_corner = self.corner_states[i]
                     if cubicle == decode_corner(self.n, origin_corner):
                         colors = cubicle_colors(
@@ -530,7 +513,7 @@ class Puzzle:
                 f, _, _ = facelet
                 return self.center_colors[f]
             case 2:
-                for i, edge in enumerate(self.finished_state.edges):
+                for i, edge in enumerate(finished.edge_states):
                     origin_edge = self.edge_states[i]
                     if cubicle == decode_edge(self.n, origin_edge):
                         colors = cubicle_colors(

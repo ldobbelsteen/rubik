@@ -5,7 +5,6 @@ import unittest
 from generate_random import PUZZLE_DIR, all_moves, generate_random
 from puzzle import (
     DEFAULT_CENTER_COLORS,
-    FinishedState,
     Puzzle,
     cubicle_colors,
     cubicle_type,
@@ -58,17 +57,6 @@ class Testing(unittest.TestCase):
                                     cubicle,
                                     decode_edge(n, encode_edge(n, cubicle)),
                                 )
-
-    def test_finished_state_sizes(self):
-        """Test whether the number of corners and edges in
-        the finished state class make sense."""
-        cubicles = FinishedState(2)
-        self.assertEqual(len(cubicles.corners), 8)
-        self.assertEqual(len(cubicles.edges), 0)
-
-        cubicles = FinishedState(3)
-        self.assertEqual(len(cubicles.corners), 8)
-        self.assertEqual(len(cubicles.edges), 12)
 
     def test_puzzle_parsing(self):
         """Test whether parsing and serializing puzzles is bijective."""
