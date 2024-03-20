@@ -13,11 +13,8 @@ from puzzle import (
 from tools import create_parent_directory
 
 
-def file_path(n: int, d: int, filtered: bool):
-    if filtered:
-        return f"./move_symmetries/n{n}-d{d}.txt"
-    else:
-        return f"./move_symmetries/n{n}-d{d}-unfiltered.txt"
+def file_path(n: int, d: int):
+    return f"./move_symmetries/n{n}-d{d}.txt"
 
 
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
@@ -105,132 +102,81 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     return True
 
 
-def symmetric_bfs_iteration(
-    n: int,
-    states: set[Puzzle],
-    paths: dict[Puzzle, MoveSeq],
-    disallowed: set[MoveSeq],
-    filter: bool,
-):
-    moves = all_moves()
-    new_states: set[Puzzle] = set()
-    symmetries: dict[MoveSeq, set[MoveSeq]] = {}
-    filtered: dict[Puzzle, set[MoveSeq]] = {}
-
-    for state in states:
-        path = paths[state]
-        for move in moves:
-            new_state = state.execute_move(move)
-
-            new_path = path + (move,)
-            if filter and not allowed_by_filters(n, new_path):
-                if new_state not in filtered:
-                    filtered[new_state] = set()
-                filtered[new_state].add(new_path)
-                continue  # ignore
-
-            skip = False
-            for sym in disallowed:
-                start = len(new_path) - len(sym)
-                if start >= 0 and sym == new_path[start:]:
-                    skip = True  # tail is not allowed, so ignore
-                    break
-            if skip:
-                continue
-
-            if new_state in paths:
-                prev_path = paths[new_state]
-                assert len(prev_path) <= len(new_path)
-                if prev_path not in symmetries:
-                    symmetries[prev_path] = set()
-                symmetries[prev_path].add(new_path)
-            else:
-                paths[new_state] = new_path
-                new_states.add(new_state)
-
-    for syms in symmetries.values():
-        for sym in syms:
-            assert sym not in disallowed
-            disallowed.add(sym)
-
-    return new_states, symmetries, filtered
-
-
 def compute(n: int, max_d: int):
+    moves = all_moves()
     finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
+    paths: dict[Puzzle, MoveSeq] = {finished: tuple()}
+    fresh: set[Puzzle] = {finished}
+    banned: set[MoveSeq] = set()
 
-    # To keep track of the encountered states and which steps were taken to get there.
-    paths_unfiltered: dict[Puzzle, MoveSeq] = {finished: tuple()}
-    paths_filtered: dict[Puzzle, MoveSeq] = {finished: tuple()}
-
-    # The new puzzle states encountered in the previous iteration.
-    fresh_unfiltered: set[Puzzle] = {finished}
-    fresh_filtered: set[Puzzle] = {finished}
-
-    # The symmetrical move sequences encountered in previous iterations combined.
-    disallowed_unfiltered: set[MoveSeq] = set()
-    disallowed_filtered: set[MoveSeq] = set()
-
-    # Perform BFS for both unfiltered and filtered.
     for d in range(1, max_d + 1):
-        fresh_unfiltered, symmetries_unfiltered, _ = symmetric_bfs_iteration(
-            n,
-            fresh_unfiltered,
-            paths_unfiltered,
-            disallowed_unfiltered,
-            False,
-        )
+        next_fresh: set[Puzzle] = set()
+        filtered: dict[Puzzle, set[MoveSeq]] = {}
+        symmetries: dict[MoveSeq, set[MoveSeq]] = {}
 
-        fresh_filtered, symmetries_filtered, filtered = symmetric_bfs_iteration(
-            n,
-            fresh_filtered,
-            paths_filtered,
-            disallowed_filtered,
-            True,
-        )
+        for state in fresh:
+            path = paths[state]
+            for move in moves:
+                new_path = path + (move,)
+                new_state = state.execute_move(move)
+                if not allowed_by_filters(n, new_path):
+                    if new_state not in filtered:
+                        filtered[new_state] = set()
+                    filtered[new_state].add(new_path)
+                    continue
 
-        # This asserts whether we don't filter too many symmetric moves such that
-        # some puzzle states that are reachable when not filtering cannot be reached
-        # when filtering.
-        if fresh_unfiltered != fresh_filtered:
-            for state in fresh_unfiltered - fresh_filtered:
-                canon = [tuple([move_name(m) for m in seq]) for seq in filtered[state]]
+                skip = False
+                for ban in banned:
+                    start = len(new_path) - len(ban)
+                    if start >= 0 and ban == new_path[start:]:
+                        skip = True  # tail is not allowed, so ignore
+                        break
+                if skip:
+                    continue
+
+                if new_state in paths:
+                    prev_path = paths[new_state]
+                    assert len(prev_path) <= len(new_path)
+                    if prev_path not in symmetries:
+                        symmetries[prev_path] = set()
+                    symmetries[prev_path].add(new_path)
+                else:
+                    paths[new_state] = new_path
+                    next_fresh.add(new_state)
+
+        # Check whether the filtered out move sequences' states are still reachable.
+        for state, seqs in filtered.items():
+            if state not in paths:
+                canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
                 raise Exception(
                     f"following sequences should not all have been filtered:\n{canon}"
                 )
-            for state in fresh_filtered - fresh_unfiltered:
-                raise Exception(
-                    f"state reachable only when filtering: {paths_filtered[state]}"
-                )
 
-        # Write found filtered symmetric move sequences to file.
-        path = file_path(n, d, True)
+        # Ban all symmetric move sequences for future iterations.
+        for syms in symmetries.values():
+            for sym in syms:
+                assert sym not in banned
+                banned.add(sym)
+
+        # Write found symmetric move sequences to file.
+        path = file_path(n, d)
         create_parent_directory(path)
-        filtered = [(k, sorted(v)) for k, v in symmetries_filtered.items()]
-        filtered.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
+        output = [(k, sorted(v)) for k, v in symmetries.items()]
+        output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
         with open(path, "w") as file:
-            for seq, syms in filtered:
+            for seq, syms in output:
                 seq_canon = tuple([move_name(s) for s in seq])
                 syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
                 file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
 
-        # Write the unfiltered symmetric move sequences to file.
-        path = file_path(n, d, False)
-        create_parent_directory(path)
-        unfiltered = [(k, sorted(v)) for k, v in symmetries_unfiltered.items()]
-        unfiltered.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
-        with open(path, "w") as file:
-            for seq, syms in unfiltered:
-                seq_canon = tuple([move_name(s) for s in seq])
-                syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
-                file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
+        fresh = next_fresh
 
 
 def load(n: int, d: int) -> dict[MoveSeq, list[MoveSeq]]:
     if d <= 0:
         return {}
 
-    path = file_path(n, d, True)
+    path = file_path(n, d)
     if not os.path.isfile(path):
         compute(n, d)
 
