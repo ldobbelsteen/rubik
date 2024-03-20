@@ -117,7 +117,6 @@ def solve_for_k(
     solver.add(z3.And(fix_state(0, puzzle)))
 
     # Fix the last state to the finished state.
-    finished = Puzzle.finished(n, puzzle.center_colors)
     solver.add(z3.And(fix_state(-1, finished)))
 
     # Restrict cubie states according to moves.
