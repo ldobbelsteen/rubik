@@ -209,7 +209,9 @@ def compute(n: int, max_d: int):
         if fresh_unfiltered != fresh_filtered:
             for state in fresh_unfiltered - fresh_filtered:
                 canon = [tuple([move_name(m) for m in seq]) for seq in filtered[state]]
-                raise Exception(f"following sequences should not be filtered:\n{canon}")
+                raise Exception(
+                    f"following sequences should not all have been filtered:\n{canon}"
+                )
             for state in fresh_filtered - fresh_unfiltered:
                 raise Exception(
                     f"state reachable only when filtering: {paths_filtered[state]}"
