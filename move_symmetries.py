@@ -10,7 +10,7 @@ from puzzle import (
     move_name,
     parse_move,
 )
-from tools import create_parent_directory
+from tools import create_parent_directory, print_stamped
 
 
 def file_path(n: int, d: int):
@@ -118,20 +118,27 @@ def compute(n: int, max_d: int):
             path = paths[state]
             for move in moves:
                 new_path = path + (move,)
+
+                # Skip if the new path contains symmetric move sequences
+                # from lower depths.
+                skip = False
+                for ban in banned:
+                    start = len(new_path) - len(ban)
+                    if start >= 0 and ban == tuple(new_path[start:]):
+                        skip = True
+                        break
+                if skip:
+                    continue
+
                 new_state = state.execute_move(move)
+
+                # Skip if the new path is not allowed by the filters. Store
+                # the filtered move sequence for later.
                 if not allowed_by_filters(n, new_path):
                     if new_state not in filtered:
                         filtered[new_state] = set()
                     filtered[new_state].add(new_path)
-                    continue
-
-                skip = False
-                for ban in banned:
-                    start = len(new_path) - len(ban)
-                    if start >= 0 and ban == new_path[start:]:
-                        skip = True  # tail is not allowed, so ignore
-                        break
-                if skip:
+                    banned.add(new_path)
                     continue
 
                 if new_state in paths:
@@ -169,6 +176,9 @@ def compute(n: int, max_d: int):
                 syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
                 file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
 
+        fil = sum(len(s) for s in filtered.values())
+        pot = sum(len(s) for s in symmetries.values())
+        print_stamped(f"d = {d}: filtered {fil}, with {pot} more filterable")
         fresh = next_fresh
 
 
