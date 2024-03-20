@@ -121,12 +121,12 @@ def solve_for_k(
 
     # Restrict cubie states according to moves.
     for s in range(k):
-        ax, hi, dr = axs[s], his[s], drs[s]
         move_stacking_single = k % 2 == 1 and s == (k - 1)
 
         # Add restrictions for the corner cubies.
         for i, (x_hi, y_hi, z_hi, r, cw) in enumerate(corners[s]):
             if not move_stacking or move_stacking_single:
+                ax, hi, dr = axs[s], his[s], drs[s]
                 next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 1][i]
                 solver.add(
                     move_mappers.z3_corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_x_hi)
@@ -144,14 +144,12 @@ def solve_for_k(
                     move_mappers.z3_corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr, next_cw)
                 )
             elif s % 2 == 0:
-                # TODO: implement once stacked mappers are ready
-                # next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 2][i]
-                # ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
-                pass
+                pass  # TODO: implement once stacked mappers are ready
 
         # Add restrictions for the edge cubies.
         for i, (a, x_hi, y_hi, r) in enumerate(edges[s]):
             if not move_stacking or move_stacking_single:
+                ax, hi, dr = axs[s], his[s], drs[s]
                 next_a, next_x_hi, next_y_hi, next_r = edges[s + 1][i]
                 solver.add(move_mappers.z3_edge_a(a, x_hi, y_hi, ax, hi, dr, next_a))
                 solver.add(
@@ -162,10 +160,7 @@ def solve_for_k(
                 )
                 solver.add(move_mappers.z3_edge_r(a, next_a, r, next_r))
             elif s % 2 == 0:
-                # TODO: implement once stacked mappers are ready
-                # next_a, next_x_hi, next_y_hi, next_r = edges[s + 2][i]
-                # ax2, hi2, dr2 = axs[s + 1], his[s + 1], drs[s + 1]
-                pass
+                pass  # TODO: implement once stacked mappers are ready
 
     # Symmetric move filter #1
     # Subsequent moves in the same axis have fixed side order: first low, then high.
