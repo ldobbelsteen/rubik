@@ -2,6 +2,5 @@
 /.vscode
 /__pycache__
 /build
-/move_symmetries/*-unfiltered.txt
 /rubik.egg-info
 /venv

@@ -99,11 +99,7 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     #             and axs(s) != axs(s + 1)
     #             and his(s) != his(s + 3)
     #         ):
-    #             if (
-    #                 drs(s + 4) == 2
-    #                 and axs(s + 4) == axs(s + 1)
-    #                 and his(s + 4) == his(s)
-    #             ):
+    #             if drs(s + 4) == 2 and axs(s + 4) == axs(s) and his(s + 4) == his(s):
     #                 return False
 
     return True
@@ -156,7 +152,7 @@ def symmetric_bfs_iteration(
     return new_layer, new_symmetrical
 
 
-def compute(n: int, max_d: int, write_unfiltered: bool):
+def compute(n: int, max_d: int):
     finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
 
     # To keep track of the encountered states and which steps were taken to get there.
@@ -192,11 +188,24 @@ def compute(n: int, max_d: int, write_unfiltered: bool):
         # This asserts whether we don't filter too many symmetric moves such that
         # some puzzle states that are reachable when not filtering cannot be reached
         # when filtering.
-        for state, seq in encountered_unfiltered.items():
-            if state not in encountered_filtered:
-                raise Exception(
-                    f"filtered out erroneously: {[move_name(m) for m in seq]}"
-                )
+        unfiltered_states = set(encountered_unfiltered)
+        filtered_states = set(encountered_filtered)
+        for state in unfiltered_states - filtered_states:
+            m = encountered_unfiltered[state]
+            seqs = [
+                tuple([move_name(m) for m in seq])
+                for seq in new_symmetrical_unfiltered[m] | {m}
+            ]
+            raise Exception(f"erroneously filtered one of these sequences:\n{seqs}")
+        for state in filtered_states - unfiltered_states:
+            m = encountered_filtered[state]
+            seqs = [
+                tuple([move_name(m) for m in seq])
+                for seq in new_symmetrical_filtered[m] | {m}
+            ]
+            raise Exception(
+                f"state reachable when filtering not reachable when not:\n{seqs}"
+            )
 
         # Write found filtered symmetric move sequences to file.
         path = file_path(n, d, True)
@@ -209,17 +218,16 @@ def compute(n: int, max_d: int, write_unfiltered: bool):
                 syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
                 file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
 
-        # Optionally also write the unfiltered symmetric move sequences to file.
-        if write_unfiltered:
-            path = file_path(n, d, False)
-            create_parent_directory(path)
-            unfiltered = [(k, sorted(v)) for k, v in new_symmetrical_unfiltered.items()]
-            unfiltered.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
-            with open(path, "w") as file:
-                for seq, syms in unfiltered:
-                    seq_canon = tuple([move_name(s) for s in seq])
-                    syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
-                    file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
+        # Write the unfiltered symmetric move sequences to file.
+        path = file_path(n, d, False)
+        create_parent_directory(path)
+        unfiltered = [(k, sorted(v)) for k, v in new_symmetrical_unfiltered.items()]
+        unfiltered.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
+        with open(path, "w") as file:
+            for seq, syms in unfiltered:
+                seq_canon = tuple([move_name(s) for s in seq])
+                syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
+                file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
 
 
 def load(n: int, d: int) -> dict[MoveSeq, list[MoveSeq]]:
@@ -228,7 +236,7 @@ def load(n: int, d: int) -> dict[MoveSeq, list[MoveSeq]]:
 
     path = file_path(n, d, True)
     if not os.path.isfile(path):
-        compute(n, d, False)
+        compute(n, d)
 
     result: dict[MoveSeq, list[MoveSeq]] = {}
     with open(path, "r") as file:
@@ -247,6 +255,5 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("n", type=int)
     parser.add_argument("d", type=int)
-    parser.add_argument("--write-unfiltered", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
-    compute(args.n, args.d, args.write_unfiltered)
+    compute(args.n, args.d)
