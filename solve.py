@@ -26,6 +26,7 @@ def solve_for_k(
     puzzle: Puzzle,
     k: int,
     max_threads: int,
+    sat_solver: bool,
     move_stacking: bool,
     sym_move_depth: int,
     banned: list[MoveSeq] = [],
@@ -41,38 +42,39 @@ def solve_for_k(
     z3.set_param("parallel.enable", True)
     z3.set_param("parallel.threads.max", max_threads)
 
-    # # Boil down to SAT and use SAT solver.
-    # solver = z3.Then(
-    #     z3.Repeat(
-    #         z3.Then(
-    #             "normalize-bounds",  # medium good impact
-    #             "purify-arith",  # small good impact
-    #             "solve-eqs",  # small good impact
-    #             # "lia2pb",  # large bad impact
-    #             "lia2card",  # necessary
-    #             # "elim-term-ite",  # no impact
-    #             # "blast-term-ite",  # no impact
-    #             # "card2bv",  # medium bad impact
-    #             # "propagate-bv-bounds",  # no impact
-    #             # "bit-blast",  # tiny bad impact
-    #             "simplify",  # medium good impact
-    #             # "eq2bv",  # medium bad impact
-    #             # "dom-simplify",  # small bad impact
-    #             # "pb2bv",  # small bad impact
-    #         )
-    #     ),
-    #     # "aig",  # medium bad impact (repeat causes non-termination)
-    #     # z3.Repeat("sat-preprocess"),  # large bad impact
-    #     "psat",
-    # ).solver()
-
-    # Use quantifier-free finite domain solver.
-    solver = z3.Then(
-        "simplify",
-        "solve-eqs",
-        "aig",
-        "pqffd",
-    ).solver()
+    if sat_solver:
+        # Boil down to SAT and use SAT solver.
+        solver = z3.Then(
+            z3.Repeat(
+                z3.Then(
+                    "normalize-bounds",  # medium good impact
+                    "purify-arith",  # small good impact
+                    "solve-eqs",  # small good impact
+                    # "lia2pb",  # large bad impact
+                    "lia2card",  # necessary
+                    # "elim-term-ite",  # no impact
+                    # "blast-term-ite",  # no impact
+                    # "card2bv",  # medium bad impact
+                    # "propagate-bv-bounds",  # no impact
+                    # "bit-blast",  # tiny bad impact
+                    "simplify",  # medium good impact
+                    # "eq2bv",  # medium bad impact
+                    # "dom-simplify",  # small bad impact
+                    # "pb2bv",  # small bad impact
+                )
+            ),
+            # "aig",  # medium bad impact (repeat causes non-termination)
+            # z3.Repeat("sat-preprocess"),  # large bad impact
+            "psat",
+        ).solver()
+    else:
+        # Use quantifier-free finite domain solver.
+        solver = z3.Then(
+            "simplify",
+            "solve-eqs",
+            "aig",
+            "pqffd",
+        ).solver()
 
     # Nested lists representing the cube at each state.
     corners = [
@@ -449,6 +451,7 @@ def solve(
     puzzle: Puzzle,
     k_upperbound: int,
     max_threads: int,
+    sat_solver: bool,
     move_stacking: bool,
     sym_move_depth: int,
     print_info: bool,
@@ -461,6 +464,7 @@ def solve(
             puzzle,
             k,
             max_threads,
+            sat_solver,
             move_stacking,
             sym_move_depth,
         )
@@ -496,6 +500,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
     parser.add_argument("--move-stacking", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--sat-solver", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
     parser.add_argument("--max-threads", default=cpu_count() - 1, type=int)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
@@ -506,6 +511,7 @@ if __name__ == "__main__":
         puzzle,
         gods_number(puzzle.n),
         args.max_threads,
+        args.sat_solver,
         args.move_stacking,
         args.sym_moves_dep,
         True,

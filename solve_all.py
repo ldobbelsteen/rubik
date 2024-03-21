@@ -11,6 +11,7 @@ from tools import gods_number, natural_sorted, print_stamped
 def solve_all(
     dir: str,
     skip_solved: bool,
+    sat_solver: bool,
     move_stacking: bool,
     sym_move_depth: int,
     max_threads: int,
@@ -31,6 +32,7 @@ def solve_all(
             puzzle,
             gods_number(puzzle.n),
             max_threads,
+            sat_solver,
             move_stacking,
             sym_move_depth,
             True,
@@ -43,6 +45,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--dir", default=PUZZLE_DIR, type=str)
     parser.add_argument("--skip-solved", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--sat-solver", action=argparse.BooleanOptionalAction)
     parser.add_argument("--move-stacking", action=argparse.BooleanOptionalAction)
     parser.add_argument("--sym-moves-dep", default=0, type=int)
     parser.add_argument("--max-threads", default=cpu_count() - 1, type=int)
@@ -51,6 +54,7 @@ if __name__ == "__main__":
     solve_all(
         args.dir,
         args.skip_solved,
+        args.sat_solver,
         args.move_stacking,
         args.sym_moves_dep,
         args.max_threads,
