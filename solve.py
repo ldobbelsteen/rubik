@@ -40,24 +40,39 @@ def solve_for_k(
     # Configure Z3.
     z3.set_param("parallel.enable", True)
     z3.set_param("parallel.threads.max", max_threads)
+
+    # Boil down to SAT and use SAT solver.
     solver = z3.Then(
-        z3.Tactic("simplify"),
-        z3.Tactic("solve-eqs"),
-        z3.Tactic("aig"),
-        # z3.Tactic("dom-simplify"),
-        # z3.Tactic("purify-arith"),
-        # z3.Tactic("lia2pb"),
-        # z3.Tactic("pb2bv"),
-        # z3.Tactic("lia2card"),
-        # z3.Tactic("card2bv"),
-        # z3.Tactic("bit-blast"),
-        # z3.Tactic("propagate-bv-bounds"),
-        # z3.Tactic("blast-term-ite"),
-        # z3.Tactic("elim-term-ite"),
-        z3.Tactic("pqffd"),
-        # z3.Tactic("sat-preprocess"),
-        # z3.Tactic("sat"),
+        z3.Repeat(
+            z3.Then(
+                "normalize-bounds",  # medium good impact
+                "purify-arith",  # small good impact
+                "solve-eqs",  # small good impact
+                # "lia2pb",  # large bad impact
+                "lia2card",  # necessary
+                # "elim-term-ite",  # no impact
+                # "blast-term-ite",  # no impact
+                # "card2bv",  # medium bad impact
+                # "propagate-bv-bounds",  # no impact
+                # "bit-blast",  # tiny bad impact
+                "simplify",  # medium good impact
+                # "eq2bv",  # medium bad impact
+                # "dom-simplify",  # small bad impact
+                # "pb2bv",  # small bad impact
+            )
+        ),
+        # "aig",  # medium bad impact (repeat causes non-termination)
+        # z3.Repeat("sat-preprocess"),  # large bad impact
+        "psat",
     ).solver()
+
+    # Use quantifier-free finite domain solver.
+    # solver = z3.Then(
+    #     "simplify",
+    #     "solve-eqs",
+    #     "aig",
+    #     "pqffd",
+    # ).solver()
 
     # Nested lists representing the cube at each state.
     corners = [
