@@ -16,10 +16,9 @@ def z3_int(
     solver: z3.Solver | z3.Optimize, name: str, low: int, high: int
 ) -> z3.ArithRef:
     """Create Z3 integer and add its value range to the solver. The range is
-    inclusive on low and exclusive on high."""
+    inclusive on both sides."""
     var = z3.Int(name)
-    solver.add(var >= low)
-    solver.add(var < high)
+    solver.add(z3.And(var >= low, var <= high))
     return var
 
 
@@ -67,7 +66,7 @@ def solve_for_k(
                 z3.Bool(f"corner({x},{y},{z}) s({s}) x"),
                 z3.Bool(f"corner({x},{y},{z}) s({s}) y"),
                 z3.Bool(f"corner({x},{y},{z}) s({s}) z"),
-                z3_int(solver, f"corner({x},{y},{z}) s({s}) r", 0, 3),
+                z3_int(solver, f"corner({x},{y},{z}) s({s}) r", 0, 2),
                 z3.Bool(f"corner({x},{y},{z}) s({s}) c"),
             )
             for x, y, z, _, _ in finished.corner_states
@@ -77,7 +76,7 @@ def solve_for_k(
     edges = [
         [
             (
-                z3_int(solver, f"edge({x},{y},{z}) s({s}) a", 0, 3),
+                z3_int(solver, f"edge({x},{y},{z}) s({s}) a", 0, 2),
                 z3.Bool(f"edge({x},{y},{z}) s({s}) x_hi"),
                 z3.Bool(f"edge({x},{y},{z}) s({s}) y_hi"),
                 z3.Bool(f"edge({x},{y},{z}) s({s}) r"),
@@ -88,9 +87,9 @@ def solve_for_k(
     ]
 
     # Variables which together indicate the move at each state.
-    axs = [z3_int(solver, f"s({s}) ax", 0, 3) for s in range(k)]
+    axs = [z3_int(solver, f"s({s}) ax", 0, 2) for s in range(k)]
     his = [z3.Bool(f"s({s}) hi") for s in range(k)]
-    drs = [z3_int(solver, f"s({s}) dr", 0, 3) for s in range(k)]
+    drs = [z3_int(solver, f"s({s}) dr", 0, 2) for s in range(k)]
 
     def fix_state(s: int, puzzle: Puzzle):
         """Return conditions of a state being equal to a puzzle object."""
