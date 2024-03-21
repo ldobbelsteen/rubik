@@ -41,38 +41,38 @@ def solve_for_k(
     z3.set_param("parallel.enable", True)
     z3.set_param("parallel.threads.max", max_threads)
 
-    # Boil down to SAT and use SAT solver.
-    solver = z3.Then(
-        z3.Repeat(
-            z3.Then(
-                "normalize-bounds",  # medium good impact
-                "purify-arith",  # small good impact
-                "solve-eqs",  # small good impact
-                # "lia2pb",  # large bad impact
-                "lia2card",  # necessary
-                # "elim-term-ite",  # no impact
-                # "blast-term-ite",  # no impact
-                # "card2bv",  # medium bad impact
-                # "propagate-bv-bounds",  # no impact
-                # "bit-blast",  # tiny bad impact
-                "simplify",  # medium good impact
-                # "eq2bv",  # medium bad impact
-                # "dom-simplify",  # small bad impact
-                # "pb2bv",  # small bad impact
-            )
-        ),
-        # "aig",  # medium bad impact (repeat causes non-termination)
-        # z3.Repeat("sat-preprocess"),  # large bad impact
-        "psat",
-    ).solver()
+    # # Boil down to SAT and use SAT solver.
+    # solver = z3.Then(
+    #     z3.Repeat(
+    #         z3.Then(
+    #             "normalize-bounds",  # medium good impact
+    #             "purify-arith",  # small good impact
+    #             "solve-eqs",  # small good impact
+    #             # "lia2pb",  # large bad impact
+    #             "lia2card",  # necessary
+    #             # "elim-term-ite",  # no impact
+    #             # "blast-term-ite",  # no impact
+    #             # "card2bv",  # medium bad impact
+    #             # "propagate-bv-bounds",  # no impact
+    #             # "bit-blast",  # tiny bad impact
+    #             "simplify",  # medium good impact
+    #             # "eq2bv",  # medium bad impact
+    #             # "dom-simplify",  # small bad impact
+    #             # "pb2bv",  # small bad impact
+    #         )
+    #     ),
+    #     # "aig",  # medium bad impact (repeat causes non-termination)
+    #     # z3.Repeat("sat-preprocess"),  # large bad impact
+    #     "psat",
+    # ).solver()
 
     # Use quantifier-free finite domain solver.
-    # solver = z3.Then(
-    #     "simplify",
-    #     "solve-eqs",
-    #     "aig",
-    #     "pqffd",
-    # ).solver()
+    solver = z3.Then(
+        "simplify",
+        "solve-eqs",
+        "aig",
+        "pqffd",
+    ).solver()
 
     # Nested lists representing the cube at each state.
     corners = [
