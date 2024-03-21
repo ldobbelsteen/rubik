@@ -268,6 +268,101 @@ def solve_for_k(
                 )
             )
 
+    # Symmetric move filter #5
+    if n == 3:
+        for s in range(k - 4):
+            solver.add(
+                z3.Implies(
+                    z3.And(
+                        z3.Or(
+                            z3.And(
+                                axs[s] == axs[s + 1],
+                                axs[s + 2] == axs[s + 3],
+                                drs[s + 3] == 2,
+                                z3.Or(drs[s] == 2, drs[s + 1] == 2),
+                            ),
+                            z3.And(
+                                axs[s] == axs[s + 3],
+                                axs[s + 1] == axs[s + 2],
+                                drs[s + 1] == 2,
+                                z3.Or(drs[s] == 2, drs[s + 3] == 2),
+                            ),
+                        ),
+                        axs[s] != axs[s + 2],
+                        drs[s + 2] == 2,
+                    ),
+                    z3.Not(
+                        z3.And(
+                            axs[s] == axs[s + 4],
+                            z3.Or(
+                                z3.And(
+                                    axs[s + 1] == axs[s + 4],
+                                    (
+                                        (drs[s] == 2)
+                                        + (drs[s + 1] == 2)
+                                        + (drs[s + 4] == 2)
+                                    )
+                                    >= 2,
+                                ),
+                                z3.And(
+                                    axs[s + 3] == axs[s + 4],
+                                    (
+                                        (drs[s] == 2)
+                                        + (drs[s + 3] == 2)
+                                        + (drs[s + 4] == 2)
+                                    )
+                                    >= 2,
+                                ),
+                            ),
+                        )
+                    ),
+                )
+            )
+
+    # Symmetric move filter #6
+    if n == 3:
+        for s in range(k - 4):
+            solver.add(
+                z3.Not(
+                    z3.And(
+                        axs[s] == axs[s + 2],
+                        axs[s + 1] == axs[s + 3],
+                        axs[s + 3] == axs[s + 4],
+                        drs[s] == drs[s + 2],
+                        his[s] == his[s + 2],
+                        drs[s] == 2,
+                        drs[s + 3] != 2,
+                        drs[s + 3] == drs[s + 4],
+                    )
+                )
+            )
+
+    # Symmetric move filter #7
+    if n == 3:
+        for s in range(k - 4):
+            solver.add(
+                z3.Implies(
+                    z3.And(
+                        axs[s] == axs[s + 1],
+                        axs[s + 1] == axs[s + 4],
+                        z3.Or(drs[s] == 2, drs[s + 1] == 2, drs[s + 4] == 2),
+                        axs[s + 2] == axs[s + 3],
+                        his[s + 2] != his[s + 3],
+                        drs[s + 2] == drs[s + 3],
+                        drs[s + 2] == 2,
+                    ),
+                    z3.Not(
+                        z3.Or(
+                            z3.And(
+                                z3.Or(drs[s + 1] == 2, drs[s + 4] == 2),
+                                drs[s] == 1,
+                            ),
+                            z3.And(drs[s] == 2, drs[s + 1] == 1),
+                        )
+                    ),
+                )
+            )
+
     def ban_move_sequence(ms: MoveSeq):
         """Return conditions of a move sequence not being allowed."""
         return z3.And(
