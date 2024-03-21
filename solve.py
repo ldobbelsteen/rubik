@@ -412,7 +412,6 @@ def solve_for_k(
     solve_start = datetime.now()
     res = solver.check()
     solve_time = datetime.now() - solve_start
-    moves: MoveSeq | None = None
 
     if res == z3.sat:
         model = solver.model()
@@ -424,9 +423,11 @@ def solve_for_k(
             )
             for s in range(k)
         )
-        assert len(moves) == k
-
-    return moves, prep_time, solve_time
+        return moves, prep_time, solve_time
+    elif res == z3.unsat:
+        return None, prep_time, solve_time
+    else:
+        raise Exception(f"unexpected solver result: {res}")
 
 
 def solve(
