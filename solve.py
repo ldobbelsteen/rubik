@@ -69,12 +69,10 @@ def solve_for_k(
         ).solver()
     else:
         # Use quantifier-free finite domain solver.
-        solver = z3.Then(
-            "simplify",
-            "solve-eqs",
-            "aig",
-            "pqffd",
-        ).solver()
+        tactics = ["simplify", "solve-eqs", "aig", "pqffd"]
+        if move_stacking:
+            tactics.remove("aig")  # incompatible with move stacking
+        solver = z3.Then(*tactics).solver()
 
     # Nested lists representing the cube at each state.
     corners = [

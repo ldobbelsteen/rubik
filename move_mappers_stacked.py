@@ -4,9 +4,9 @@ import move_mappers_flat
 
 
 def z3_corner_x_hi(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -29,9 +29,9 @@ def z3_corner_x_hi(
 
 
 def z3_corner_y_hi(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -54,9 +54,9 @@ def z3_corner_y_hi(
 
 
 def z3_corner_z_hi(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -79,11 +79,11 @@ def z3_corner_z_hi(
 
 
 def z3_corner_r(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
-    r: z3.ArithRef,
-    cw: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
+    r: z3.ArithRef | z3.ExprRef,
+    cw: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -105,10 +105,10 @@ def z3_corner_r(
 
 
 def z3_corner_cw(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
-    cw: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
+    cw: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -132,9 +132,9 @@ def z3_corner_cw(
 
 
 def z3_edge_a(
-    a: z3.ArithRef,
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
+    a: z3.ArithRef | z3.ExprRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -155,9 +155,9 @@ def z3_edge_a(
 
 
 def z3_edge_x_hi(
-    a: z3.ArithRef,
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
+    a: z3.ArithRef | z3.ExprRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -178,9 +178,9 @@ def z3_edge_x_hi(
 
 
 def z3_edge_y_hi(
-    a: z3.ArithRef,
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
+    a: z3.ArithRef | z3.ExprRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],
@@ -201,10 +201,10 @@ def z3_edge_y_hi(
 
 
 def z3_edge_r(
-    a: z3.ArithRef,
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    r: z3.BoolRef,
+    a: z3.ArithRef | z3.ExprRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    r: z3.BoolRef | z3.ExprRef,
     axs: list[z3.ArithRef],
     his: list[z3.BoolRef],
     drs: list[z3.ArithRef],

@@ -2,13 +2,13 @@ import z3
 
 
 def z3_corner_x_hi(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     return z3.If(
         z3.And(ax == 1, hi == y_hi),
         z3.If(
@@ -29,13 +29,13 @@ def z3_corner_x_hi(
 
 
 def z3_corner_y_hi(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     return z3.If(
         z3.And(ax == 0, hi == x_hi),
         z3.If(
@@ -56,13 +56,13 @@ def z3_corner_y_hi(
 
 
 def z3_corner_z_hi(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     return z3.If(
         z3.And(ax == 0, hi == x_hi),
         z3.If(
@@ -83,14 +83,14 @@ def z3_corner_z_hi(
 
 
 def z3_corner_r(
-    x_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
-    r: z3.ArithRef,
-    cw: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
+    r: z3.ArithRef | z3.ExprRef,
+    cw: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     # Condition for next == (r + 1) % 3
     add_one = z3.If(r == 0, 1, z3.If(r == 1, 2, 0))
 
@@ -113,14 +113,14 @@ def z3_corner_r(
 
 
 def z3_corner_cw(
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
-    z_hi: z3.BoolRef,
-    cw: z3.BoolRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
+    z_hi: z3.BoolRef | z3.ExprRef,
+    cw: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     return z3.If(
         z3.And(
             dr != 2,
@@ -136,13 +136,13 @@ def z3_corner_cw(
 
 
 def z3_edge_a(
-    a: z3.ArithRef,
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
+    a: z3.ArithRef | z3.ExprRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     return z3.If(
         dr != 2,
         z3.If(
@@ -171,13 +171,13 @@ def z3_edge_a(
 
 
 def z3_edge_x_hi(
-    a: z3.ArithRef,
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
+    a: z3.ArithRef | z3.ExprRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     return z3.If(
         a == 0,
         z3.If(
@@ -206,13 +206,13 @@ def z3_edge_x_hi(
 
 
 def z3_edge_y_hi(
-    a: z3.ArithRef,
-    x_hi: z3.BoolRef,
-    y_hi: z3.BoolRef,
+    a: z3.ArithRef | z3.ExprRef,
+    x_hi: z3.BoolRef | z3.ExprRef,
+    y_hi: z3.BoolRef | z3.ExprRef,
     ax: z3.ArithRef,
     hi: z3.BoolRef,
     dr: z3.ArithRef,
-):
+) -> z3.ExprRef:
     return z3.If(
         z3.And(a == 0, ax == 2, hi == x_hi),
         z3.If(dr == 2, z3.Not(y_hi), x_hi),
@@ -240,7 +240,11 @@ def z3_edge_y_hi(
     )
 
 
-def z3_edge_r(a: z3.ArithRef, next_a: z3.ArithRef, r: z3.BoolRef):
+def z3_edge_r(
+    a: z3.ArithRef | z3.ExprRef,
+    next_a: z3.ArithRef | z3.ExprRef,
+    r: z3.BoolRef | z3.ExprRef,
+) -> z3.ExprRef:
     return z3.If(
         z3.Or(z3.And(a == 0, next_a == 1), z3.And(a == 1, next_a == 0)),
         z3.Not(r),
