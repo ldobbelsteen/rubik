@@ -92,10 +92,12 @@ class Testing(unittest.TestCase):
 
     def test_solution_correctness(self):
         """Check whether a randomized puzzle is solvable."""
+        config = SolveConfig()
+        config.print_info = False
         for n in [2, 3]:
             for randomizations in range(5):
                 puzzle = generate_random(n, randomizations, False)
-                stats = solve(puzzle, SolveConfig(), randomizations)
+                stats = solve(puzzle, config, randomizations)
                 self.assertIsNotNone(stats.solution)
 
                 # The solution should be an actual solution
