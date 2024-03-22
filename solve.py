@@ -69,8 +69,10 @@ def solve_for_k(
     else:
         # Use quantifier-free finite domain solver.
         tactics = ["simplify", "solve-eqs", "aig", "pqffd"]
-        if config.move_stacking:
-            tactics.remove("aig")  # incompatible with move stacking
+        if config.move_size > 1:
+            # Incompatible with the flat move mappers, which are used by the stacked
+            # move mappers, which in turn are used with move sizes larger than one.
+            tactics.remove("aig")
         solver = z3.Then(*tactics).solver()
 
     # Nested lists representing the cube at each state.
@@ -135,13 +137,21 @@ def solve_for_k(
 
     # Restrict cubie states according to moves.
     for s in range(k):
-        move_stacking_single = k % 2 == 1 and s == (k - 1)
+        if s % config.move_size != 0:
+            continue
+        move_size = min(k - s, config.move_size)
 
         # Add restrictions for the corner cubies.
         for i, (x_hi, y_hi, z_hi, r, cw) in enumerate(corners[s]):
-            if not config.move_stacking or move_stacking_single:
+            if move_size == 1:
                 ax, hi, dr = axs[s], his[s], drs[s]
-                next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 1][i]
+                (
+                    next_x_hi,
+                    next_y_hi,
+                    next_z_hi,
+                    next_r,
+                    next_cw,
+                ) = corners[s + 1][i]
                 solver.add(
                     move_mappers.z3_corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_x_hi)
                 )
@@ -157,45 +167,60 @@ def solve_for_k(
                 solver.add(
                     move_mappers.z3_corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr, next_cw)
                 )
-            elif s % 2 == 0:
-                next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 2][i]
-                ax2, hi2, dr2 = axs[s : s + 2], his[s : s + 2], drs[s : s + 2]
+            else:
+                (
+                    next_x_hi,
+                    next_y_hi,
+                    next_z_hi,
+                    next_r,
+                    next_cw,
+                ) = corners[s + move_size][i]
+                axl, hil, drl = (
+                    axs[s : s + move_size],
+                    his[s : s + move_size],
+                    drs[s : s + move_size],
+                )
                 solver.add(
                     next_x_hi
                     == move_mappers_stacked.z3_corner_x_hi(
-                        x_hi, y_hi, z_hi, ax2, hi2, dr2
+                        x_hi, y_hi, z_hi, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_y_hi
                     == move_mappers_stacked.z3_corner_y_hi(
-                        x_hi, y_hi, z_hi, ax2, hi2, dr2
+                        x_hi, y_hi, z_hi, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_z_hi
                     == move_mappers_stacked.z3_corner_z_hi(
-                        x_hi, y_hi, z_hi, ax2, hi2, dr2
+                        x_hi, y_hi, z_hi, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_r
                     == move_mappers_stacked.z3_corner_r(
-                        x_hi, y_hi, z_hi, r, cw, ax2, hi2, dr2
+                        x_hi, y_hi, z_hi, r, cw, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_cw
                     == move_mappers_stacked.z3_corner_cw(
-                        x_hi, y_hi, z_hi, cw, ax2, hi2, dr2
+                        x_hi, y_hi, z_hi, cw, axl, hil, drl
                     )
                 )
 
         # Add restrictions for the edge cubies.
         for i, (a, x_hi, y_hi, r) in enumerate(edges[s]):
-            if not config.move_stacking or move_stacking_single:
+            if move_size == 1:
                 ax, hi, dr = axs[s], his[s], drs[s]
-                next_a, next_x_hi, next_y_hi, next_r = edges[s + 1][i]
+                (
+                    next_a,
+                    next_x_hi,
+                    next_y_hi,
+                    next_r,
+                ) = edges[s + 1][i]
                 solver.add(move_mappers.z3_edge_a(a, x_hi, y_hi, ax, hi, dr, next_a))
                 solver.add(
                     move_mappers.z3_edge_x_hi(a, x_hi, y_hi, ax, hi, dr, next_x_hi)
@@ -204,24 +229,33 @@ def solve_for_k(
                     move_mappers.z3_edge_y_hi(a, x_hi, y_hi, ax, hi, dr, next_y_hi)
                 )
                 solver.add(move_mappers.z3_edge_r(a, next_a, r, next_r))
-            elif s % 2 == 0:
-                next_a, next_x_hi, next_y_hi, next_r = edges[s + 2][i]
-                ax2, hi2, dr2 = axs[s : s + 2], his[s : s + 2], drs[s : s + 2]
+            else:
+                (
+                    next_a,
+                    next_x_hi,
+                    next_y_hi,
+                    next_r,
+                ) = edges[s + move_size][i]
+                axl, hil, drl = (
+                    axs[s : s + move_size],
+                    his[s : s + move_size],
+                    drs[s : s + move_size],
+                )
                 solver.add(
                     next_a
-                    == move_mappers_stacked.z3_edge_a(a, x_hi, y_hi, ax2, hi2, dr2)
+                    == move_mappers_stacked.z3_edge_a(a, x_hi, y_hi, axl, hil, drl)
                 )
                 solver.add(
                     next_x_hi
-                    == move_mappers_stacked.z3_edge_x_hi(a, x_hi, y_hi, ax2, hi2, dr2)
+                    == move_mappers_stacked.z3_edge_x_hi(a, x_hi, y_hi, axl, hil, drl)
                 )
                 solver.add(
                     next_y_hi
-                    == move_mappers_stacked.z3_edge_y_hi(a, x_hi, y_hi, ax2, hi2, dr2)
+                    == move_mappers_stacked.z3_edge_y_hi(a, x_hi, y_hi, axl, hil, drl)
                 )
                 solver.add(
                     next_r
-                    == move_mappers_stacked.z3_edge_r(a, x_hi, y_hi, r, ax2, hi2, dr2)
+                    == move_mappers_stacked.z3_edge_r(a, x_hi, y_hi, r, axl, hil, drl)
                 )
 
     # Symmetric move filter #1
