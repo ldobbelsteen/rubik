@@ -217,13 +217,6 @@ def z3_edge_r(
     else:
         return move_mappers_flat.z3_edge_r(
             z3_edge_a(a, x_hi, y_hi, axs[:-1], his[:-1], drs[:-1]),
-            z3_edge_a(
-                z3_edge_a(a, x_hi, y_hi, axs[:-1], his[:-1], drs[:-1]),
-                z3_edge_x_hi(a, x_hi, y_hi, axs[:-1], his[:-1], drs[:-1]),
-                z3_edge_y_hi(a, x_hi, y_hi, axs[:-1], his[:-1], drs[:-1]),
-                axs[:-2],
-                his[:-2],
-                drs[:-2],
-            ),
+            z3_edge_a(a, x_hi, y_hi, axs, his, drs),
             z3_edge_r(a, x_hi, y_hi, r, axs[:-1], his[:-1], drs[:-1]),
         )
