@@ -431,18 +431,6 @@ def solve_for_k(
 
     if res == z3.sat:
         model = solver.model()
-        print(
-            [
-                sum([model.get_interp(r).as_long() for _, _, _, r, _ in corners[s]])
-                for s in range(k + 1)
-            ]
-        )
-        print(
-            [
-                sum([z3.is_true(model.get_interp(r)) for _, _, _, r in edges[s]])
-                for s in range(k + 1)
-            ]
-        )
         moves = tuple(
             (
                 model.get_interp(axs[s]).as_long(),
