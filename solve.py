@@ -69,7 +69,12 @@ def solve_for_k(
         ).solver()
     else:
         # Use quantifier-free finite domain solver.
-        tactics = ["simplify", "solve-eqs", "aig", "pqffd"]
+        tactics = [
+            "simplify",
+            "solve-eqs",
+            "aig",
+            "pqffd",
+        ]
         if config.move_size > 1:
             # Incompatible with the flat move mappers, which are used by the stacked
             # move mappers, which in turn are used with move sizes larger than one.
