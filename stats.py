@@ -68,6 +68,10 @@ class Stats:
 
         return result
 
+    @staticmethod
+    def path(puzzle_path: str):
+        return f"{puzzle_path}.stats"
+
     def write_to_file(self, puzzle_path: str):
-        with open(f"{puzzle_path}.stats", "w") as file:
+        with open(self.path(puzzle_path), "w") as file:
             file.write(json.dumps(self.to_dict(), indent=4))

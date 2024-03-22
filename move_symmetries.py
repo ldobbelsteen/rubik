@@ -14,7 +14,8 @@ from tools import create_parent_directory, print_stamped
 
 
 def file_path(n: int, d: int):
-    return f"./move_symmetries/n{n}-d{d}.txt"
+    dir = os.path.dirname(__file__)
+    return os.path.join(dir, f"/generated_move_symmetries/n{n}-d{d}.txt")
 
 
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
@@ -134,7 +135,7 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     return True
 
 
-def compute(n: int, max_d: int):
+def generate(n: int, max_d: int):
     moves = all_moves()
     finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
     paths: dict[Puzzle, MoveSeq] = {finished: tuple()}
@@ -220,7 +221,7 @@ def load(n: int, d: int) -> dict[MoveSeq, list[MoveSeq]]:
 
     path = file_path(n, d)
     if not os.path.isfile(path):
-        compute(n, d)
+        generate(n, d)
 
     result: dict[MoveSeq, list[MoveSeq]] = {}
     with open(path, "r") as file:
@@ -240,4 +241,4 @@ if __name__ == "__main__":
     parser.add_argument("n", type=int)
     parser.add_argument("d", type=int)
     args = parser.parse_args()
-    compute(args.n, args.d)
+    generate(args.n, args.d)

@@ -3,7 +3,7 @@ import itertools
 
 from PIL import Image, ImageDraw
 
-import move_mappers
+import move_mappers.default
 from tools import rotate_list
 
 CubicleCoords = tuple[int, int, int]  # (x, y, z)
@@ -306,23 +306,23 @@ def corner_mapping(corner: CornerState, move: Move) -> CornerState:
     x_hi, y_hi, z_hi, r, cw = corner
     ax, hi, dr = move
     return (
-        move_mappers.corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr),
-        move_mappers.corner_y_hi(x_hi, y_hi, z_hi, ax, hi, dr),
-        move_mappers.corner_z_hi(x_hi, y_hi, z_hi, ax, hi, dr),
-        move_mappers.corner_r(x_hi, z_hi, r, cw, ax, hi, dr),
-        move_mappers.corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr),
+        move_mappers.default.corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr),
+        move_mappers.default.corner_y_hi(x_hi, y_hi, z_hi, ax, hi, dr),
+        move_mappers.default.corner_z_hi(x_hi, y_hi, z_hi, ax, hi, dr),
+        move_mappers.default.corner_r(x_hi, z_hi, r, cw, ax, hi, dr),
+        move_mappers.default.corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr),
     )
 
 
 def edge_mapping(edge: EdgeState, move: Move) -> EdgeState:
     a, x_hi, y_hi, r = edge
     ax, hi, dr = move
-    next_a = move_mappers.edge_a(a, x_hi, y_hi, ax, hi, dr)
+    next_a = move_mappers.default.edge_a(a, x_hi, y_hi, ax, hi, dr)
     return (
         next_a,
-        move_mappers.edge_x_hi(a, x_hi, y_hi, ax, hi, dr),
-        move_mappers.edge_y_hi(a, x_hi, y_hi, ax, hi, dr),
-        move_mappers.edge_r(a, next_a, r),
+        move_mappers.default.edge_x_hi(a, x_hi, y_hi, ax, hi, dr),
+        move_mappers.default.edge_y_hi(a, x_hi, y_hi, ax, hi, dr),
+        move_mappers.default.edge_r(a, next_a, r),
     )
 
 

@@ -1,17 +1,18 @@
 import argparse
 import operator
+import os
 from datetime import datetime
 from functools import reduce
 
 import z3
 
-import move_mappers
-import move_mappers_stacked
-from move_symmetries import load
+import move_mappers.default
+import move_mappers.stacked
+import move_symmetries
 from puzzle import MoveSeq, Puzzle
 from solve_config import SolveConfig
 from stats import Stats
-from tools import gods_number, print_stamped
+from tools import gods_number, natural_sorted, print_stamped
 
 
 def z3_int(
@@ -153,19 +154,29 @@ def solve_for_k(
                     next_cw,
                 ) = corners[s + 1][i]
                 solver.add(
-                    move_mappers.z3_corner_x_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_x_hi)
+                    move_mappers.default.z3_corner_x_hi(
+                        x_hi, y_hi, z_hi, ax, hi, dr, next_x_hi
+                    )
                 )
                 solver.add(
-                    move_mappers.z3_corner_y_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_y_hi)
+                    move_mappers.default.z3_corner_y_hi(
+                        x_hi, y_hi, z_hi, ax, hi, dr, next_y_hi
+                    )
                 )
                 solver.add(
-                    move_mappers.z3_corner_z_hi(x_hi, y_hi, z_hi, ax, hi, dr, next_z_hi)
+                    move_mappers.default.z3_corner_z_hi(
+                        x_hi, y_hi, z_hi, ax, hi, dr, next_z_hi
+                    )
                 )
                 solver.add(
-                    move_mappers.z3_corner_r(x_hi, z_hi, r, cw, ax, hi, dr, next_r)
+                    move_mappers.default.z3_corner_r(
+                        x_hi, z_hi, r, cw, ax, hi, dr, next_r
+                    )
                 )
                 solver.add(
-                    move_mappers.z3_corner_cw(x_hi, y_hi, z_hi, cw, ax, hi, dr, next_cw)
+                    move_mappers.default.z3_corner_cw(
+                        x_hi, y_hi, z_hi, cw, ax, hi, dr, next_cw
+                    )
                 )
             else:
                 (
@@ -182,31 +193,31 @@ def solve_for_k(
                 )
                 solver.add(
                     next_x_hi
-                    == move_mappers_stacked.z3_corner_x_hi(
+                    == move_mappers.stacked.z3_corner_x_hi(
                         x_hi, y_hi, z_hi, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_y_hi
-                    == move_mappers_stacked.z3_corner_y_hi(
+                    == move_mappers.stacked.z3_corner_y_hi(
                         x_hi, y_hi, z_hi, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_z_hi
-                    == move_mappers_stacked.z3_corner_z_hi(
+                    == move_mappers.stacked.z3_corner_z_hi(
                         x_hi, y_hi, z_hi, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_r
-                    == move_mappers_stacked.z3_corner_r(
+                    == move_mappers.stacked.z3_corner_r(
                         x_hi, y_hi, z_hi, r, cw, axl, hil, drl
                     )
                 )
                 solver.add(
                     next_cw
-                    == move_mappers_stacked.z3_corner_cw(
+                    == move_mappers.stacked.z3_corner_cw(
                         x_hi, y_hi, z_hi, cw, axl, hil, drl
                     )
                 )
@@ -221,14 +232,20 @@ def solve_for_k(
                     next_y_hi,
                     next_r,
                 ) = edges[s + 1][i]
-                solver.add(move_mappers.z3_edge_a(a, x_hi, y_hi, ax, hi, dr, next_a))
                 solver.add(
-                    move_mappers.z3_edge_x_hi(a, x_hi, y_hi, ax, hi, dr, next_x_hi)
+                    move_mappers.default.z3_edge_a(a, x_hi, y_hi, ax, hi, dr, next_a)
                 )
                 solver.add(
-                    move_mappers.z3_edge_y_hi(a, x_hi, y_hi, ax, hi, dr, next_y_hi)
+                    move_mappers.default.z3_edge_x_hi(
+                        a, x_hi, y_hi, ax, hi, dr, next_x_hi
+                    )
                 )
-                solver.add(move_mappers.z3_edge_r(a, next_a, r, next_r))
+                solver.add(
+                    move_mappers.default.z3_edge_y_hi(
+                        a, x_hi, y_hi, ax, hi, dr, next_y_hi
+                    )
+                )
+                solver.add(move_mappers.default.z3_edge_r(a, next_a, r, next_r))
             else:
                 (
                     next_a,
@@ -243,19 +260,19 @@ def solve_for_k(
                 )
                 solver.add(
                     next_a
-                    == move_mappers_stacked.z3_edge_a(a, x_hi, y_hi, axl, hil, drl)
+                    == move_mappers.stacked.z3_edge_a(a, x_hi, y_hi, axl, hil, drl)
                 )
                 solver.add(
                     next_x_hi
-                    == move_mappers_stacked.z3_edge_x_hi(a, x_hi, y_hi, axl, hil, drl)
+                    == move_mappers.stacked.z3_edge_x_hi(a, x_hi, y_hi, axl, hil, drl)
                 )
                 solver.add(
                     next_y_hi
-                    == move_mappers_stacked.z3_edge_y_hi(a, x_hi, y_hi, axl, hil, drl)
+                    == move_mappers.stacked.z3_edge_y_hi(a, x_hi, y_hi, axl, hil, drl)
                 )
                 solver.add(
                     next_r
-                    == move_mappers_stacked.z3_edge_r(a, x_hi, y_hi, r, axl, hil, drl)
+                    == move_mappers.stacked.z3_edge_r(a, x_hi, y_hi, r, axl, hil, drl)
                 )
 
     # Symmetric move filter #1
@@ -435,7 +452,7 @@ def solve_for_k(
         solver.add(ban_move_sequence(b))
 
     # Ban computed symmetric move sequences up to the specified depth.
-    for _, syms in load(n, config.symmetric_move_ban_depth).items():
+    for _, syms in move_symmetries.load(n, config.symmetric_move_ban_depth).items():
         for sym in syms:
             solver.add(ban_move_sequence(sym))
 
@@ -521,11 +538,47 @@ def solve(
     return stats
 
 
+def solve_file(file: str, config: SolveConfig):
+    puzzle = Puzzle.from_file(file)
+
+    # Remove any existing stats file.
+    stats_path = Stats.path(file)
+    if os.path.isfile(stats_path):
+        os.remove(stats_path)
+
+    stats = solve(puzzle, config)
+    stats.write_to_file(file)
+
+
+def solve_dir(dir: str, config: SolveConfig):
+    puzzle_paths: list[str] = []
+    for filename in os.listdir(dir):
+        path = os.path.join(dir, filename)
+        if os.path.isfile(path) and path.endswith(".txt"):
+            puzzle_paths.append(path)
+    puzzle_paths = natural_sorted(puzzle_paths)
+
+    # Remove existing stats files.
+    for path in puzzle_paths:
+        stats_path = Stats.path(path)
+        if os.path.isfile(stats_path):
+            os.remove(stats_path)
+
+    # Solve the puzzles.
+    for path in puzzle_paths:
+        if config.print_info:
+            print_stamped(f"solving '{path}'")
+        puzzle = Puzzle.from_file(path)
+        stats = solve(puzzle, config)
+        stats.write_to_file(path)
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
     args = parser.parse_args()
 
-    puzzle = Puzzle.from_file(args.path)
-    stats = solve(puzzle, SolveConfig())
-    stats.write_to_file(args.path)
+    if os.path.isdir(args.path):
+        solve_dir(args.path, SolveConfig())
+    else:
+        solve_file(args.path, SolveConfig())
