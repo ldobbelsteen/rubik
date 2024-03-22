@@ -507,7 +507,8 @@ def solve(
     config: SolveConfig,
     k_upperbound: int | None = None,
 ) -> Stats:
-    """Compute the optimal solution for a puzzle within an upperbound."""
+    """Compute the optimal solution for a puzzle within an upperbound for the number
+    of moves. If no upperbound is given, God's number is used."""
     if k_upperbound is None:
         k_upperbound = gods_number(puzzle.n)
 
