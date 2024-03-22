@@ -9,7 +9,7 @@ import z3
 import move_mappers.default
 import move_mappers.stacked
 import move_symmetries
-from puzzle import MoveSeq, Puzzle
+from puzzle import MoveSeq, Puzzle, move_name
 from solve_config import SolveConfig
 from stats import Stats
 from tools import gods_number, natural_sorted, print_stamped
@@ -510,7 +510,6 @@ def solve(
 
     for k in range(k_upperbound + 1):
         solution, prep_time, solve_time = solve_for_k(puzzle, k, config)
-
         stats.register_solution(k, solution, prep_time, solve_time)
 
         if solution is None:
@@ -525,14 +524,23 @@ def solve(
                 )
             break
 
-    if config.print_info:
-        if stats.solution is None:
+    if stats.solution is None:
+        if config.print_info:
             print_stamped(
                 f"foud no k ≤ {stats.k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
-        else:
+    else:
+        if config.print_info:
             print_stamped(
                 f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
+            )
+
+        for move in stats.solution:
+            puzzle = puzzle.execute_move(move)
+        if puzzle != Puzzle.finished(puzzle.n, puzzle.center_colors):
+            solution_canon = ", ".join([move_name(m) for m in stats.solution])
+            raise Exception(
+                f"found solution that is not actual solution: {solution_canon}"
             )
 
     return stats
