@@ -1,6 +1,7 @@
 import argparse
+import operator
 from datetime import datetime
-from multiprocessing import cpu_count
+from functools import reduce
 
 import z3
 
@@ -8,6 +9,7 @@ import move_mappers
 import move_mappers_stacked
 from move_symmetries import load
 from puzzle import MoveSeq, Puzzle
+from solve_config import SolveConfig
 from stats import Stats
 from tools import gods_number, print_stamped
 
@@ -25,10 +27,7 @@ def z3_int(
 def solve_for_k(
     puzzle: Puzzle,
     k: int,
-    max_threads: int,
-    sat_solver: bool,
-    move_stacking: bool,
-    sym_move_depth: int,
+    config: SolveConfig,
     banned: list[MoveSeq] = [],
 ):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
@@ -40,9 +39,9 @@ def solve_for_k(
 
     # Configure Z3.
     z3.set_param("parallel.enable", True)
-    z3.set_param("parallel.threads.max", max_threads)
+    z3.set_param("parallel.threads.max", config.max_solver_threads)
 
-    if sat_solver:
+    if config.use_sat_solver:
         # Boil down to SAT and use SAT solver.
         solver = z3.Then(
             z3.Repeat(
@@ -70,7 +69,7 @@ def solve_for_k(
     else:
         # Use quantifier-free finite domain solver.
         tactics = ["simplify", "solve-eqs", "aig", "pqffd"]
-        if move_stacking:
+        if config.move_stacking:
             tactics.remove("aig")  # incompatible with move stacking
         solver = z3.Then(*tactics).solver()
 
@@ -140,7 +139,7 @@ def solve_for_k(
 
         # Add restrictions for the corner cubies.
         for i, (x_hi, y_hi, z_hi, r, cw) in enumerate(corners[s]):
-            if not move_stacking or move_stacking_single:
+            if not config.move_stacking or move_stacking_single:
                 ax, hi, dr = axs[s], his[s], drs[s]
                 next_x_hi, next_y_hi, next_z_hi, next_r, next_cw = corners[s + 1][i]
                 solver.add(
@@ -194,7 +193,7 @@ def solve_for_k(
 
         # Add restrictions for the edge cubies.
         for i, (a, x_hi, y_hi, r) in enumerate(edges[s]):
-            if not move_stacking or move_stacking_single:
+            if not config.move_stacking or move_stacking_single:
                 ax, hi, dr = axs[s], his[s], drs[s]
                 next_a, next_x_hi, next_y_hi, next_r = edges[s + 1][i]
                 solver.add(move_mappers.z3_edge_a(a, x_hi, y_hi, ax, hi, dr, next_a))
@@ -402,7 +401,7 @@ def solve_for_k(
         solver.add(ban_move_sequence(b))
 
     # Ban computed symmetric move sequences up to the specified depth.
-    for _, syms in load(n, sym_move_depth).items():
+    for _, syms in load(n, config.symmetric_move_ban_depth).items():
         for sym in syms:
             solver.add(ban_move_sequence(sym))
 
@@ -411,16 +410,18 @@ def solve_for_k(
         for s2 in range(s1 + 1, k + 1):
             solver.add(z3.Not(z3.And(identical_states(s1, s2))))
 
-    # # Theorem 11.1a: sum x_i = 0 mod 3
-    # for s in range(k + 1):
-    #     corner_sum = reduce(operator.add, [r for _, _, _, r, _ in corners[s]])
-    #     solver.add(corner_sum % 3 == 0)
+    # Theorem 11.1a: sum x_i = 0 mod 3
+    if config.apply_theorem_11a:
+        for s in range(k + 1):
+            corner_sum = reduce(operator.add, [r for _, _, _, r, _ in corners[s]])
+            solver.add(corner_sum % 3 == 0)
 
-    # # Theorem 11.1b: sum y_i = 0 mod 2
-    # for s in range(k + 1):
-    #     if len(edges[s]) > 0:
-    #         edge_sum = reduce(operator.add, [r for _, _, _, r in edges[s]])
-    #         solver.add(edge_sum % 2 == 0)
+    # Theorem 11.1b: sum y_i = 0 mod 2
+    if config.apply_theorem_11b:
+        for s in range(k + 1):
+            if len(edges[s]) > 0:
+                edge_sum = reduce(operator.add, [r for _, _, _, r in edges[s]])
+                solver.add(edge_sum % 2 == 0)
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
@@ -430,6 +431,18 @@ def solve_for_k(
 
     if res == z3.sat:
         model = solver.model()
+        print(
+            [
+                sum([model.get_interp(r).as_long() for _, _, _, r, _ in corners[s]])
+                for s in range(k + 1)
+            ]
+        )
+        print(
+            [
+                sum([z3.is_true(model.get_interp(r)) for _, _, _, r in edges[s]])
+                for s in range(k + 1)
+            ]
+        )
         moves = tuple(
             (
                 model.get_interp(axs[s]).as_long(),
@@ -447,41 +460,33 @@ def solve_for_k(
 
 def solve(
     puzzle: Puzzle,
-    k_upperbound: int,
-    max_threads: int,
-    sat_solver: bool,
-    move_stacking: bool,
-    sym_move_depth: int,
-    print_info: bool,
+    config: SolveConfig,
+    k_upperbound: int | None = None,
 ) -> Stats:
     """Compute the optimal solution for a puzzle within an upperbound."""
-    stats = Stats(max_threads, k_upperbound)
+    if k_upperbound is None:
+        k_upperbound = gods_number(puzzle.n)
+
+    stats = Stats(config.max_solver_threads, k_upperbound)
 
     for k in range(k_upperbound + 1):
-        solution, prep_time, solve_time = solve_for_k(
-            puzzle,
-            k,
-            max_threads,
-            sat_solver,
-            move_stacking,
-            sym_move_depth,
-        )
+        solution, prep_time, solve_time = solve_for_k(puzzle, k, config)
 
         stats.register_solution(k, solution, prep_time, solve_time)
 
         if solution is None:
-            if print_info:
+            if config.print_info:
                 print_stamped(
                     f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep"
                 )
         else:
-            if print_info:
+            if config.print_info:
                 print_stamped(
                     f"k = {k}: SAT found in {solve_time} with {prep_time} prep"
                 )
             break
 
-    if print_info:
+    if config.print_info:
         if stats.solution is None:
             print_stamped(
                 f"foud no k ≤ {stats.k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
@@ -497,22 +502,8 @@ def solve(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("path", type=str)
-    parser.add_argument("--move-stacking", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--sat-solver", action=argparse.BooleanOptionalAction)
-    parser.add_argument("--sym-moves-dep", default=0, type=int)
-    parser.add_argument("--max-threads", default=cpu_count() - 1, type=int)
-    parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
     puzzle = Puzzle.from_file(args.path)
-    stats = solve(
-        puzzle,
-        gods_number(puzzle.n),
-        args.max_threads,
-        args.sat_solver,
-        args.move_stacking,
-        args.sym_moves_dep,
-        True,
-    )
-    if not args.disable_stats_file:
-        stats.write_to_file(args.path)
+    stats = solve(puzzle, SolveConfig())
+    stats.write_to_file(args.path)

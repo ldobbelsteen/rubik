@@ -16,6 +16,7 @@ from puzzle import (
     inverse_move,
 )
 from solve import solve
+from solve_config import SolveConfig
 
 
 class Testing(unittest.TestCase):
@@ -94,7 +95,7 @@ class Testing(unittest.TestCase):
         for n in [2, 3]:
             for randomizations in range(5):
                 puzzle = generate_random(n, randomizations, False)
-                stats = solve(puzzle, randomizations, 1, False, False, 0, False)
+                stats = solve(puzzle, SolveConfig(), randomizations)
                 self.assertIsNotNone(stats.solution)
 
                 # The solution should be an actual solution
