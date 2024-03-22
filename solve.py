@@ -540,12 +540,6 @@ def solve(
 
 def solve_file(file: str, config: SolveConfig):
     puzzle = Puzzle.from_file(file)
-
-    # Remove any existing stats file.
-    stats_path = Stats.path(file)
-    if os.path.isfile(stats_path):
-        os.remove(stats_path)
-
     stats = solve(puzzle, config)
     stats.write_to_file(file)
 
@@ -557,12 +551,6 @@ def solve_dir(dir: str, config: SolveConfig):
         if os.path.isfile(path) and path.endswith(".txt"):
             puzzle_paths.append(path)
     puzzle_paths = natural_sorted(puzzle_paths)
-
-    # Remove existing stats files.
-    for path in puzzle_paths:
-        stats_path = Stats.path(path)
-        if os.path.isfile(stats_path):
-            os.remove(stats_path)
 
     # Solve the puzzles.
     for path in puzzle_paths:
