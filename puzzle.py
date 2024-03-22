@@ -115,6 +115,10 @@ def move_name(move: Move) -> str:
     raise Exception(f"invalid move: {move}")
 
 
+def move_names(seq: MoveSeq):
+    return tuple(move_name(m) for m in seq)
+
+
 def parse_move(canonical_name: str) -> Move:
     """Convert a canonical move name to its internal representation."""
     assert len(canonical_name) == 2

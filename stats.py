@@ -1,7 +1,7 @@
 import json
 from datetime import timedelta
 
-from puzzle import MoveSeq, move_name
+from puzzle import MoveSeq, move_names
 
 
 class Stats:
@@ -50,14 +50,14 @@ class Stats:
             )
 
     def to_dict(self):
-        result: dict[str, str | int | list[str] | dict[int, str]] = {}
+        result: dict[str, str | int | dict[int, str] | tuple[str, ...]] = {}
 
         k = self.k()
         if k:
             result["k"] = k
 
         if self.solution is not None:
-            result["moves"] = [move_name(move) for move in self.solution]
+            result["moves"] = move_names(self.solution)
 
         result["total_prep_time"] = str(self.total_prep_time())
         result["total_solve_time"] = str(self.total_solve_time())

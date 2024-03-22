@@ -9,10 +9,11 @@ import z3
 import move_mappers.default
 import move_mappers.stacked
 import move_symmetries
-from puzzle import MoveSeq, Puzzle, move_name
+from puzzle import MoveSeq, Puzzle
 from solve_config import SolveConfig
 from stats import Stats
 from tools import gods_number, natural_sorted, print_stamped
+from validation import validate_solution
 
 
 def z3_int(
@@ -536,17 +537,10 @@ def solve(
                 f"foud no k ≤ {stats.k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
     else:
+        validate_solution(puzzle, stats.solution)
         if config.print_info:
             print_stamped(
                 f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
-            )
-
-        for move in stats.solution:
-            puzzle = puzzle.execute_move(move)
-        if puzzle != Puzzle.finished(puzzle.n, puzzle.center_colors):
-            solution_canon = ", ".join([move_name(m) for m in stats.solution])
-            raise Exception(
-                f"found solution that is not actual solution: {solution_canon}"
             )
 
     return stats

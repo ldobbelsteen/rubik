@@ -7,7 +7,7 @@ from puzzle import (
     MoveSeq,
     Puzzle,
     all_moves,
-    move_name,
+    move_names,
     parse_move,
 )
 from tools import create_parent_directory, print_stamped
@@ -187,7 +187,7 @@ def generate(n: int, max_d: int):
         # Check whether the filtered out move sequences' states are still reachable.
         for state, seqs in filtered.items():
             if state not in paths:
-                canon = [tuple([move_name(m) for m in seq]) for seq in seqs]
+                canon = [move_names(seq) for seq in seqs]
                 raise Exception(
                     f"following sequences should not all have been filtered:\n{canon}"
                 )
@@ -205,8 +205,8 @@ def generate(n: int, max_d: int):
         output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
         with open(path, "w") as file:
             for seq, syms in output:
-                seq_canon = tuple([move_name(s) for s in seq])
-                syms_canon = [tuple([move_name(s) for s in seq]) for seq in syms]
+                seq_canon = move_names(seq)
+                syms_canon = [move_names(seq) for seq in syms]
                 file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
 
         fil = sum(len(s) for s in filtered.values())
