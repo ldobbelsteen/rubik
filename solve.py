@@ -45,42 +45,48 @@ def solve_for_k(
 
     if config.use_sat_solver:
         # Boil down to SAT and use SAT solver.
-        solver = z3.Then(
-            z3.Repeat(
-                z3.Then(
-                    "normalize-bounds",  # medium good impact
-                    "purify-arith",  # small good impact
-                    "solve-eqs",  # small good impact
-                    # "lia2pb",  # large bad impact
-                    "lia2card",  # necessary
-                    # "elim-term-ite",  # no impact
-                    # "blast-term-ite",  # no impact
-                    # "card2bv",  # medium bad impact
-                    # "propagate-bv-bounds",  # no impact
-                    # "bit-blast",  # tiny bad impact
-                    "simplify",  # medium good impact
-                    # "eq2bv",  # medium bad impact
-                    # "dom-simplify",  # small bad impact
-                    # "pb2bv",  # small bad impact
-                )
-            ),
-            # "aig",  # medium bad impact (repeat causes non-termination)
-            # z3.Repeat("sat-preprocess"),  # large bad impact
-            "psat",
-        ).solver()
+        # NOTE: while UNSAT is equally as fast as the qffd solver, SAT is way slower
+        tactics = [
+            "normalize-bounds",
+            "purify-arith",
+            # "elim-term-ite",  # fails
+            # "blast-term-ite",  # big negative impact
+            "solve-eqs",
+            "simplify",
+            "dom-simplify",
+            # "lia2pb",
+            "lia2card",
+            # "simplify",
+            # "eq2bv",
+            # "pb2bv",
+            "card2bv",
+            "propagate-bv-bounds",
+            "bit-blast",
+            # "aig",
+            "sat-preprocess",
+        ]
+        solver = z3.Then(*tactics, "psat").solver()
     else:
         # Use quantifier-free finite domain solver.
         tactics = [
-            "simplify",
-            "solve-eqs",
-            "aig",
-            "pqffd",
+            "normalize-bounds",  # medium positive impact
+            "purify-arith",  # tiny positive impact (could be variance)
+            # "elim-term-ite",  # fails
+            # "blast-term-ite",  # big negative impact
+            "solve-eqs",  # medium positive impact
+            "simplify",  # small positive impact
+            "dom-simplify",  # small positive impact
+            # "lia2pb",  # medium negative impact
+            "lia2card",  # small positive impact
+            # "eq2bv",  # big negative impact
+            # "pb2bv",  # medium negative impact
+            # "card2bv",  # big negative impact
+            # "propagate-bv-bounds",  # no impact
+            # "bit-blast",  # tiny negative impact (could be variance)
+            # "aig",  # big negative impact
+            # "sat-preprocess",  # big negative impact
         ]
-        if config.move_size > 1:
-            # Incompatible with the flat move mappers, which are used by the stacked
-            # move mappers, which in turn are used with move sizes larger than one.
-            tactics.remove("aig")
-        solver = z3.Then(*tactics).solver()
+        solver = z3.Then(*tactics, "pqffd").solver()
 
     # Nested lists representing the cube at each state.
     corners = [
