@@ -67,7 +67,9 @@ def solve_for_k(
         solver = z3.Then(*tactics, "psat").solver()
     else:
         # Use quantifier-free finite domain solver.
-        # TODO: it seems SAT results returned are not always invalid
+        # TODO: it seems SAT results returned are not always valid. It does not seem
+        # to do with the specific tactics used, but rather with the QF_FD solver (since
+        # running it on just z3.SolverFor("QF_FD") also fails for some puzzles).
         tactics = [
             "normalize-bounds",  # medium positive impact
             "purify-arith",  # tiny positive impact (could be variance)
