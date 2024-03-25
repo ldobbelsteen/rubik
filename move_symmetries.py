@@ -15,7 +15,7 @@ from tools import create_parent_directory, print_stamped
 
 def file_path(n: int, d: int):
     dir = os.path.dirname(__file__)
-    return os.path.join(dir, f"/generated_move_symmetries/n{n}-d{d}.txt")
+    return os.path.join(dir, f"./generated_move_symmetries/n{n}-d{d}.txt")
 
 
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
