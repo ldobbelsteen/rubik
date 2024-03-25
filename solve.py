@@ -45,7 +45,6 @@ def solve_for_k(
 
     if config.use_sat_solver:
         # Boil down to SAT and use SAT solver.
-        # NOTE: while UNSAT is equally as fast as the qffd solver, SAT is way slower
         tactics = [
             "normalize-bounds",
             "purify-arith",
@@ -68,6 +67,7 @@ def solve_for_k(
         solver = z3.Then(*tactics, "psat").solver()
     else:
         # Use quantifier-free finite domain solver.
+        # TODO: it seems SAT results returned are not always invalid
         tactics = [
             "normalize-bounds",  # medium positive impact
             "purify-arith",  # tiny positive impact (could be variance)
