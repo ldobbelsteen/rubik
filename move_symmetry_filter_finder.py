@@ -224,6 +224,7 @@ def find(n: int, d: int):
 
     # Prevent the unique moves from being filtered out.
     unique = move_symmetries.load_unique(n, d, False)
+    print_stamped("ingesting unique move sequences, this might be slow...")
     for i, seq in enumerate(unique):
         solver.add(z3.Not(is_filtered(seq)))
         if i != 0 and i % int(len(unique) / 100) == 0:
