@@ -1,14 +1,43 @@
-from move_symmetries import allowed_by_filters
-from puzzle import MoveSeq, Puzzle, move_names
+from puzzle import DEFAULT_CENTER_COLORS, MoveSeq, Puzzle, all_moves, move_names
+from solve import solve_for_k
+from solve_config import SolveConfig
+from tools import print_stamped
 
 
-def validate_solution(puzzle: Puzzle, solution: MoveSeq):
-    canon = move_names(solution)
+def validate_random_move_solvability_rec(
+    config: SolveConfig,
+    puzzle: Puzzle,
+    moves: MoveSeq,
+    max_d: int,
+):
+    for k in range(len(moves) + 1):
+        sol, _, _ = solve_for_k(puzzle, k, config)
+        if sol is not None:
+            break
+    else:
+        raise Exception(f"not solvable after: {move_names(moves)}")
+    if len(moves) < max_d:
+        for move in all_moves():
+            validate_random_move_solvability_rec(
+                config,
+                puzzle.execute_move(move),
+                moves + (move,),
+                max_d,
+            )
 
-    if not allowed_by_filters(puzzle.n, solution):
-        raise Exception(f"solution should have been filtered: {canon}")
 
-    for move in solution:
-        puzzle = puzzle.execute_move(move)
-    if puzzle != Puzzle.finished(puzzle.n, puzzle.center_colors):
-        raise Exception(f"solution is not actual solution: {canon}")
+def validate_random_move_solvability(max_d: int):
+    config = SolveConfig()
+    config.print_info = False
+    for n in [2, 3]:
+        print_stamped(f"validating solvability for n = {n}")
+        validate_random_move_solvability_rec(
+            config,
+            Puzzle.finished(n, DEFAULT_CENTER_COLORS),
+            (),
+            max_d,
+        )
+
+
+if __name__ == "__main__":
+    validate_random_move_solvability(2)

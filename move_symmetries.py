@@ -1,6 +1,7 @@
 import argparse
 import ast
 import os
+from functools import reduce
 
 from puzzle import (
     DEFAULT_CENTER_COLORS,
@@ -13,9 +14,22 @@ from puzzle import (
 from tools import create_parent_directory, print_stamped
 
 
-def file_path(n: int, d: int):
+def unfiltered_file_path(n: int, d: int):
     dir = os.path.dirname(__file__)
-    return os.path.join(dir, f"./generated_move_symmetries/n{n}-d{d}.txt")
+    filename = f"./generated_move_symmetries/n{n}-d{d}-unfiltered.txt"
+    return os.path.join(dir, filename)
+
+
+def unique_file_path(n: int, d: int):
+    dir = os.path.dirname(__file__)
+    filename = f"./generated_move_symmetries/n{n}-d{d}-unique.txt"
+    return os.path.join(dir, filename)
+
+
+def filtered_file_path(n: int, d: int):
+    dir = os.path.dirname(__file__)
+    filename = f"./generated_move_symmetries/n{n}-d{d}-filtered.txt"
+    return os.path.join(dir, filename)
 
 
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
@@ -31,20 +45,17 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     def drs(s: int):
         return seq[s][2]
 
-    # Symmetric move filter #1
+    # Move filter #1
     for s in range(k - 1):
-        if axs(s) == axs(s + 1) and his(s) and not his(s + 1):
+        if axs(s) == axs(s + 1) and not his(s):
             return False
 
-    # Symmetric move filter #2
+    # Move filter #2
     for s in range(k - 1):
-        for f in range(s + 1, min(s + 3, k)):
-            if (
-                axs(f) == axs(s)
-                and his(f) == his(s)
-                and all([axs(s) == axs(b) for b in range(s + 1, f)])
-            ):
-                return False
+        if axs(s) == axs(s + 1) and his(s + 1):
+            return False
+
+    return True
 
     if n == 3:
         for s in range(k - 3):
@@ -163,6 +174,7 @@ def generate(n: int, max_d: int):
         next_fresh: set[Puzzle] = set()
         filtered: dict[Puzzle, set[MoveSeq]] = {}
         symmetries: dict[MoveSeq, set[MoveSeq]] = {}
+        unique: set[MoveSeq] = set()
 
         for state in fresh:
             path = paths[state]
@@ -197,9 +209,19 @@ def generate(n: int, max_d: int):
                     if prev_path not in symmetries:
                         symmetries[prev_path] = set()
                     symmetries[prev_path].add(new_path)
+
+                    # Remove from unique, since it has now been observed more than once.
+                    if new_path in unique:
+                        unique.remove(new_path)
+                    if prev_path in unique:
+                        unique.remove(prev_path)
                 else:
                     paths[new_state] = new_path
                     next_fresh.add(new_state)
+
+                    # This state has not been seen before, so add to unique.
+                    assert new_path not in unique
+                    unique.add(new_path)
 
         # Check whether the filtered out move sequences' states are still reachable.
         for state, seqs in filtered.items():
@@ -215,8 +237,8 @@ def generate(n: int, max_d: int):
                 assert sym not in banned
                 banned.add(sym)
 
-        # Write found symmetric move sequences to file.
-        path = file_path(n, d)
+        # Write found unfiltered move sequences to file.
+        path = unfiltered_file_path(n, d)
         create_parent_directory(path)
         output = [(k, sorted(v)) for k, v in symmetries.items()]
         output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
@@ -226,17 +248,39 @@ def generate(n: int, max_d: int):
                 syms_canon = [move_names(seq) for seq in syms]
                 file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
 
+        # Write found unique move sequences to file.
+        path = unique_file_path(n, d)
+        create_parent_directory(path)
+        output = list(unique)
+        output.sort()
+        with open(path, "w") as file:
+            for seq in output:
+                seq_canon = move_names(seq)
+                file.write(f"{str(seq_canon)}\n")
+
+        # Write found filtered move sequences to file.
+        path = filtered_file_path(n, d)
+        create_parent_directory(path)
+        output = reduce(lambda x, y: x + list(y), filtered.values(), [])
+        output.sort()
+        with open(path, "w") as file:
+            for seq in output:
+                seq_canon = move_names(seq)
+                file.write(f"{str(seq_canon)}\n")
+
         fil = sum(len(s) for s in filtered.values())
         pot = sum(len(s) for s in symmetries.values())
         print_stamped(f"d = {d}: filtered {fil}, with {pot} more filterable")
         fresh = next_fresh
 
 
-def load(n: int, d: int) -> dict[MoveSeq, list[MoveSeq]]:
+def load_unfiltered(
+    n: int, d: int, include_lower: bool
+) -> dict[MoveSeq, list[MoveSeq]]:
     if d <= 0:
         return {}
 
-    path = file_path(n, d)
+    path = unfiltered_file_path(n, d)
     if not os.path.isfile(path):
         generate(n, d)
 
@@ -250,7 +294,52 @@ def load(n: int, d: int) -> dict[MoveSeq, list[MoveSeq]]:
             syms = [tuple(parse_move(name) for name in sym) for sym in syms_canon]
             result[seq] = syms
 
-    return result | load(n, d - 1)
+    if include_lower:
+        return result | load_unfiltered(n, d - 1, include_lower)
+    else:
+        return result
+
+
+def load_unique(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
+    if d <= 0:
+        return []
+
+    path = unique_file_path(n, d)
+    if not os.path.isfile(path):
+        generate(n, d)
+
+    result: list[MoveSeq] = []
+    with open(path, "r") as file:
+        for line in file:
+            seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
+            seq = tuple(parse_move(name) for name in seq_canon)
+            result.append(seq)
+
+    if include_lower:
+        return result + load_unique(n, d - 1, include_lower)
+    else:
+        return result
+
+
+def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
+    if d <= 0:
+        return []
+
+    path = filtered_file_path(n, d)
+    if not os.path.isfile(path):
+        generate(n, d)
+
+    result: list[MoveSeq] = []
+    with open(path, "r") as file:
+        for line in file:
+            seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
+            seq = tuple(parse_move(name) for name in seq_canon)
+            result.append(seq)
+
+    if include_lower:
+        return result + load_filtered(n, d - 1, include_lower)
+    else:
+        return result
 
 
 if __name__ == "__main__":
