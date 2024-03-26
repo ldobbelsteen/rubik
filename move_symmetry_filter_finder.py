@@ -45,45 +45,24 @@ class VarConditions:
     ):
         assert len(next_values) == (self.d - self.s - 1) == len(next_conditions)
         idx = self.domain.index(v)
-        conflicting = []
+        constraints = []
 
         # Disallow equality to different constants.
         for i, const_eq in enumerate(self.const_eq):
             if i != idx:
-                conflicting.append(const_eq)
+                constraints.append(z3.Not(const_eq))
 
         # Disallow inequality to the value.
-        conflicting.append(self.const_ineq[idx])
+        constraints.append(z3.Not(self.const_ineq[idx]))
 
-        # Disallow symbolic equality to a next condition that does not
-        # facilitate or that has a different value.
         for s in range(len(self.symb_eq)):
-            conflicting.append(
-                z3.And(
-                    self.symb_eq[s],
-                    z3.Or(
-                        v != next_values[s],
-                        z3.Not(
-                            next_conditions[s].facilitates(
-                                v,
-                                next_values[s + 1 :],
-                                next_conditions[s + 1 :],
-                            )
-                        ),
-                    ),
-                )
-            )
-
-        # Disallow symbolic inequality to a next condition that facilitates
-        # or that has the same value.
-        for s in range(len(self.symb_ineq)):
-            conflicting.append(
-                z3.And(
-                    self.symb_ineq[s],
-                    z3.Or(
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_eq[s]),
+                    z3.And(
                         v == next_values[s],
                         next_conditions[s].facilitates(
-                            v,
+                            next_values[s],
                             next_values[s + 1 :],
                             next_conditions[s + 1 :],
                         ),
@@ -91,103 +70,82 @@ class VarConditions:
                 )
             )
 
-        # Disallow larger than comparison with a next condition that facilitates
-        # no larger values or has smaller than or equal value.
+        for s in range(len(self.symb_ineq)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_ineq[s]),
+                    z3.And(
+                        v != next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
+                        ),
+                    ),
+                )
+            )
+
         for s in range(len(self.symb_lt)):
-            conflicting.append(
-                z3.And(
-                    self.symb_lt[s],
-                    z3.Or(
-                        v <= next_values[s],
-                        z3.Not(
-                            z3.Or(
-                                [
-                                    next_conditions[s].facilitates(
-                                        nv,
-                                        next_values[s + 1 :],
-                                        next_conditions[s + 1 :],
-                                    )
-                                    for nv in self.domain[idx + 1 :]
-                                ]
-                            )
-                        ),
-                    ),
-                )
-            )
-
-        # Disallow smaller than comparison with a next condition that facilitates
-        # no smaller values or has larger than or equal value.
-        for s in range(len(self.symb_st)):
-            conflicting.append(
-                z3.And(
-                    self.symb_st[s],
-                    z3.Or(
-                        v >= next_values[s],
-                        z3.Not(
-                            z3.Or(
-                                [
-                                    next_conditions[s].facilitates(
-                                        nv,
-                                        next_values[s + 1 :],
-                                        next_conditions[s + 1 :],
-                                    )
-                                    for nv in self.domain[:idx]
-                                ]
-                            )
-                        ),
-                    ),
-                )
-            )
-
-        # Disallow larger than or equal comparison with a next condition that
-        # facilitates no larger than or equal values or has smaller value.
-        for s in range(len(self.symb_lte)):
-            conflicting.append(
-                z3.And(
-                    self.symb_lte[s],
-                    z3.Or(
-                        v < next_values[s],
-                        z3.Not(
-                            z3.Or(
-                                [
-                                    next_conditions[s].facilitates(
-                                        nv,
-                                        next_values[s + 1 :],
-                                        next_conditions[s + 1 :],
-                                    )
-                                    for nv in self.domain[idx:]
-                                ]
-                            )
-                        ),
-                    ),
-                )
-            )
-
-        # Disallow smaller than or equal comparison with a next condition that
-        # facilitates no smaller than or equal values or has larger value.
-        for s in range(len(self.symb_ste)):
-            conflicting.append(
-                z3.And(
-                    self.symb_ste[s],
-                    z3.Or(
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_lt[s]),
+                    z3.And(
                         v > next_values[s],
-                        z3.Not(
-                            z3.Or(
-                                [
-                                    next_conditions[s].facilitates(
-                                        nv,
-                                        next_values[s + 1 :],
-                                        next_conditions[s + 1 :],
-                                    )
-                                    for nv in self.domain[: idx + 1]
-                                ]
-                            )
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
                         ),
                     ),
                 )
             )
 
-        return z3.Not(z3.Or(conflicting))
+        for s in range(len(self.symb_st)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_st[s]),
+                    z3.And(
+                        v < next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
+                        ),
+                    ),
+                )
+            )
+
+        for s in range(len(self.symb_lte)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_lte[s]),
+                    z3.And(
+                        v >= next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
+                        ),
+                    ),
+                )
+            )
+
+        for s in range(len(self.symb_ste)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_ste[s]),
+                    z3.And(
+                        v <= next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
+                        ),
+                    ),
+                )
+            )
+
+        return z3.And(constraints)
 
     def extract_from_model(self, model: z3.ModelRef) -> list[z3.BoolRef]:
         result = []
