@@ -45,6 +45,11 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     def drs(s: int):
         return seq[s][2]
 
+    # Move filter #1
+    for s in range(k - 1):
+        if axs(s) == axs(s + 1) and not his(s):
+            return False
+
     return True
 
     # Symmetric move filter #1
