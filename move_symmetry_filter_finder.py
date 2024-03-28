@@ -223,7 +223,7 @@ def find(n: int, d: int):
 
     # Build the objective of filtering out as many symmetrical moves as possible.
     filterable_cumulative = []
-    for seq, syms in move_symmetries.load_unfiltered(n, d, False).items():
+    for seq, syms in move_symmetries.load_symmetries(n, d, False).items():
         filterable = [is_filtered(s) for s in syms]
 
         # If the original move sequence is also of length d,

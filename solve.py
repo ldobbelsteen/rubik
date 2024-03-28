@@ -477,7 +477,7 @@ def solve_for_k(
         solver.add(ban_move_sequence(b))
 
     # Ban computed symmetric move sequences up to the specified depth.
-    for _, syms in move_symmetries.load_unfiltered(
+    for _, syms in move_symmetries.load_symmetries(
         n,
         config.symmetric_move_ban_depth,
         True,

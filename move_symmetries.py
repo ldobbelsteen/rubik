@@ -14,9 +14,9 @@ from puzzle import (
 from tools import create_parent_directory, print_stamped
 
 
-def unfiltered_file_path(n: int, d: int):
+def symmetries_file_path(n: int, d: int):
     dir = os.path.dirname(__file__)
-    filename = f"./generated_move_symmetries/n{n}-d{d}-unfiltered.txt"
+    filename = f"./generated_move_symmetries/n{n}-d{d}-symmetries.txt"
     return os.path.join(dir, filename)
 
 
@@ -182,8 +182,8 @@ def generate(n: int, max_d: int):
 
     for d in range(1, max_d + 1):
         next_fresh: set[Puzzle] = set()
-        filtered: dict[Puzzle, set[MoveSeq]] = {}
         symmetries: dict[MoveSeq, set[MoveSeq]] = {}
+        filtered: dict[Puzzle, set[MoveSeq]] = {}
         unique: set[MoveSeq] = set()
 
         for state in fresh:
@@ -247,8 +247,8 @@ def generate(n: int, max_d: int):
                 assert sym not in banned
                 banned.add(sym)
 
-        # Write found unfiltered move sequences to file.
-        path = unfiltered_file_path(n, d)
+        # Write found symmetrical move sequences to file.
+        path = symmetries_file_path(n, d)
         create_parent_directory(path)
         output = [(k, sorted(v)) for k, v in symmetries.items()]
         output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
@@ -284,13 +284,13 @@ def generate(n: int, max_d: int):
         fresh = next_fresh
 
 
-def load_unfiltered(
+def load_symmetries(
     n: int, d: int, include_lower: bool
 ) -> dict[MoveSeq, list[MoveSeq]]:
     if d <= 0:
         return {}
 
-    path = unfiltered_file_path(n, d)
+    path = symmetries_file_path(n, d)
     if not os.path.isfile(path):
         generate(n, d)
 
@@ -305,7 +305,7 @@ def load_unfiltered(
             result[seq] = syms
 
     if include_lower:
-        return result | load_unfiltered(n, d - 1, include_lower)
+        return result | load_symmetries(n, d - 1, include_lower)
     else:
         return result
 
