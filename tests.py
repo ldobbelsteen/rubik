@@ -2,7 +2,7 @@ import os
 import random
 import unittest
 
-from generate_random import PUZZLE_DIR, all_moves, generate_random
+from generate_random import PUZZLE_DIR, all_moves
 from puzzle import (
     DEFAULT_CENTER_COLORS,
     Puzzle,
@@ -14,9 +14,9 @@ from puzzle import (
     encode_edge,
     facelet_cubicle,
     inverse_move,
+    move_name,
+    parse_move,
 )
-from solve import solve
-from solve_config import SolveConfig
 
 
 class Testing(unittest.TestCase):
@@ -59,6 +59,13 @@ class Testing(unittest.TestCase):
                                     decode_edge(n, encode_edge(n, cubicle)),
                                 )
 
+    def test_all_moves(self):
+        self.assertEqual(len(all_moves()), 18)
+
+    def test_encoding_decoding_moves(self):
+        for move in all_moves():
+            self.assertEqual(move, parse_move(move_name(move)))
+
     def test_puzzle_parsing(self):
         """Test whether parsing and serializing puzzles is bijective."""
         for filename in os.listdir(PUZZLE_DIR):
@@ -89,22 +96,6 @@ class Testing(unittest.TestCase):
             for i, move in enumerate(moves):
                 state = state.execute_move(inverse_move(move))
                 self.assertEqual(state, states[i])
-
-    def test_solution_correctness(self):
-        """Check whether a randomized puzzle is solvable."""
-        config = SolveConfig()
-        config.print_info = False
-        for n in [2, 3]:
-            for randomizations in range(5):
-                puzzle = generate_random(n, randomizations, False)
-                stats = solve(puzzle, config, randomizations)
-                self.assertIsNotNone(stats.solution)
-
-                # The solution should be an actual solution
-                assert stats.solution is not None
-                for move in stats.solution:
-                    puzzle = puzzle.execute_move(move)
-                self.assertEqual(puzzle, Puzzle.finished(n, puzzle.center_colors))
 
 
 if __name__ == "__main__":

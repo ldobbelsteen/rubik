@@ -1,4 +1,6 @@
 /.idea
 /.vscode
 /**/__pycache__
+/generated_move_symmetries/**-filtered.txt
+/generated_move_symmetries/**-unique.txt
 /venv

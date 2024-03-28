@@ -9,11 +9,22 @@ import z3
 import move_mappers.default
 import move_mappers.stacked
 import move_symmetries
-from puzzle import MoveSeq, Puzzle
+from puzzle import MoveSeq, Puzzle, move_names
 from solve_config import SolveConfig
 from stats import Stats
 from tools import gods_number, natural_sorted, print_stamped
-from validation import validate_solution
+
+
+def validate_solution(puzzle: Puzzle, solution: MoveSeq):
+    canon = move_names(solution)
+
+    if not move_symmetries.allowed_by_filters(puzzle.n, solution):
+        raise Exception(f"solution should have been filtered: {canon}")
+
+    for move in solution:
+        puzzle = puzzle.execute_move(move)
+    if puzzle != Puzzle.finished(puzzle.n, puzzle.center_colors):
+        raise Exception(f"solution is not actual solution: {canon}")
 
 
 def z3_int(
@@ -466,7 +477,11 @@ def solve_for_k(
         solver.add(ban_move_sequence(b))
 
     # Ban computed symmetric move sequences up to the specified depth.
-    for _, syms in move_symmetries.load(n, config.symmetric_move_ban_depth).items():
+    for _, syms in move_symmetries.load_unfiltered(
+        n,
+        config.symmetric_move_ban_depth,
+        True,
+    ).items():
         for sym in syms:
             solver.add(ban_move_sequence(sym))
 

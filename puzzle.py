@@ -149,9 +149,15 @@ def parse_move(canonical_name: str) -> Move:
     # Parse the direction.
     match canonical_name[1]:
         case "1":
-            dr = 0
+            if hi:
+                dr = 1
+            else:
+                dr = 0
         case "3":
-            dr = 1
+            if hi:
+                dr = 0
+            else:
+                dr = 1
         case "2":
             dr = 2
         case _:
