@@ -17,32 +17,37 @@ class VarConditions:
 
         # Declare Z3 variables for each variant.
         self.const_eq = [z3.Bool(f"{name}(s + {s}) == {v}") for v in domain]
-        self.const_ineq = [z3.Bool(f"{name}(s + {s}) != {v}") for v in domain]
         self.symb_eq = [
             z3.Bool(f"{name}(s + {s}) == {name}(s + {f})") for f in range(s + 1, d)
         ]
-        if len(domain) > 2:
-            self.symb_ineq = [
-                z3.Bool(f"{name}(s + {s}) != {name}(s + {f})") for f in range(s + 1, d)
-            ]
-            self.symb_lt = [
-                z3.Bool(f"{name}(s + {s}) > {name}(s + {f})") for f in range(s + 1, d)
-            ]
-            self.symb_st = [
-                z3.Bool(f"{name}(s + {s}) < {name}(s + {f})") for f in range(s + 1, d)
-            ]
-            self.symb_lte = [
-                z3.Bool(f"{name}(s + {s}) ≥ {name}(s + {f})") for f in range(s + 1, d)
-            ]
-            self.symb_ste = [
-                z3.Bool(f"{name}(s + {s}) ≤ {name}(s + {f})") for f in range(s + 1, d)
-            ]
-        else:
-            self.symb_ineq = None
-            self.symb_lt = None
-            self.symb_st = None
-            self.symb_lte = None
-            self.symb_ste = None
+        self.symb_ineq = [
+            z3.Bool(f"{name}(s + {s}) != {name}(s + {f})") for f in range(s + 1, d)
+        ]
+        self.const_ineq = (
+            [z3.Bool(f"{name}(s + {s}) != {v}") for v in domain]
+            if len(domain) > 2
+            else []
+        )
+        self.symb_lt = (
+            [z3.Bool(f"{name}(s + {s}) > {name}(s + {f})") for f in range(s + 1, d)]
+            if len(domain) > 2
+            else []
+        )
+        self.symb_st = (
+            [z3.Bool(f"{name}(s + {s}) < {name}(s + {f})") for f in range(s + 1, d)]
+            if len(domain) > 2
+            else []
+        )
+        self.symb_lte = (
+            [z3.Bool(f"{name}(s + {s}) ≥ {name}(s + {f})") for f in range(s + 1, d)]
+            if len(domain) > 2
+            else []
+        )
+        self.symb_ste = (
+            [z3.Bool(f"{name}(s + {s}) ≤ {name}(s + {f})") for f in range(s + 1, d)]
+            if len(domain) > 2
+            else []
+        )
 
     def facilitates(
         self,
@@ -60,7 +65,8 @@ class VarConditions:
                 constraints.append(z3.Not(const_eq))
 
         # Disallow inequality to the value.
-        constraints.append(z3.Not(self.const_ineq[idx]))
+        if len(self.const_ineq) > 0:
+            constraints.append(z3.Not(self.const_ineq[idx]))
 
         for s in range(len(self.symb_eq)):
             constraints.append(
@@ -77,85 +83,80 @@ class VarConditions:
                 )
             )
 
-        if self.symb_ineq is not None:
-            for s in range(len(self.symb_ineq)):
-                constraints.append(
-                    z3.Or(
-                        z3.Not(self.symb_ineq[s]),
-                        z3.And(
-                            v != next_values[s],
-                            next_conditions[s].facilitates(
-                                next_values[s],
-                                next_values[s + 1 :],
-                                next_conditions[s + 1 :],
-                            ),
+        for s in range(len(self.symb_ineq)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_ineq[s]),
+                    z3.And(
+                        v != next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
                         ),
-                    )
+                    ),
                 )
+            )
 
-        if self.symb_lt is not None:
-            for s in range(len(self.symb_lt)):
-                constraints.append(
-                    z3.Or(
-                        z3.Not(self.symb_lt[s]),
-                        z3.And(
-                            v > next_values[s],
-                            next_conditions[s].facilitates(
-                                next_values[s],
-                                next_values[s + 1 :],
-                                next_conditions[s + 1 :],
-                            ),
+        for s in range(len(self.symb_lt)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_lt[s]),
+                    z3.And(
+                        v > next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
                         ),
-                    )
+                    ),
                 )
+            )
 
-        if self.symb_st is not None:
-            for s in range(len(self.symb_st)):
-                constraints.append(
-                    z3.Or(
-                        z3.Not(self.symb_st[s]),
-                        z3.And(
-                            v < next_values[s],
-                            next_conditions[s].facilitates(
-                                next_values[s],
-                                next_values[s + 1 :],
-                                next_conditions[s + 1 :],
-                            ),
+        for s in range(len(self.symb_st)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_st[s]),
+                    z3.And(
+                        v < next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
                         ),
-                    )
+                    ),
                 )
+            )
 
-        if self.symb_lte is not None:
-            for s in range(len(self.symb_lte)):
-                constraints.append(
-                    z3.Or(
-                        z3.Not(self.symb_lte[s]),
-                        z3.And(
-                            v >= next_values[s],
-                            next_conditions[s].facilitates(
-                                next_values[s],
-                                next_values[s + 1 :],
-                                next_conditions[s + 1 :],
-                            ),
+        for s in range(len(self.symb_lte)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_lte[s]),
+                    z3.And(
+                        v >= next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
                         ),
-                    )
+                    ),
                 )
+            )
 
-        if self.symb_ste is not None:
-            for s in range(len(self.symb_ste)):
-                constraints.append(
-                    z3.Or(
-                        z3.Not(self.symb_ste[s]),
-                        z3.And(
-                            v <= next_values[s],
-                            next_conditions[s].facilitates(
-                                next_values[s],
-                                next_values[s + 1 :],
-                                next_conditions[s + 1 :],
-                            ),
+        for s in range(len(self.symb_ste)):
+            constraints.append(
+                z3.Or(
+                    z3.Not(self.symb_ste[s]),
+                    z3.And(
+                        v <= next_values[s],
+                        next_conditions[s].facilitates(
+                            next_values[s],
+                            next_values[s + 1 :],
+                            next_conditions[s + 1 :],
                         ),
-                    )
+                    ),
                 )
+            )
 
         return z3.And(constraints)
 
@@ -170,26 +171,21 @@ class VarConditions:
         for v in self.symb_eq:
             if z3.is_true(model.get_interp(v)):
                 result.append(v)
-        if self.symb_ineq is not None:
-            for v in self.symb_ineq:
-                if z3.is_true(model.get_interp(v)):
-                    result.append(v)
-        if self.symb_lt is not None:
-            for v in self.symb_lt:
-                if z3.is_true(model.get_interp(v)):
-                    result.append(v)
-        if self.symb_st is not None:
-            for v in self.symb_st:
-                if z3.is_true(model.get_interp(v)):
-                    result.append(v)
-        if self.symb_lte is not None:
-            for v in self.symb_lte:
-                if z3.is_true(model.get_interp(v)):
-                    result.append(v)
-        if self.symb_ste is not None:
-            for v in self.symb_ste:
-                if z3.is_true(model.get_interp(v)):
-                    result.append(v)
+        for v in self.symb_ineq:
+            if z3.is_true(model.get_interp(v)):
+                result.append(v)
+        for v in self.symb_lt:
+            if z3.is_true(model.get_interp(v)):
+                result.append(v)
+        for v in self.symb_st:
+            if z3.is_true(model.get_interp(v)):
+                result.append(v)
+        for v in self.symb_lte:
+            if z3.is_true(model.get_interp(v)):
+                result.append(v)
+        for v in self.symb_ste:
+            if z3.is_true(model.get_interp(v)):
+                result.append(v)
         return result
 
 
@@ -255,7 +251,6 @@ def find(n: int, d: int):
         [
             z3.If(v, 1, 0)
             for c in chain(ax_conditions, hi_conditions, dr_conditions)
-            if c.symb_lte is not None
             for v in c.symb_lte
         ]
     )
@@ -263,7 +258,6 @@ def find(n: int, d: int):
         [
             z3.If(v, 1, 0)
             for c in chain(ax_conditions, hi_conditions, dr_conditions)
-            if c.symb_ste is not None
             for v in c.symb_ste
         ]
     )
@@ -271,7 +265,6 @@ def find(n: int, d: int):
         [
             z3.If(v, 1, 0)
             for c in chain(ax_conditions, hi_conditions, dr_conditions)
-            if c.symb_lt is not None
             for v in c.symb_lt
         ]
     )
@@ -279,7 +272,6 @@ def find(n: int, d: int):
         [
             z3.If(v, 1, 0)
             for c in chain(ax_conditions, hi_conditions, dr_conditions)
-            if c.symb_st is not None
             for v in c.symb_st
         ]
     )
@@ -287,7 +279,6 @@ def find(n: int, d: int):
         [
             z3.If(v, 1, 0)
             for c in chain(ax_conditions, hi_conditions, dr_conditions)
-            if c.symb_ineq is not None
             for v in c.symb_ineq
         ]
     )
@@ -302,7 +293,6 @@ def find(n: int, d: int):
         [
             z3.If(v, 1, 0)
             for c in chain(ax_conditions, hi_conditions, dr_conditions)
-            if c.symb_ineq is not None
             for v in c.const_ineq
         ]
     )
