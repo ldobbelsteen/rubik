@@ -119,8 +119,48 @@ class VariableSeq:
 
         return z3.And(constraints)
 
-    def allowed_count(self):
-        return z3.Int("TODO")
+    def allowed_count(self, solver: z3.Optimize):
+        allowed_by_consts = [
+            [z3.Bool(f"{self.name}(s + {s}) const allows {v}") for v in self.domain]
+            for s in range(self.k)
+        ]
+        for s in range(self.k):
+            for i, eq in enumerate(self.const_eqs[s]):
+                solver.add(
+                    z3.Implies(
+                        eq,
+                        z3.And(
+                            [
+                                allowed_by_consts[s][j]
+                                if i == j
+                                else z3.Not(allowed_by_consts[s][j])
+                                for j in range(len(self.domain))
+                            ]
+                        ),
+                    )
+                )
+            if self.const_ineqs is not None:
+                for i, ineq in enumerate(self.const_ineqs[s]):
+                    solver.add(
+                        z3.Implies(
+                            ineq,
+                            z3.And(
+                                [
+                                    z3.Not(allowed_by_consts[s][j])
+                                    if i == j
+                                    else allowed_by_consts[s][j]
+                                    for j in range(len(self.domain))
+                                ]
+                            ),
+                        )
+                    )
+
+        allowed_by_consts_count = [
+            z3.Sum([z3.If(v, 1, 0) for v in allowed_by_consts[s]])
+            for s in range(self.k)
+        ]
+
+        return z3.Product(allowed_by_consts_count)
 
     def conditions_from_model(self, model: z3.ModelRef):
         result: list[z3.BoolRef] = []
@@ -314,7 +354,11 @@ def find(n: int, d: int):
     # TODO: update move symmetries script to not cut branches st. we have all filtered
     solver.add(
         filtered_count
-        == axs.allowed_count() * his.allowed_count() * drs.allowed_count()
+        == z3.Product(
+            axs.allowed_count(solver),
+            his.allowed_count(solver),
+            drs.allowed_count(solver),
+        )
     )
     solver.maximize(filtered_count)
     solver.minimize(condition_count)
