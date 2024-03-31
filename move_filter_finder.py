@@ -9,7 +9,7 @@ from tools import print_stamped
 
 
 def at_most_one(ls: list[z3.BoolRef]):
-    return z3.PbLe([(v, 1) for v in ls], 1)
+    return z3.AtMost(*ls, 1)
 
 
 class VariableSeq:
