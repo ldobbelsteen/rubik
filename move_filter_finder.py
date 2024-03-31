@@ -322,24 +322,44 @@ def find(n: int, d: int):
             ]
         )
 
-    # Build the objective of filtering out as many symmetrical moves as possible.
-    to_filter_cumulative = []
+    # Cumulate all filterable move sequences.
+    filterable: list[MoveSeq] = []
     for seq, syms in move_symmetries.load_symmetries(n, d, False).items():
-        to_filter = [is_filtered(s) for s in syms]
+        filterable.extend(syms)
 
         # If the original move sequence is also of length d,
         # it too can be filtered out, as long as one stays unfiltered.
         if len(seq) == d:
-            to_filter.append(is_filtered(seq))
-            solver.add(z3.Or([z3.Not(f) for f in to_filter]))
+            filterable.append(seq)
+            solver.add(z3.Or([z3.Not(is_filtered(s)) for s in syms + [seq]]))
 
-        # Add filtered to sum objective.
-        to_filter_cumulative.extend(to_filter)
-
-    # Add objectives to the solver.
-    if len(to_filter_cumulative) == 0:
+    if len(filterable) == 0:
         raise Exception("there are no move sequences to filter")
-    filtered_count = z3.Sum([z3.If(f, 1, 0) for f in to_filter_cumulative])
+
+    # Add the main objective of maximizing the number of filtered sequences.
+    filtered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in filterable])
+    solver.maximize(filtered_count)
+
+    # Make sure the filter does not filter too much. The filter should match exactly
+    # with the number of newly filtered move sequences plus the number of previously
+    # filtered move sequences. This ensures that no unique moves sequences are filtered.
+    # TODO: add filtered from lower depths somehow
+    refiltered_count = z3.Sum(
+        [
+            z3.If(is_filtered(f), 1, 0)
+            for f in move_symmetries.load_filtered(n, d, False)
+        ]
+    )
+    solver.add(
+        z3.Product(
+            axs.allowed_count(),
+            his.allowed_count(),
+            drs.allowed_count(),
+        )
+        == filtered_count + refiltered_count
+    )
+
+    # As secondary objectives, add minimizing the number of conditions.
     symb_ste_count = (
         (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.symb_stes[s]]))
         + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.symb_stes[s]]))
@@ -390,17 +410,6 @@ def find(n: int, d: int):
         + symb_lte_count
         + symb_ste_count
     )
-    # TODO: add already filtered sequences that are filtered on the left side of the eq
-    # TODO: update move symmetries script to not cut branches st. we have all filtered
-    solver.add(
-        filtered_count
-        == z3.Product(
-            axs.allowed_count(),
-            his.allowed_count(),
-            drs.allowed_count(),
-        )
-    )
-    solver.maximize(filtered_count)
     solver.minimize(condition_count)
     solver.minimize(symb_ste_count)
     solver.minimize(symb_lte_count)
