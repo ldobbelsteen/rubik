@@ -194,8 +194,12 @@ def find(n: int, d: int):
 
     # Make sure the filter does not filter too much. The filter should not
     # filter out any unique moves.
-    for seq in move_symmetries.load_unique(n, d, False):
+    unique = move_symmetries.load_unique(n, d, False)
+    print_stamped("ingesting unique move sequences...")
+    for i, seq in enumerate(unique):
         solver.add(is_not_filtered(seq))
+        if i != 0 and i % int(len(unique) / 100) == 0:
+            print_stamped(f"{int(100 * (i / len(unique)))}%")
 
     # Add the main objective of maximizing the number of filtered sequences.
     solver.maximize(filtered_count)
