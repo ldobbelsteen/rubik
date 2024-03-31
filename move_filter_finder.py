@@ -157,116 +157,110 @@ class VariableSeq:
             for s in range(self.k)
         ]
 
-        return (
-            z3.Product(allowed_by_const_sums)
-            - z3.Sum(
-                [
-                    self.symb_eqs[s][f - s - 1]
-                    * (
-                        z3.Sum(
-                            [
-                                is_truth_pair[s][f][i][j]
-                                for i in range(len(self.domain))
-                                for j in range(len(self.domain))
-                                if i != j
-                            ]
-                        )
-                        * allowed_by_const_sums_products_except[s][f]
-                    )
-                    for s in range(self.k)
-                    for f in range(s + 1, self.k)
-                ]
-            )
-            - z3.Sum(
-                [
-                    self.symb_ineqs[s][f - s - 1]
-                    * (
-                        z3.Sum(
-                            [
-                                is_truth_pair[s][f][i][j]
-                                for i in range(len(self.domain))
-                                for j in range(len(self.domain))
-                                if i == j
-                            ]
-                        )
-                        * allowed_by_const_sums_products_except[s][f]
-                    )
-                    for s in range(self.k)
-                    for f in range(s + 1, self.k)
-                ]
-            )
-            - z3.Sum(
-                [
-                    self.symb_lts[s][f - s - 1]
-                    * (
-                        z3.Sum(
-                            [
-                                is_truth_pair[s][f][i][j]
-                                for i in range(len(self.domain))
-                                for j in range(len(self.domain))
-                                if i <= j
-                            ]
-                        )
-                        * allowed_by_const_sums_products_except[s][f]
-                    )
-                    for s in range(self.k)
-                    for f in range(s + 1, self.k)
-                ]
-            )
-            - z3.Sum(
-                [
-                    self.symb_sts[s][f - s - 1]
-                    * (
-                        z3.Sum(
-                            [
-                                is_truth_pair[s][f][i][j]
-                                for i in range(len(self.domain))
-                                for j in range(len(self.domain))
-                                if i >= j
-                            ]
-                        )
-                        * allowed_by_const_sums_products_except[s][f]
-                    )
-                    for s in range(self.k)
-                    for f in range(s + 1, self.k)
-                ]
-            )
-            - z3.Sum(
-                [
-                    self.symb_ltes[s][f - s - 1]
-                    * (
-                        z3.Sum(
-                            [
-                                is_truth_pair[s][f][i][j]
-                                for i in range(len(self.domain))
-                                for j in range(len(self.domain))
-                                if i < j
-                            ]
-                        )
-                        * allowed_by_const_sums_products_except[s][f]
-                    )
-                    for s in range(self.k)
-                    for f in range(s + 1, self.k)
-                ]
-            )
-            - z3.Sum(
-                [
-                    self.symb_stes[s][f - s - 1]
-                    * (
-                        z3.Sum(
-                            [
-                                is_truth_pair[s][f][i][j]
-                                for i in range(len(self.domain))
-                                for j in range(len(self.domain))
-                                if i > j
-                            ]
-                        )
-                        * allowed_by_const_sums_products_except[s][f]
-                    )
-                    for s in range(self.k)
-                    for f in range(s + 1, self.k)
-                ]
-            )
+        return z3.Sum(
+            [z3.Product(allowed_by_const_sums)]
+            + [
+                z3.If(
+                    self.symb_eqs[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i != j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_ineqs[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i == j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_lts[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i <= j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_sts[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i >= j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_ltes[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i < j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_stes[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i > j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
         )
 
     def conditions_from_model(self, model: z3.ModelRef):
