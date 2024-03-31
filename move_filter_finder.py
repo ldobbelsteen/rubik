@@ -9,7 +9,7 @@ from tools import print_stamped
 
 
 def at_most_one(ls: list[z3.BoolRef]):
-    return z3.AtMost(*ls, 1)
+    return z3.PbLe([(v, 1) for v in ls], 1)
 
 
 class VariableSeq:
@@ -113,42 +113,65 @@ class VariableSeq:
         return z3.And(conds)
 
     def allowed_count(self):
-        def allowed_by_const_product(excluded_steps: list[int]):
-            return z3.Product(
+        allowed_by_const_sums = [
+            z3.Sum(
                 [
-                    z3.Sum(
-                        [
-                            z3.If(self.allowed_by_const[s][i], 1, 0)
-                            for i in range(len(self.domain))
-                        ]
-                    )
-                    for s in range(self.k)
-                    if s not in excluded_steps
+                    z3.If(self.allowed_by_const[s][i], 1, 0)
+                    for i in range(len(self.domain))
                 ]
             )
+            for s in range(self.k)
+        ]
+
+        allowed_by_const_sums_products_except = [
+            [
+                z3.Product(
+                    [
+                        allowed_by_const_sums[s]
+                        for s in range(self.k)
+                        if s != s1 and s != s2
+                    ]
+                )
+                for s2 in range(self.k)
+            ]
+            for s1 in range(self.k)
+        ]
+
+        is_truth_pair = [
+            [
+                [
+                    [
+                        z3.If(
+                            z3.And(
+                                self.allowed_by_const[s][i], self.allowed_by_const[f][j]
+                            ),
+                            1,
+                            0,
+                        )
+                        for j in range(len(self.domain))
+                    ]
+                    for i in range(len(self.domain))
+                ]
+                for f in range(self.k)
+            ]
+            for s in range(self.k)
+        ]
 
         return (
-            allowed_by_const_product([])
+            z3.Product(allowed_by_const_sums)
             - z3.Sum(
                 [
                     self.symb_eqs[s][f - s - 1]
                     * (
                         z3.Sum(
                             [
-                                z3.If(
-                                    z3.And(
-                                        self.allowed_by_const[s][i],
-                                        self.allowed_by_const[f][j],
-                                    ),
-                                    1,
-                                    0,
-                                )
+                                is_truth_pair[s][f][i][j]
                                 for i in range(len(self.domain))
                                 for j in range(len(self.domain))
                                 if i != j
                             ]
                         )
-                        * allowed_by_const_product([s, f])
+                        * allowed_by_const_sums_products_except[s][f]
                     )
                     for s in range(self.k)
                     for f in range(s + 1, self.k)
@@ -160,18 +183,13 @@ class VariableSeq:
                     * (
                         z3.Sum(
                             [
-                                z3.If(
-                                    z3.And(
-                                        self.allowed_by_const[s][i],
-                                        self.allowed_by_const[f][i],
-                                    ),
-                                    1,
-                                    0,
-                                )
+                                is_truth_pair[s][f][i][j]
                                 for i in range(len(self.domain))
+                                for j in range(len(self.domain))
+                                if i == j
                             ]
                         )
-                        * allowed_by_const_product([s, f])
+                        * allowed_by_const_sums_products_except[s][f]
                     )
                     for s in range(self.k)
                     for f in range(s + 1, self.k)
@@ -183,20 +201,13 @@ class VariableSeq:
                     * (
                         z3.Sum(
                             [
-                                z3.If(
-                                    z3.And(
-                                        self.allowed_by_const[s][i],
-                                        self.allowed_by_const[f][j],
-                                    ),
-                                    1,
-                                    0,
-                                )
+                                is_truth_pair[s][f][i][j]
                                 for i in range(len(self.domain))
                                 for j in range(len(self.domain))
                                 if i <= j
                             ]
                         )
-                        * allowed_by_const_product([s, f])
+                        * allowed_by_const_sums_products_except[s][f]
                     )
                     for s in range(self.k)
                     for f in range(s + 1, self.k)
@@ -208,20 +219,13 @@ class VariableSeq:
                     * (
                         z3.Sum(
                             [
-                                z3.If(
-                                    z3.And(
-                                        self.allowed_by_const[s][i],
-                                        self.allowed_by_const[f][j],
-                                    ),
-                                    1,
-                                    0,
-                                )
+                                is_truth_pair[s][f][i][j]
                                 for i in range(len(self.domain))
                                 for j in range(len(self.domain))
                                 if i >= j
                             ]
                         )
-                        * allowed_by_const_product([s, f])
+                        * allowed_by_const_sums_products_except[s][f]
                     )
                     for s in range(self.k)
                     for f in range(s + 1, self.k)
@@ -233,20 +237,13 @@ class VariableSeq:
                     * (
                         z3.Sum(
                             [
-                                z3.If(
-                                    z3.And(
-                                        self.allowed_by_const[s][i],
-                                        self.allowed_by_const[f][j],
-                                    ),
-                                    1,
-                                    0,
-                                )
+                                is_truth_pair[s][f][i][j]
                                 for i in range(len(self.domain))
                                 for j in range(len(self.domain))
                                 if i < j
                             ]
                         )
-                        * allowed_by_const_product([s, f])
+                        * allowed_by_const_sums_products_except[s][f]
                     )
                     for s in range(self.k)
                     for f in range(s + 1, self.k)
@@ -258,20 +255,13 @@ class VariableSeq:
                     * (
                         z3.Sum(
                             [
-                                z3.If(
-                                    z3.And(
-                                        self.allowed_by_const[s][i],
-                                        self.allowed_by_const[f][j],
-                                    ),
-                                    1,
-                                    0,
-                                )
+                                is_truth_pair[s][f][i][j]
                                 for i in range(len(self.domain))
                                 for j in range(len(self.domain))
                                 if i > j
                             ]
                         )
-                        * allowed_by_const_product([s, f])
+                        * allowed_by_const_sums_products_except[s][f]
                     )
                     for s in range(self.k)
                     for f in range(s + 1, self.k)
@@ -336,20 +326,15 @@ def find(n: int, d: int):
     if len(filterable) == 0:
         raise Exception("there are no move sequences to filter")
 
-    # Add the main objective of maximizing the number of filtered sequences.
-    filtered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in filterable])
-    solver.maximize(filtered_count)
-
     # Make sure the filter does not filter too much. The filter should match exactly
     # with the number of newly filtered move sequences plus the number of previously
-    # filtered move sequences. This ensures that no unique moves sequences are filtered.
-    # TODO: add filtered from lower depths somehow
-    refiltered_count = z3.Sum(
-        [
-            z3.If(is_filtered(f), 1, 0)
-            for f in move_symmetries.load_filtered_padded(n, d)
-        ]
-    )
+    # filtered move sequences that are filtered again. This ensures that no unique
+    # moves sequences are filtered.
+    prev_filtered = move_symmetries.load_filtered_padded(n, d)
+    print_stamped(f"ingesting {len(prev_filtered)} filters...")
+    refiltered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in prev_filtered])
+    print_stamped("finished ingesting filters...")
+    filtered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in filterable])
     solver.add(
         z3.Product(
             axs.allowed_count(),
@@ -358,6 +343,9 @@ def find(n: int, d: int):
         )
         == filtered_count + refiltered_count
     )
+
+    # Add the main objective of maximizing the number of filtered sequences.
+    solver.maximize(filtered_count)
 
     # As secondary objectives, add minimizing the number of conditions.
     symb_ste_count = (
