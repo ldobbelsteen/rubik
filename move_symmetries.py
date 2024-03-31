@@ -51,19 +51,20 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
         if axs(s) == axs(s + 1) and (his(s + 1) or not his(s)):
             return False
 
-    # Move filter #3
     if n == 3:
         for s in range(k - 3):
-            if (
-                axs(s) == axs(s + 3)
-                and axs(s + 1) == axs(s + 2)
-                and his(s)
-                and drs(s) == 2
-                and drs(s + 1) == 2
-                and drs(s + 2) == 2
-                and drs(s + 3) == 2
-            ):
-                return False
+            if drs(s) == 2 and drs(s + 1) == 2 and drs(s + 2) == 2 and drs(s + 3) == 2:
+                # Move filter #3
+                if axs(s) == axs(s + 3) and axs(s + 1) == axs(s + 2) and his(s):
+                    return False
+
+                # Move filter #4
+                if (
+                    axs(s) == axs(s + 1)
+                    and axs(s + 2) == axs(s + 3)
+                    and axs(s) > axs(s + 3)
+                ):
+                    return False
 
     return True
 
