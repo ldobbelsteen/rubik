@@ -93,7 +93,7 @@ class VariableSeq:
             for s in range(self.k)
         ]
 
-    def allow_conditions(self, s: int, value: int, next_values: list[int]):
+    def allows(self, s: int, value: int, next_values: list[int]):
         assert len(next_values) == (self.k - s - 1)
         di = self.domain.index(value)
         conds = []
@@ -110,7 +110,158 @@ class VariableSeq:
             conds.append(z3.Implies(self.symb_ltes[s][f], value >= next_values[f]))
             conds.append(z3.Implies(self.symb_stes[s][f], value <= next_values[f]))
 
-        return conds
+        return z3.And(conds)
+
+    def allowed_count(self):
+        allowed_by_const_sums = [
+            z3.Sum(
+                [
+                    z3.If(self.allowed_by_const[s][i], 1, 0)
+                    for i in range(len(self.domain))
+                ]
+            )
+            for s in range(self.k)
+        ]
+
+        allowed_by_const_sums_products_except = [
+            [
+                z3.Product(
+                    [
+                        allowed_by_const_sums[s]
+                        for s in range(self.k)
+                        if s != s1 and s != s2
+                    ]
+                )
+                for s2 in range(self.k)
+            ]
+            for s1 in range(self.k)
+        ]
+
+        is_truth_pair = [
+            [
+                [
+                    [
+                        z3.If(
+                            z3.And(
+                                self.allowed_by_const[s][i], self.allowed_by_const[f][j]
+                            ),
+                            1,
+                            0,
+                        )
+                        for j in range(len(self.domain))
+                    ]
+                    for i in range(len(self.domain))
+                ]
+                for f in range(self.k)
+            ]
+            for s in range(self.k)
+        ]
+
+        return z3.Sum(
+            [z3.Product(allowed_by_const_sums)]
+            + [
+                z3.If(
+                    self.symb_eqs[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i != j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_ineqs[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i == j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_lts[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i <= j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_sts[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i >= j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_ltes[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i < j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+            + [
+                z3.If(
+                    self.symb_stes[s][f - s - 1],
+                    -allowed_by_const_sums_products_except[s][f]
+                    * z3.Sum(
+                        [
+                            is_truth_pair[s][f][i][j]
+                            for i in range(len(self.domain))
+                            for j in range(len(self.domain))
+                            if i > j
+                        ]
+                    ),
+                    0,
+                )
+                for s in range(self.k)
+                for f in range(s + 1, self.k)
+            ]
+        )
 
     def conditions_from_model(self, model: z3.ModelRef):
         result: list[z3.BoolRef] = []
@@ -147,31 +298,9 @@ def find(n: int, d: int):
         return z3.And(
             [
                 z3.And(
-                    z3.And(axs.allow_conditions(s, seq_axs[s], seq_axs[s + 1 :])),
-                    z3.And(his.allow_conditions(s, seq_his[s], seq_his[s + 1 :])),
-                    z3.And(drs.allow_conditions(s, seq_drs[s], seq_drs[s + 1 :])),
-                )
-                for s in range(d)
-            ]
-        )
-
-    def is_not_filtered(seq: MoveSeq):
-        """Return the restrictions of a move sequence not being filtered."""
-        assert len(seq) == d
-        seq_axs = [m[0] for m in seq]
-        seq_his = [1 if m[1] else 0 for m in seq]
-        seq_drs = [m[2] for m in seq]
-        return z3.Or(
-            [
-                z3.Or(
-                    [
-                        z3.Not(cond)
-                        for cond in chain(
-                            axs.allow_conditions(s, seq_axs[s], seq_axs[s + 1 :]),
-                            his.allow_conditions(s, seq_his[s], seq_his[s + 1 :]),
-                            drs.allow_conditions(s, seq_drs[s], seq_drs[s + 1 :]),
-                        )
-                    ]
+                    axs.allows(s, seq_axs[s], seq_axs[s + 1 :]),
+                    his.allows(s, seq_his[s], seq_his[s + 1 :]),
+                    drs.allows(s, seq_drs[s], seq_drs[s + 1 :]),
                 )
                 for s in range(d)
             ]
@@ -186,20 +315,28 @@ def find(n: int, d: int):
         # it too can be filtered out, as long as one stays unfiltered.
         if len(seq) == d:
             filterable.append(seq)
-            solver.add(z3.Or([is_not_filtered(s) for s in syms + [seq]]))
+            solver.add(z3.Or([z3.Not(is_filtered(s)) for s in syms + [seq]]))
 
     if len(filterable) == 0:
         raise Exception("there are no move sequences to filter")
-    filtered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in filterable])
 
-    # Make sure the filter does not filter too much. The filter should not
-    # filter out any unique moves.
-    unique = move_symmetries.load_unique(n, d, False)
-    print_stamped("ingesting unique move sequences...")
-    for i, seq in enumerate(unique):
-        solver.add(is_not_filtered(seq))
-        if i != 0 and i % int(len(unique) / 100) == 0:
-            print_stamped(f"{int(100 * (i / len(unique)))}%")
+    # Make sure the filter does not filter too much. The filter should match exactly
+    # with the number of newly filtered move sequences plus the number of previously
+    # filtered move sequences that are filtered again. This ensures that no unique
+    # moves sequences are filtered.
+    prev_filtered = move_symmetries.load_filtered_padded(n, d)
+    print_stamped(f"ingesting {len(prev_filtered)} filters...")
+    refiltered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in prev_filtered])
+    print_stamped("finished ingesting filters...")
+    filtered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in filterable])
+    solver.add(
+        z3.Product(
+            axs.allowed_count(),
+            his.allowed_count(),
+            drs.allowed_count(),
+        )
+        == filtered_count + refiltered_count
+    )
 
     # Add the main objective of maximizing the number of filtered sequences.
     solver.maximize(filtered_count)
