@@ -2,7 +2,6 @@ import argparse
 import ast
 import os
 from functools import reduce
-from itertools import product
 
 from puzzle import (
     DEFAULT_CENTER_COLORS,
@@ -18,12 +17,6 @@ from tools import create_parent_directory, print_stamped
 def symmetries_file_path(n: int, d: int):
     dir = os.path.dirname(__file__)
     filename = f"./generated_move_symmetries/n{n}-d{d}-symmetries.txt"
-    return os.path.join(dir, filename)
-
-
-def unique_file_path(n: int, d: int):
-    dir = os.path.dirname(__file__)
-    filename = f"./generated_move_symmetries/n{n}-d{d}-unique.txt"
     return os.path.join(dir, filename)
 
 
@@ -194,39 +187,24 @@ def generate(n: int, max_d: int):
     finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
     paths: dict[Puzzle, MoveSeq] = {finished: tuple()}
     fresh: set[Puzzle] = {finished}
-    banned: set[MoveSeq] = set()
 
     for d in range(1, max_d + 1):
         next_fresh: set[Puzzle] = set()
         symmetries: dict[MoveSeq, set[MoveSeq]] = {}
         filtered: dict[Puzzle, set[MoveSeq]] = {}
-        unique: set[MoveSeq] = set()
 
         for state in fresh:
             path = paths[state]
             for move in moves:
                 new_path = path + (move,)
 
-                # Skip if the new path contains symmetric move sequences
-                # from lower depths.
-                skip = False
-                for ban in banned:
-                    start = len(new_path) - len(ban)
-                    if start >= 0 and ban == new_path[start:]:
-                        skip = True
-                        break
-                if skip:
-                    continue
-
                 new_state = state.execute_move(move)
 
-                # Skip if the new path is not allowed by the filters. Store
-                # the filtered move sequence for later.
+                # Skip if the new path is not allowed by the filters.
                 if not allowed_by_filters(n, new_path):
                     if new_state not in filtered:
                         filtered[new_state] = set()
                     filtered[new_state].add(new_path)
-                    banned.add(new_path)
                     continue
 
                 if new_state in paths:
@@ -235,19 +213,9 @@ def generate(n: int, max_d: int):
                     if prev_path not in symmetries:
                         symmetries[prev_path] = set()
                     symmetries[prev_path].add(new_path)
-
-                    # Remove from unique, since it has now been observed more than once.
-                    if new_path in unique:
-                        unique.remove(new_path)
-                    if prev_path in unique:
-                        unique.remove(prev_path)
                 else:
                     paths[new_state] = new_path
                     next_fresh.add(new_state)
-
-                    # This state has not been seen before, so add to unique.
-                    assert new_path not in unique
-                    unique.add(new_path)
 
         # Check whether the filtered out move sequences' states are still reachable.
         for state, seqs in filtered.items():
@@ -256,12 +224,6 @@ def generate(n: int, max_d: int):
                 raise Exception(
                     f"following sequences should not all have been filtered:\n{canon}"
                 )
-
-        # Ban all symmetric move sequences for future iterations.
-        for syms in symmetries.values():
-            for sym in syms:
-                assert sym not in banned
-                banned.add(sym)
 
         # Write found symmetrical move sequences to file.
         path = symmetries_file_path(n, d)
@@ -273,16 +235,6 @@ def generate(n: int, max_d: int):
                 seq_canon = move_names(seq)
                 syms_canon = [move_names(seq) for seq in syms]
                 file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
-
-        # Write found unique move sequences to file.
-        path = unique_file_path(n, d)
-        create_parent_directory(path)
-        output = list(unique)
-        output.sort()
-        with open(path, "w") as file:
-            for seq in output:
-                seq_canon = move_names(seq)
-                file.write(f"{str(seq_canon)}\n")
 
         # Write found filtered move sequences to file.
         path = filtered_file_path(n, d)
@@ -326,27 +278,6 @@ def load_symmetries(
         return result
 
 
-def load_unique(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
-    if d <= 0:
-        return []
-
-    path = unique_file_path(n, d)
-    if not os.path.isfile(path):
-        generate(n, d)
-
-    result: list[MoveSeq] = []
-    with open(path, "r") as file:
-        for line in file:
-            seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
-            seq = tuple(parse_move(name) for name in seq_canon)
-            result.append(seq)
-
-    if include_lower:
-        return result + load_unique(n, d - 1, include_lower)
-    else:
-        return result
-
-
 def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
     if d <= 0:
         return []
@@ -366,29 +297,6 @@ def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
         return result + load_filtered(n, d - 1, include_lower)
     else:
         return result
-
-
-def load_filtered_padded(n: int, d: int) -> set[MoveSeq]:
-    moves = all_moves()
-    padded: set[MoveSeq] = set()
-
-    for seq in load_filtered(n, d, True):
-        seq_len = len(seq)
-        if seq_len == d:
-            padded.add(seq)
-        else:
-            for start in range(d - seq_len + 1):
-                for s in product(
-                    *[
-                        moves
-                        if i < start or i >= (start + seq_len)
-                        else [seq[i - start]]
-                        for i in range(d)
-                    ]
-                ):
-                    padded.add(s)
-
-    return padded
 
 
 if __name__ == "__main__":

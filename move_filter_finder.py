@@ -324,11 +324,15 @@ def find(n: int, d: int):
     # with the number of newly filtered move sequences plus the number of previously
     # filtered move sequences that are filtered again. This ensures that no unique
     # moves sequences are filtered.
-    prev_filtered = move_symmetries.load_filtered_padded(n, d)
-    print_stamped(f"ingesting {len(prev_filtered)} filters...")
-    refiltered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in prev_filtered])
-    print_stamped("finished ingesting filters...")
     filtered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in filterable])
+    print_stamped("ingesting previously filtered...")
+    refiltered_count = z3.Sum(
+        [
+            z3.If(is_filtered(f), 1, 0)
+            for f in move_symmetries.load_filtered(n, d, False)
+        ]
+    )
+    print_stamped("finished ingesting previously filtered...")
     solver.add(
         z3.Product(
             axs.allowed_count(),
