@@ -1,4 +1,6 @@
 import argparse
+import re
+from enum import Enum
 from itertools import chain
 
 import z3
@@ -8,11 +10,65 @@ from puzzle import MoveSeq
 from tools import print_stamped
 
 
-def at_most_one(ls: list[z3.BoolRef]):
-    return z3.PbLe([(v, 1) for v in ls], 1)
+class Variable:
+    def __init__(self, name: str, s: int):
+        self.name = name
+        self.s = s
+
+    def ref(self):
+        return z3.Bool(str(self))
+
+    def __str__(self):
+        return f"{self.name}(s + {self.s})"
+
+    @staticmethod
+    def from_str(s: str):
+        parsed = re.search(r"(.+)\(s \+ (\d+)\)", s)
+        if parsed is None:
+            raise Exception(f"invalid variable string: {s}")
+        return Variable(parsed.group(1), int(parsed.group(2)))
 
 
-class VariableSeq:
+class Operator(Enum):
+    EQ = "=="
+    INEQ = "!="
+    LT = ">"
+    ST = "<"
+    LTE = ">="
+    STE = "<="
+
+
+class Condition:
+    def __init__(
+        self,
+        left: Variable,
+        op: Operator,
+        right: int | Variable,
+    ):
+        self.left = left
+        self.op = op
+        self.right = right
+
+    def ref(self):
+        return z3.Bool(str(self))
+
+    def __str__(self):
+        return f"{self.left} {self.op.value} {self.right}"
+
+    @staticmethod
+    def from_str(s: str):
+        parsed = re.search(r"(.+) (.+) (.+)", s)
+        if parsed is None:
+            raise Exception(f"invalid variable string: {s}")
+        right_raw = parsed.group(3)
+        return Condition(
+            Variable.from_str(parsed.group(1)),
+            Operator(parsed.group(2)),
+            int(right_raw) if right_raw.isnumeric() else Variable.from_str(right_raw),
+        )
+
+
+class FilterComponent:
     def __init__(
         self,
         name: str,
@@ -20,302 +76,193 @@ class VariableSeq:
         k: int,
         solver: z3.Optimize,
     ):
+        assert domain == sorted(domain)
         assert len(domain) >= 2
         self.name = name
         self.domain = domain
         self.k = k
 
-        # Variables indicating whether each possible condition is enabled or not.
-        self.const_eqs = [
-            [z3.Bool(f"{name}(s + {s}) == {v}") for v in domain] for s in range(k)
-        ]
-        self.const_ineqs = [
-            [z3.Bool(f"{name}(s + {s}) != {v}") for v in domain] for s in range(k)
-        ]
-        self.symb_eqs = [
-            [z3.Bool(f"{name}(s + {s}) == {name}(s + {f})") for f in range(s + 1, k)]
-            for s in range(k)
-        ]
-        self.symb_ineqs = [
-            [z3.Bool(f"{name}(s + {s}) != {name}(s + {f})") for f in range(s + 1, k)]
-            for s in range(k)
-        ]
-        self.symb_lts = [
-            [z3.Bool(f"{name}(s + {s}) > {name}(s + {f})") for f in range(s + 1, k)]
-            for s in range(k)
-        ]
-        self.symb_sts = [
-            [z3.Bool(f"{name}(s + {s}) < {name}(s + {f})") for f in range(s + 1, k)]
-            for s in range(k)
-        ]
-        self.symb_ltes = [
-            [z3.Bool(f"{name}(s + {s}) ≥ {name}(s + {f})") for f in range(s + 1, k)]
-            for s in range(k)
-        ]
-        self.symb_stes = [
-            [z3.Bool(f"{name}(s + {s}) ≤ {name}(s + {f})") for f in range(s + 1, k)]
-            for s in range(k)
-        ]
-
-        # Add AMO restrictions, which might help the solver.
+        self.vars = [Variable(name, s) for s in range(k)]
+        self.conditions: list[list[Condition]] = [[] for _ in range(k)]
         for s in range(k):
-            solver.add(at_most_one(self.const_eqs[s] + self.const_ineqs[s]))
-            for f in range(k - s - 1):
-                solver.add(at_most_one([self.symb_eqs[s][f], self.symb_ineqs[s][f]]))
-                solver.add(at_most_one([self.symb_eqs[s][f], self.symb_lts[s][f]]))
-                solver.add(at_most_one([self.symb_eqs[s][f], self.symb_sts[s][f]]))
-                solver.add(at_most_one([self.symb_sts[s][f], self.symb_ltes[s][f]]))
-                solver.add(at_most_one([self.symb_lts[s][f], self.symb_stes[s][f]]))
+            for v in domain:
+                self.conditions[s].append(Condition(self.vars[s], Operator.EQ, v))
+                self.conditions[s].append(Condition(self.vars[s], Operator.INEQ, v))
+            for f in range(s + 1, k):
+                self.conditions[s].append(
+                    Condition(self.vars[s], Operator.EQ, self.vars[f])
+                )
+                self.conditions[s].append(
+                    Condition(self.vars[s], Operator.INEQ, self.vars[f])
+                )
+                self.conditions[s].append(
+                    Condition(self.vars[s], Operator.LT, self.vars[f])
+                )
+                self.conditions[s].append(
+                    Condition(self.vars[s], Operator.ST, self.vars[f])
+                )
+                self.conditions[s].append(
+                    Condition(self.vars[s], Operator.LTE, self.vars[f])
+                )
+                self.conditions[s].append(
+                    Condition(self.vars[s], Operator.STE, self.vars[f])
+                )
 
-        # Disable comparators incompatible with or
-        # superfluous for booleans when domain is binary.
+        # Disable comparators incompatible with booleans when domain is binary.
         if len(domain) == 2:
             for s in range(k):
-                solver.add(z3.And([z3.Not(v) for v in self.const_ineqs[s]]))
-                solver.add(z3.And([z3.Not(v) for v in self.symb_lts[s]]))
-                solver.add(z3.And([z3.Not(v) for v in self.symb_sts[s]]))
-                solver.add(z3.And([z3.Not(v) for v in self.symb_ltes[s]]))
-                solver.add(z3.And([z3.Not(v) for v in self.symb_stes[s]]))
+                for cond in self.conditions[s]:
+                    if (
+                        cond.op == Operator.LT
+                        or cond.op == Operator.ST
+                        or cond.op == Operator.LTE
+                        or cond.op == Operator.STE
+                    ):
+                        solver.add(z3.Not(cond.ref()))
 
-        # Prepare condition refs of values being allowed by the const conditions.
-        self.allowed_by_const = [
+        def conflicting_const(left: int, op: Operator, right: int) -> bool:
+            match op:
+                case Operator.EQ:
+                    return left != right
+                case Operator.INEQ:
+                    return left == right
+                case Operator.LT:
+                    return left <= right
+                case Operator.ST:
+                    return left >= right
+                case Operator.LTE:
+                    return left < right
+                case Operator.STE:
+                    return left > right
+
+        # Prepare expressions which determine if values are facilitated
+        # purely by the const conditions.
+        self.const_facilitates = [
             [
                 z3.And(
-                    z3.Not(
-                        self.const_ineqs[s][i]
-                    ),  # to be allowed, should not be inequal
-                    z3.And(
-                        [z3.Not(eq) for j, eq in enumerate(self.const_eqs[s]) if j != i]
-                    ),  # to be allowed, equality to other values should be false
+                    [
+                        z3.Not(cond.ref())
+                        for cond in self.conditions[s]
+                        if isinstance(cond.right, int)
+                        and conflicting_const(v, cond.op, cond.right)
+                    ]
                 )
-                for i in range(len(self.domain))
+                for v in domain
             ]
             for s in range(self.k)
         ]
 
-    def allows(self, s: int, value: int, next_values: list[int]):
-        assert len(next_values) == (self.k - s - 1)
-        di = self.domain.index(value)
+    def facilitates(self, s: int, vs: list[int]):
         conds = []
 
-        # Require being allowed by the constant equalities.
-        conds.append(self.allowed_by_const[s][di])
+        # Require being facilitated by the constant equalities.
+        conds.append(self.const_facilitates[s][self.domain.index(vs[s])])
 
         # Require symbolic comparisons to hold when enabled.
-        for f in range(len(next_values)):
-            conds.append(z3.Implies(self.symb_eqs[s][f], value == next_values[f]))
-            conds.append(z3.Implies(self.symb_ineqs[s][f], value != next_values[f]))
-            conds.append(z3.Implies(self.symb_lts[s][f], value > next_values[f]))
-            conds.append(z3.Implies(self.symb_sts[s][f], value < next_values[f]))
-            conds.append(z3.Implies(self.symb_ltes[s][f], value >= next_values[f]))
-            conds.append(z3.Implies(self.symb_stes[s][f], value <= next_values[f]))
+        for cond in self.conditions[s]:
+            if not isinstance(cond.right, int):
+                match cond.op:
+                    case Operator.EQ:
+                        conds.append(z3.Implies(cond.ref(), vs[s] == vs[cond.right.s]))
+                    case Operator.INEQ:
+                        conds.append(z3.Implies(cond.ref(), vs[s] != vs[cond.right.s]))
+                    case Operator.LT:
+                        conds.append(z3.Implies(cond.ref(), vs[s] > vs[cond.right.s]))
+                    case Operator.ST:
+                        conds.append(z3.Implies(cond.ref(), vs[s] < vs[cond.right.s]))
+                    case Operator.LTE:
+                        conds.append(z3.Implies(cond.ref(), vs[s] >= vs[cond.right.s]))
+                    case Operator.STE:
+                        conds.append(z3.Implies(cond.ref(), vs[s] <= vs[cond.right.s]))
 
         return z3.And(conds)
 
-    def allowed_count(self):
-        allowed_by_const_sums = [
-            z3.Sum(
-                [
-                    z3.If(self.allowed_by_const[s][i], 1, 0)
-                    for i in range(len(self.domain))
-                ]
-            )
-            for s in range(self.k)
-        ]
-
-        allowed_by_const_sums_products_except = [
+    def facilitates_count(self):
+        # TODO: make correct
+        return z3.Product(
             [
-                z3.Product(
+                z3.Sum(
                     [
-                        allowed_by_const_sums[s]
-                        for s in range(self.k)
-                        if s != s1 and s != s2
+                        z3.If(self.const_facilitates[s][di], 1, 0)
+                        for di in range(len(self.domain))
                     ]
                 )
-                for s2 in range(self.k)
-            ]
-            for s1 in range(self.k)
-        ]
-
-        is_truth_pair = [
-            [
-                [
-                    [
-                        z3.If(
-                            z3.And(
-                                self.allowed_by_const[s][i], self.allowed_by_const[f][j]
-                            ),
-                            1,
-                            0,
-                        )
-                        for j in range(len(self.domain))
-                    ]
-                    for i in range(len(self.domain))
-                ]
-                for f in range(self.k)
-            ]
-            for s in range(self.k)
-        ]
-
-        return z3.Sum(
-            [z3.Product(allowed_by_const_sums)]
-            + [
-                z3.If(
-                    self.symb_eqs[s][f - s - 1],
-                    -allowed_by_const_sums_products_except[s][f]
-                    * z3.Sum(
-                        [
-                            is_truth_pair[s][f][i][j]
-                            for i in range(len(self.domain))
-                            for j in range(len(self.domain))
-                            if i != j
-                        ]
-                    ),
-                    0,
-                )
                 for s in range(self.k)
-                for f in range(s + 1, self.k)
-            ]
-            + [
-                z3.If(
-                    self.symb_ineqs[s][f - s - 1],
-                    -allowed_by_const_sums_products_except[s][f]
-                    * z3.Sum(
-                        [
-                            is_truth_pair[s][f][i][j]
-                            for i in range(len(self.domain))
-                            for j in range(len(self.domain))
-                            if i == j
-                        ]
-                    ),
-                    0,
-                )
-                for s in range(self.k)
-                for f in range(s + 1, self.k)
-            ]
-            + [
-                z3.If(
-                    self.symb_lts[s][f - s - 1],
-                    -allowed_by_const_sums_products_except[s][f]
-                    * z3.Sum(
-                        [
-                            is_truth_pair[s][f][i][j]
-                            for i in range(len(self.domain))
-                            for j in range(len(self.domain))
-                            if i <= j
-                        ]
-                    ),
-                    0,
-                )
-                for s in range(self.k)
-                for f in range(s + 1, self.k)
-            ]
-            + [
-                z3.If(
-                    self.symb_sts[s][f - s - 1],
-                    -allowed_by_const_sums_products_except[s][f]
-                    * z3.Sum(
-                        [
-                            is_truth_pair[s][f][i][j]
-                            for i in range(len(self.domain))
-                            for j in range(len(self.domain))
-                            if i >= j
-                        ]
-                    ),
-                    0,
-                )
-                for s in range(self.k)
-                for f in range(s + 1, self.k)
-            ]
-            + [
-                z3.If(
-                    self.symb_ltes[s][f - s - 1],
-                    -allowed_by_const_sums_products_except[s][f]
-                    * z3.Sum(
-                        [
-                            is_truth_pair[s][f][i][j]
-                            for i in range(len(self.domain))
-                            for j in range(len(self.domain))
-                            if i < j
-                        ]
-                    ),
-                    0,
-                )
-                for s in range(self.k)
-                for f in range(s + 1, self.k)
-            ]
-            + [
-                z3.If(
-                    self.symb_stes[s][f - s - 1],
-                    -allowed_by_const_sums_products_except[s][f]
-                    * z3.Sum(
-                        [
-                            is_truth_pair[s][f][i][j]
-                            for i in range(len(self.domain))
-                            for j in range(len(self.domain))
-                            if i > j
-                        ]
-                    ),
-                    0,
-                )
-                for s in range(self.k)
-                for f in range(s + 1, self.k)
             ]
         )
 
-    def conditions_from_model(self, model: z3.ModelRef):
-        result: list[z3.BoolRef] = []
+    def conditions_from_model(self, m: z3.ModelRef):
+        result: list[Condition] = []
         for s in range(self.k):
-            for v in chain(
-                self.const_eqs[s],
-                self.const_ineqs[s],
-                self.symb_eqs[s],
-                self.symb_ineqs[s],
-                self.symb_lts[s],
-                self.symb_sts[s],
-                self.symb_ltes[s],
-                self.symb_stes[s],
-            ):
-                if z3.is_true(model.get_interp(v)):
-                    result.append(v)
+            for cond in self.conditions[s]:
+                if z3.is_true(m.get_interp(cond.ref())):
+                    result.append(cond)
         return result
 
 
-def find(n: int, d: int):
-    print_stamped("building model...")
+class Filter:
+    def __init__(self, k: int, solver: z3.Optimize):
+        self.k = k
+        self.ax = FilterComponent("ax", [0, 1, 2], k, solver)
+        self.hi = FilterComponent("hi", [0, 1], k, solver)
+        self.dr = FilterComponent("dr", [0, 1, 2], k, solver)
 
-    solver = z3.Optimize()
-    axs = VariableSeq("ax", [0, 1, 2], d, solver)
-    his = VariableSeq("hi", [0, 1], d, solver)
-    drs = VariableSeq("dr", [0, 1, 2], d, solver)
-
-    def is_filtered(seq: MoveSeq):
-        """Return the restrictions of a move sequence being filtered."""
-        assert len(seq) == d
-        seq_axs = [m[0] for m in seq]
-        seq_his = [1 if m[1] else 0 for m in seq]
-        seq_drs = [m[2] for m in seq]
+    def facilitates(self, seq: MoveSeq):
+        assert len(seq) == self.k
         return z3.And(
             [
                 z3.And(
-                    axs.allows(s, seq_axs[s], seq_axs[s + 1 :]),
-                    his.allows(s, seq_his[s], seq_his[s + 1 :]),
-                    drs.allows(s, seq_drs[s], seq_drs[s + 1 :]),
+                    self.ax.facilitates(s, [m[0] for m in seq]),
+                    self.hi.facilitates(s, [1 if m[1] else 0 for m in seq]),
+                    self.dr.facilitates(s, [m[2] for m in seq]),
                 )
-                for s in range(d)
+                for s in range(self.k)
             ]
         )
 
+    def facilitates_count(self):
+        return z3.Product(
+            [
+                self.ax.facilitates_count(),
+                self.hi.facilitates_count(),
+                self.dr.facilitates_count(),
+            ]
+        )
+
+    def all_conditions(self):
+        return [
+            cond
+            for cond in chain(
+                *chain(self.ax.conditions),
+                *chain(self.hi.conditions),
+                *chain(self.dr.conditions),
+            )
+        ]
+
+    def conditions_from_model(self, m: z3.ModelRef):
+        return (
+            self.ax.conditions_from_model(m)
+            + self.hi.conditions_from_model(m)
+            + self.dr.conditions_from_model(m)
+        )
+
+
+def find(n: int, k: int):
+    print_stamped("building model...")
+
+    solver = z3.Optimize()
+    filter = Filter(k, solver)
+
     # Cumulate all filterable move sequences.
     filterable: list[MoveSeq] = []
-    for seq, syms in move_symmetries.load_symmetries(n, d, False).items():
+    for seq, syms in move_symmetries.load_symmetries(n, k, False).items():
         filterable.extend(syms)
 
         # If the original move sequence is also of length d,
         # it too can be filtered out, as long as one stays unfiltered.
-        if len(seq) == d:
+        if len(seq) == k:
             filterable.append(seq)
-            solver.add(z3.Or([z3.Not(is_filtered(s)) for s in syms + [seq]]))
+            solver.add(z3.Or([z3.Not(filter.facilitates(s)) for s in syms + [seq]]))
 
     if len(filterable) == 0:
         raise Exception("there are no move sequences to filter")
@@ -324,101 +271,37 @@ def find(n: int, d: int):
     # with the number of newly filtered move sequences plus the number of previously
     # filtered move sequences that are filtered again. This ensures that no unique
     # moves sequences are filtered.
-    filtered_count = z3.Sum([z3.If(is_filtered(f), 1, 0) for f in filterable])
+    filtered_count = z3.Sum([z3.If(filter.facilitates(f), 1, 0) for f in filterable])
     print_stamped("ingesting previously filtered...")
     refiltered_count = z3.Sum(
         [
-            z3.If(is_filtered(f), 1, 0)
-            for f in move_symmetries.load_filtered(n, d, False)
+            z3.If(filter.facilitates(f), 1, 0)
+            for f in move_symmetries.load_filtered(n, k, False)
         ]
     )
     print_stamped("finished ingesting previously filtered...")
-    solver.add(
-        z3.Product(
-            axs.allowed_count(),
-            his.allowed_count(),
-            drs.allowed_count(),
-        )
-        == filtered_count + refiltered_count
-    )
+    solver.add(filter.facilitates_count() == filtered_count + refiltered_count)
 
     # Add the main objective of maximizing the number of filtered sequences.
     solver.maximize(filtered_count)
 
     # As secondary objectives, add minimizing the number of conditions.
-    symb_ste_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.symb_stes[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.symb_stes[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.symb_stes[s]]))
-    )
-    symb_lte_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.symb_ltes[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.symb_ltes[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.symb_ltes[s]]))
-    )
-    symb_st_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.symb_sts[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.symb_sts[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.symb_sts[s]]))
-    )
-    symb_lt_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.symb_lts[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.symb_lts[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.symb_lts[s]]))
-    )
-    symb_ineq_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.symb_ineqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.symb_ineqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.symb_ineqs[s]]))
-    )
-    symb_eq_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.symb_eqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.symb_eqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.symb_eqs[s]]))
-    )
-    const_ineq_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.const_ineqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.const_ineqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.const_ineqs[s]]))
-    )
-    const_eq_count = (
-        (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in axs.const_eqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in his.const_eqs[s]]))
-        + (z3.Sum([z3.If(v, 1, 0) for s in range(d) for v in drs.const_eqs[s]]))
-    )
-    condition_count = (
-        const_eq_count
-        + const_ineq_count
-        + symb_eq_count
-        + symb_ineq_count
-        + symb_lt_count
-        + symb_st_count
-        + symb_lte_count
-        + symb_ste_count
+    condition_count = z3.Sum(
+        [z3.If(cond.ref(), 1, 0) for cond in filter.all_conditions()]
     )
     solver.minimize(condition_count)
-    solver.minimize(symb_ste_count)
-    solver.minimize(symb_lte_count)
-    solver.minimize(symb_st_count)
-    solver.minimize(symb_lt_count)
-    solver.minimize(symb_ineq_count)
-    solver.minimize(symb_eq_count)
-    solver.minimize(const_ineq_count)
-    solver.minimize(const_eq_count)
 
     print_stamped("solving...")
     solver.check()
 
     m = solver.model()
     print_stamped(f"found filter for {m.evaluate(filtered_count)}...")
-    print(axs.conditions_from_model(m))
-    print(his.conditions_from_model(m))
-    print(drs.conditions_from_model(m))
+    print([str(cond) for cond in filter.conditions_from_model(m)])
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("n", type=int)
-    parser.add_argument("d", type=int)
+    parser.add_argument("k", type=int)
     args = parser.parse_args()
-    find(args.n, args.d)
+    find(args.n, args.k)
