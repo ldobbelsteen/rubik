@@ -347,7 +347,7 @@ def find(n: int, d: int):
     refiltered_count = z3.Sum(
         [
             z3.If(is_filtered(f), 1, 0)
-            for f in move_symmetries.load_filtered(n, d, False)
+            for f in move_symmetries.load_filtered_padded(n, d)
         ]
     )
     solver.add(

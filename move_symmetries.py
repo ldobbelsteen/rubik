@@ -2,6 +2,7 @@ import argparse
 import ast
 import os
 from functools import reduce
+from itertools import product
 
 from puzzle import (
     DEFAULT_CENTER_COLORS,
@@ -364,6 +365,29 @@ def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
         return result + load_filtered(n, d - 1, include_lower)
     else:
         return result
+
+
+def load_filtered_padded(n: int, d: int) -> set[MoveSeq]:
+    moves = all_moves()
+    padded: set[MoveSeq] = set()
+
+    for seq in load_filtered(n, d, True):
+        seq_len = len(seq)
+        if seq_len == d:
+            padded.add(seq)
+        else:
+            for start in range(d - seq_len + 1):
+                for s in product(
+                    *[
+                        moves
+                        if i < start or i >= (start + seq_len)
+                        else [seq[i - start]]
+                        for i in range(d)
+                    ]
+                ):
+                    padded.add(s)
+
+    return padded
 
 
 if __name__ == "__main__":
