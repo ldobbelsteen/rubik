@@ -254,8 +254,12 @@ def find(n: int, k: int):
         raise Exception("there are no move sequences to filter")
 
     # Disallow filtering unique move sequences.
-    for seq in move_symmetries.load_unique(n, k, False):
-        solver.add(filter.not_facilitates_seq(seq))
+    print_stamped("loading unique sequences...")
+    not_filterable = move_symmetries.load_unique(n, k, False)
+    not_filterable_conditions = [filter.not_facilitates_seq(s) for s in not_filterable]
+    print_stamped("ingesting unique sequences...")
+    solver.add(z3.And(not_filterable_conditions))
+    print_stamped("finished ingesting...")
 
     # Add the main objective of maximizing the number of filtered sequences.
     filtered_count = z3.Sum(
