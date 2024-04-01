@@ -56,6 +56,11 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
             if axs(s) == axs(s + 2) and drs(s) == 0 and drs(s + 2) == 1:
                 return False
 
+        # Move filter #4
+        for s in range(k - 2):
+            if axs(s) == axs(s + 1) and drs(s) == drs(s + 1):
+                return False
+
         return True
 
     if n == 3:
