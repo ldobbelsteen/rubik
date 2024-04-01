@@ -120,38 +120,24 @@ class FilterComponent:
                     ):
                         solver.add(z3.Not(cond.ref()))
 
-    def facilitates(self, s: int, vs: list[int] | list[z3.ArithRef]):
+    def facilitates(self, s: int, vs: list[int]):
         conds = []
 
         for cond in self.conditions[s]:
-            if isinstance(cond.right, int):
-                match cond.op:
-                    case Operator.EQ:
-                        conds.append(z3.Implies(cond.ref(), vs[s] == cond.right))
-                    case Operator.INEQ:
-                        conds.append(z3.Implies(cond.ref(), vs[s] != cond.right))
-                    case Operator.LT:
-                        conds.append(z3.Implies(cond.ref(), vs[s] > cond.right))
-                    case Operator.ST:
-                        conds.append(z3.Implies(cond.ref(), vs[s] < cond.right))
-                    case Operator.LTE:
-                        conds.append(z3.Implies(cond.ref(), vs[s] >= cond.right))
-                    case Operator.STE:
-                        conds.append(z3.Implies(cond.ref(), vs[s] <= cond.right))
-            else:
-                match cond.op:
-                    case Operator.EQ:
-                        conds.append(z3.Implies(cond.ref(), vs[s] == vs[cond.right.s]))
-                    case Operator.INEQ:
-                        conds.append(z3.Implies(cond.ref(), vs[s] != vs[cond.right.s]))
-                    case Operator.LT:
-                        conds.append(z3.Implies(cond.ref(), vs[s] > vs[cond.right.s]))
-                    case Operator.ST:
-                        conds.append(z3.Implies(cond.ref(), vs[s] < vs[cond.right.s]))
-                    case Operator.LTE:
-                        conds.append(z3.Implies(cond.ref(), vs[s] >= vs[cond.right.s]))
-                    case Operator.STE:
-                        conds.append(z3.Implies(cond.ref(), vs[s] <= vs[cond.right.s]))
+            right = cond.right if isinstance(cond.right, int) else vs[cond.right.s]
+            match cond.op:
+                case Operator.EQ:
+                    conds.append(z3.Implies(cond.ref(), vs[s] == right))
+                case Operator.INEQ:
+                    conds.append(z3.Implies(cond.ref(), vs[s] != right))
+                case Operator.LT:
+                    conds.append(z3.Implies(cond.ref(), vs[s] > right))
+                case Operator.ST:
+                    conds.append(z3.Implies(cond.ref(), vs[s] < right))
+                case Operator.LTE:
+                    conds.append(z3.Implies(cond.ref(), vs[s] >= right))
+                case Operator.STE:
+                    conds.append(z3.Implies(cond.ref(), vs[s] <= right))
 
         return z3.And(conds)
 
@@ -178,12 +164,7 @@ class Filter:
             [m[2] for m in ms],
         )
 
-    def facilitates(
-        self,
-        axs: list[int] | list[z3.ArithRef],
-        his: list[int] | list[z3.ArithRef],
-        drs: list[int] | list[z3.ArithRef],
-    ):
+    def facilitates(self, axs: list[int], his: list[int], drs: list[int]):
         return z3.And(
             [
                 z3.And(
@@ -233,46 +214,9 @@ def find(n: int, k: int):
     if len(filterable) == 0:
         raise Exception("there are no move sequences to filter")
 
-    # Make sure the filter does not filter too much. It is only allowed to filter either
-    # new filterable sequences or refilter previously filtered sequences.
-    prev_filters: list[Filter] = []
-    axs_free = [z3.Int(f"ax(s + {s})") for s in range(k)]
-    his_free = [z3.Int(f"hi(s + {s})") for s in range(k)]
-    drs_free = [z3.Int(f"dr(s + {s})") for s in range(k)]
-    solver.add(
-        z3.ForAll(
-            axs_free + his_free + drs_free,
-            z3.Implies(
-                filter.facilitates(axs_free, his_free, drs_free),
-                z3.Or(
-                    z3.Or(
-                        [
-                            z3.And(
-                                [
-                                    z3.And(
-                                        [ax == f[s][0] for s, ax in enumerate(axs_free)]
-                                    ),
-                                    z3.And(
-                                        [hi == f[s][0] for s, hi in enumerate(his_free)]
-                                    ),
-                                    z3.And(
-                                        [dr == f[s][0] for s, dr in enumerate(drs_free)]
-                                    ),
-                                ]
-                            )
-                            for f in filterable
-                        ]
-                    ),
-                    z3.Or(
-                        [
-                            pf.facilitates(axs_free, his_free, drs_free)
-                            for pf in prev_filters
-                        ]
-                    ),
-                ),
-            ),
-        )
-    )
+    # Disallow filtering unique move sequences.
+    for seq in move_symmetries.load_unique(n, k, False):
+        solver.add(z3.Not(filter.facilitates_seq(seq)))
 
     # Add the main objective of maximizing the number of filtered sequences.
     filtered_count = z3.Sum(

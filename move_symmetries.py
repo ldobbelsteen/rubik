@@ -26,6 +26,12 @@ def filtered_file_path(n: int, d: int):
     return os.path.join(dir, filename)
 
 
+def unique_file_path(n: int, d: int):
+    dir = os.path.dirname(__file__)
+    filename = f"./generated_move_symmetries/n{n}-d{d}-unique.txt"
+    return os.path.join(dir, filename)
+
+
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     """Return whether a move sequence is allowed by applying filters."""
     k = len(seq)
@@ -192,6 +198,7 @@ def generate(n: int, max_d: int):
         next_fresh: set[Puzzle] = set()
         symmetries: dict[MoveSeq, set[MoveSeq]] = {}
         filtered: dict[Puzzle, set[MoveSeq]] = {}
+        unique: set[MoveSeq] = set()
 
         for state in fresh:
             path = paths[state]
@@ -209,13 +216,20 @@ def generate(n: int, max_d: int):
 
                 if new_state in paths:
                     prev_path = paths[new_state]
-                    assert len(prev_path) <= len(new_path)
                     if prev_path not in symmetries:
                         symmetries[prev_path] = set()
                     symmetries[prev_path].add(new_path)
+
+                    # Remove from unique, since it has now been observed more than once.
+                    if prev_path in unique:
+                        unique.remove(prev_path)
+
                 else:
                     paths[new_state] = new_path
                     next_fresh.add(new_state)
+
+                    # This state has not been seen before, so add to unique.
+                    unique.add(new_path)
 
         # Check whether the filtered out move sequences' states are still reachable.
         for state, seqs in filtered.items():
@@ -240,6 +254,16 @@ def generate(n: int, max_d: int):
         path = filtered_file_path(n, d)
         create_parent_directory(path)
         output = reduce(lambda x, y: x + list(y), filtered.values(), [])
+        output.sort()
+        with open(path, "w") as file:
+            for seq in output:
+                seq_canon = move_names(seq)
+                file.write(f"{str(seq_canon)}\n")
+
+        # Write found unique move sequences to file.
+        path = unique_file_path(n, d)
+        create_parent_directory(path)
+        output = list(unique)
         output.sort()
         with open(path, "w") as file:
             for seq in output:
@@ -295,6 +319,27 @@ def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
 
     if include_lower:
         return result + load_filtered(n, d - 1, include_lower)
+    else:
+        return result
+
+
+def load_unique(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
+    if d <= 0:
+        return []
+
+    path = unique_file_path(n, d)
+    if not os.path.isfile(path):
+        generate(n, d)
+
+    result: list[MoveSeq] = []
+    with open(path, "r") as file:
+        for line in file:
+            seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
+            seq = tuple(parse_move(name) for name in seq_canon)
+            result.append(seq)
+
+    if include_lower:
+        return result + load_unique(n, d - 1, include_lower)
     else:
         return result
 
