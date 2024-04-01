@@ -2,6 +2,7 @@ import argparse
 import re
 from enum import Enum
 from itertools import chain
+from multiprocessing import cpu_count
 
 import z3
 
@@ -233,6 +234,8 @@ class Filter:
 def find(n: int, k: int):
     print_stamped("building model...")
 
+    z3.set_param("parallel.enable", True)
+    z3.set_param("parallel.threads.max", cpu_count() - 1)
     solver = z3.Optimize()
     filter = Filter(k, solver)
 
