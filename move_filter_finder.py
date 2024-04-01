@@ -122,7 +122,6 @@ class FilterComponent:
 
     def facilitates(self, s: int, vs: list[int]):
         conds = []
-
         for cond in self.conditions[s]:
             right = cond.right if isinstance(cond.right, int) else vs[cond.right.s]
             match cond.op:
@@ -138,8 +137,26 @@ class FilterComponent:
                     conds.append(z3.Implies(cond.ref(), vs[s] >= right))
                 case Operator.STE:
                     conds.append(z3.Implies(cond.ref(), vs[s] <= right))
-
         return z3.And(conds)
+
+    def not_facilitates(self, s: int, vs: list[int]):
+        conds = []
+        for cond in self.conditions[s]:
+            right = cond.right if isinstance(cond.right, int) else vs[cond.right.s]
+            match cond.op:
+                case Operator.EQ:
+                    conds.append(z3.And(cond.ref(), vs[s] != right))
+                case Operator.INEQ:
+                    conds.append(z3.And(cond.ref(), vs[s] == right))
+                case Operator.LT:
+                    conds.append(z3.And(cond.ref(), vs[s] <= right))
+                case Operator.ST:
+                    conds.append(z3.And(cond.ref(), vs[s] >= right))
+                case Operator.LTE:
+                    conds.append(z3.And(cond.ref(), vs[s] < right))
+                case Operator.STE:
+                    conds.append(z3.And(cond.ref(), vs[s] > right))
+        return z3.Or(conds)
 
     def conditions_from_model(self, m: z3.ModelRef):
         result: list[Condition] = []
@@ -164,6 +181,13 @@ class Filter:
             [m[2] for m in ms],
         )
 
+    def not_facilitates_seq(self, ms: MoveSeq):
+        return self.not_facilitates(
+            [m[0] for m in ms],
+            [1 if m[1] else 0 for m in ms],
+            [m[2] for m in ms],
+        )
+
     def facilitates(self, axs: list[int], his: list[int], drs: list[int]):
         return z3.And(
             [
@@ -171,6 +195,18 @@ class Filter:
                     self.ax.facilitates(s, axs),
                     self.hi.facilitates(s, his),
                     self.dr.facilitates(s, drs),
+                )
+                for s in range(self.k)
+            ]
+        )
+
+    def not_facilitates(self, axs: list[int], his: list[int], drs: list[int]):
+        return z3.Or(
+            [
+                z3.Or(
+                    self.ax.not_facilitates(s, axs),
+                    self.hi.not_facilitates(s, his),
+                    self.dr.not_facilitates(s, drs),
                 )
                 for s in range(self.k)
             ]
@@ -209,32 +245,28 @@ def find(n: int, k: int):
         # it too can be filtered out, as long as one stays unfiltered.
         if len(seq) == k:
             filterable.append(seq)
-            solver.add(z3.Or([z3.Not(filter.facilitates_seq(s)) for s in syms + [seq]]))
+            solver.add(z3.Or([filter.not_facilitates_seq(s) for s in syms + [seq]]))
 
     if len(filterable) == 0:
         raise Exception("there are no move sequences to filter")
 
     # Disallow filtering unique move sequences.
     for seq in move_symmetries.load_unique(n, k, False):
-        solver.add(z3.Not(filter.facilitates_seq(seq)))
+        solver.add(filter.not_facilitates_seq(seq))
 
     # Add the main objective of maximizing the number of filtered sequences.
-    filtered_count = z3.Sum(
-        [z3.If(filter.facilitates_seq(f), 1, 0) for f in filterable]
-    )
-    solver.maximize(filtered_count)
+    filtered = z3.Sum([z3.If(filter.facilitates_seq(f), 1, 0) for f in filterable])
+    solver.maximize(filtered)
 
     # As a secondary objective, add minimizing the number of conditions.
-    condition_count = z3.Sum(
-        [z3.If(cond.ref(), 1, 0) for cond in filter.all_conditions()]
-    )
-    solver.minimize(condition_count)
+    conditions = z3.Sum([z3.If(cond.ref(), 1, 0) for cond in filter.all_conditions()])
+    solver.minimize(conditions)
 
     print_stamped("solving...")
     solver.check()
 
     m = solver.model()
-    print_stamped(f"found filter for {m.evaluate(filtered_count)}...")
+    print_stamped(f"found filter for {m.evaluate(filtered)}...")
     print([str(cond) for cond in filter.conditions_from_model(m)])
 
 
