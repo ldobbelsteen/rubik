@@ -261,31 +261,31 @@ def find(n: int, k: int):
     solver.maximize(filtered_count)
 
     # As a secondary objective, add minimizing the number of conditions.
-    cond_count = z3.Sum([z3.If(c, 1, 0) for c in filter.all_conditions()])
+    cond_count = z3.Sum([z3.If(c.ref(), 1, 0) for c in filter.all_conditions()])
     symb_cond_count = z3.Sum(
         [
-            z3.If(c, 1, 0)
+            z3.If(c.ref(), 1, 0)
             for c in filter.all_conditions()
             if not isinstance(c.right, int)
         ]
     )
     ste_cond_count = z3.Sum(
-        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.STE]
+        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.STE]
     )
     lte_cond_count = z3.Sum(
-        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.LTE]
+        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.LTE]
     )
     st_cond_count = z3.Sum(
-        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.ST]
+        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.ST]
     )
     lt_cond_count = z3.Sum(
-        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.LT]
+        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.LT]
     )
     eq_cond_count = z3.Sum(
-        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.EQ]
+        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.EQ]
     )
     ineq_cond_count = z3.Sum(
-        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.INEQ]
+        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.INEQ]
     )
     solver.minimize(cond_count)
     solver.minimize(symb_cond_count)
