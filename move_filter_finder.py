@@ -255,18 +255,52 @@ def find(n: int, k: int):
         solver.add(filter.not_facilitates_seq(seq))
 
     # Add the main objective of maximizing the number of filtered sequences.
-    filtered = z3.Sum([z3.If(filter.facilitates_seq(f), 1, 0) for f in filterable])
-    solver.maximize(filtered)
+    filtered_count = z3.Sum(
+        [z3.If(filter.facilitates_seq(f), 1, 0) for f in filterable]
+    )
+    solver.maximize(filtered_count)
 
     # As a secondary objective, add minimizing the number of conditions.
-    conditions = z3.Sum([z3.If(cond.ref(), 1, 0) for cond in filter.all_conditions()])
-    solver.minimize(conditions)
+    cond_count = z3.Sum([z3.If(c, 1, 0) for c in filter.all_conditions()])
+    symb_cond_count = z3.Sum(
+        [
+            z3.If(c, 1, 0)
+            for c in filter.all_conditions()
+            if not isinstance(c.right, int)
+        ]
+    )
+    ste_cond_count = z3.Sum(
+        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.STE]
+    )
+    lte_cond_count = z3.Sum(
+        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.LTE]
+    )
+    st_cond_count = z3.Sum(
+        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.ST]
+    )
+    lt_cond_count = z3.Sum(
+        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.LT]
+    )
+    eq_cond_count = z3.Sum(
+        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.EQ]
+    )
+    ineq_cond_count = z3.Sum(
+        [z3.If(c, 1, 0) for c in filter.all_conditions() if c.op == Operator.INEQ]
+    )
+    solver.minimize(cond_count)
+    solver.minimize(symb_cond_count)
+    solver.minimize(ste_cond_count)
+    solver.minimize(lte_cond_count)
+    solver.minimize(st_cond_count)
+    solver.minimize(lt_cond_count)
+    solver.minimize(ineq_cond_count)
+    solver.minimize(eq_cond_count)
 
     print_stamped("solving...")
     solver.check()
 
     m = solver.model()
-    print_stamped(f"found filter for {m.evaluate(filtered)}...")
+    print_stamped(f"found filter for {m.evaluate(filtered_count)}...")
     print([str(cond) for cond in filter.conditions_from_model(m)])
 
 
