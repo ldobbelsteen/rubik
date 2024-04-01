@@ -1,7 +1,6 @@
 import argparse
 import ast
 import os
-from functools import reduce
 
 from puzzle import (
     DEFAULT_CENTER_COLORS,
@@ -73,6 +72,14 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
             if drs(s) == 2 and drs(s + 1) == 2 and drs(s + 2) == 2 and drs(s + 3) == 2:
                 # Move filter #3
                 if axs(s) == axs(s + 3) and axs(s + 1) == axs(s + 2) and not his(s):
+                    return False
+
+                # Move filter #4
+                if (
+                    axs(s) == axs(s + 1)
+                    and axs(s + 1) > axs(s + 2)
+                    and axs(s + 2) == axs(s + 3)
+                ):
                     return False
 
         return True
@@ -280,7 +287,9 @@ def generate(n: int, max_d: int):
         # Write found filtered move sequences to file.
         path = filtered_file_path(n, d)
         create_parent_directory(path)
-        output = reduce(lambda x, y: x + list(y), filtered.values(), [])
+        output = []
+        for ftd in filtered.values():
+            output.extend(ftd)
         output.sort()
         with open(path, "w") as file:
             for seq in output:
