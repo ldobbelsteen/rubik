@@ -1,3 +1,5 @@
+"""Script for finding symmetric move sequences."""
+
 import argparse
 import ast
 import os
@@ -14,18 +16,21 @@ from tools import create_parent_directory, print_stamped
 
 
 def symmetries_file_path(n: int, d: int):
+    """Return the file path for found symmetrical move sequences."""
     dir = os.path.dirname(__file__)
     filename = f"./generated_move_symmetries/n{n}-d{d}-symmetries.txt"
     return os.path.join(dir, filename)
 
 
 def filtered_file_path(n: int, d: int):
+    """Return the file path for found filtered move sequences."""
     dir = os.path.dirname(__file__)
     filename = f"./generated_move_symmetries/n{n}-d{d}-filtered.txt"
     return os.path.join(dir, filename)
 
 
 def unique_file_path(n: int, d: int):
+    """Return the file path for found unique move sequences."""
     dir = os.path.dirname(__file__)
     filename = f"./generated_move_symmetries/n{n}-d{d}-unique.txt"
     return os.path.join(dir, filename)
@@ -152,13 +157,16 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     raise Exception("invalid n or misconfigured filters")
 
 
-def generate(n: int, max_d: int):
+def generate(n: int, d: int):
+    """Generate files containing found symmetrical, filtered and unique move sequences
+    given n and a depth.
+    """
     moves = all_moves()
     finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
     paths: dict[Puzzle, MoveSeq] = {finished: tuple()}
     fresh: set[Puzzle] = {finished}
 
-    for d in range(1, max_d + 1):
+    for cd in range(1, d + 1):
         next_fresh: set[Puzzle] = set()
         symmetries: dict[MoveSeq, set[MoveSeq]] = {}
         filtered: dict[Puzzle, set[MoveSeq]] = {}
@@ -167,7 +175,7 @@ def generate(n: int, max_d: int):
         for state in fresh:
             path = paths[state]
             for move in moves:
-                new_path = path + (move,)
+                new_path = (*path, move)
 
                 new_state = state.execute_move(move)
 
@@ -204,7 +212,7 @@ def generate(n: int, max_d: int):
                 )
 
         # Write found symmetrical move sequences to file.
-        path = symmetries_file_path(n, d)
+        path = symmetries_file_path(n, cd)
         create_parent_directory(path)
         output = [(k, sorted(v)) for k, v in symmetries.items()]
         output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
@@ -212,10 +220,10 @@ def generate(n: int, max_d: int):
             for seq, syms in output:
                 seq_canon = move_names(seq)
                 syms_canon = [move_names(seq) for seq in syms]
-                file.write(f"{str(seq_canon)} -> {str(syms_canon)}\n")
+                file.write(f"{seq_canon!s} -> {syms_canon!s}\n")
 
         # Write found filtered move sequences to file.
-        path = filtered_file_path(n, d)
+        path = filtered_file_path(n, cd)
         create_parent_directory(path)
         output = []
         for ftd in filtered.values():
@@ -224,27 +232,30 @@ def generate(n: int, max_d: int):
         with open(path, "w") as file:
             for seq in output:
                 seq_canon = move_names(seq)
-                file.write(f"{str(seq_canon)}\n")
+                file.write(f"{seq_canon!s}\n")
 
         # Write found unique move sequences to file.
-        path = unique_file_path(n, d)
+        path = unique_file_path(n, cd)
         create_parent_directory(path)
         output = list(unique)
         output.sort()
         with open(path, "w") as file:
             for seq in output:
                 seq_canon = move_names(seq)
-                file.write(f"{str(seq_canon)}\n")
+                file.write(f"{seq_canon!s}\n")
 
         fil = sum(len(s) for s in filtered.values())
         pot = sum(len(s) for s in symmetries.values())
-        print_stamped(f"d = {d}: filtered {fil}, with {pot} more filterable")
+        print_stamped(f"d = {cd}: filtered {fil}, with {pot} more filterable")
         fresh = next_fresh
 
 
 def load_symmetries(
     n: int, d: int, include_lower: bool
 ) -> dict[MoveSeq, list[MoveSeq]]:
+    """Load found symmetrical move sequences from file. Optionally also loads
+    from lower depths.
+    """
     if d <= 0:
         return {}
 
@@ -253,7 +264,7 @@ def load_symmetries(
         generate(n, d)
 
     result: dict[MoveSeq, list[MoveSeq]] = {}
-    with open(path, "r") as file:
+    with open(path) as file:
         for line in file:
             seq_raw, syms_raw = line.rstrip("\n").split(" -> ")
             seq_canon: tuple[str, ...] = ast.literal_eval(seq_raw)
@@ -269,6 +280,9 @@ def load_symmetries(
 
 
 def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
+    """Load found filtered move sequences from file. Optionally also loads
+    from lower depths.
+    """
     if d <= 0:
         return []
 
@@ -277,7 +291,7 @@ def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
         generate(n, d)
 
     result: list[MoveSeq] = []
-    with open(path, "r") as file:
+    with open(path) as file:
         for line in file:
             seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
             seq = tuple(parse_move(name) for name in seq_canon)
@@ -290,6 +304,9 @@ def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
 
 
 def load_unique(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
+    """Load found unique move sequences from file. Optionally also loads
+    from lower depths.
+    """
     if d <= 0:
         return []
 
@@ -298,7 +315,7 @@ def load_unique(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
         generate(n, d)
 
     result: list[MoveSeq] = []
-    with open(path, "r") as file:
+    with open(path) as file:
         for line in file:
             seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
             seq = tuple(parse_move(name) for name in seq_canon)

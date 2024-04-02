@@ -1,6 +1,7 @@
 """Module containing the move mapping functions for the behaviour of cubies given their
 state and the move taken. All functions have a plain Python implementation, and a Z3
-implementation. Both implementations should be equivalent."""
+implementation. Both implementations should be equivalent.
+"""
 
 import z3
 
@@ -9,7 +10,8 @@ def generic_cubie_coord(
     n: int, x: int, y: int, z: int, ax: int, hi: bool, dr: int
 ) -> tuple[int, int, int]:
     """Generic cubie coordinate mapping constructed from 90 or 180 degree rotation
-    matrices. This serves as a reference implementation for the other functions."""
+    matrices. This serves as a reference implementation for the other functions.
+    """
     if ax == 0 and ((hi and x == n - 1) or (not hi and x == 0)):
         if dr == 0:
             return (x, z, n - 1 - y)
@@ -35,6 +37,9 @@ def generic_cubie_coord(
 
 
 def corner_x_hi(x_hi: bool, y_hi: bool, z_hi: bool, ax: int, hi: bool, dr: int) -> bool:
+    """Determine the new corner x-coordinate given its current coordinates and
+    the move.
+    """
     if ax == 1 and hi == y_hi:
         if dr == 0:
             return not z_hi
@@ -61,6 +66,7 @@ def z3_corner_x_hi(
     dr: z3.ArithRef,
     next_x_hi: z3.BoolRef,
 ):
+    """Z3 implementation of the corner x-coordinate mapping."""
     return z3.If(
         z3.And(ax == 1, hi == y_hi),
         z3.If(
@@ -81,6 +87,9 @@ def z3_corner_x_hi(
 
 
 def corner_y_hi(x_hi: bool, y_hi: bool, z_hi: bool, ax: int, hi: bool, dr: int) -> bool:
+    """Determine the new corner y-coordinate given its current coordinates and
+    the move.
+    """
     if ax == 0 and hi == x_hi:
         if dr == 0:
             return z_hi
@@ -107,6 +116,7 @@ def z3_corner_y_hi(
     dr: z3.ArithRef,
     next_y_hi: z3.BoolRef,
 ):
+    """Z3 implementation of the corner y-coordinate mapping."""
     return z3.If(
         z3.And(ax == 0, hi == x_hi),
         z3.If(
@@ -127,6 +137,9 @@ def z3_corner_y_hi(
 
 
 def corner_z_hi(x_hi: bool, y_hi: bool, z_hi: bool, ax: int, hi: bool, dr: int) -> bool:
+    """Determine the new corner z-coordinate given its current coordinates and
+    the move.
+    """
     if ax == 0 and hi == x_hi:
         if dr == 0:
             return not y_hi
@@ -153,6 +166,7 @@ def z3_corner_z_hi(
     dr: z3.ArithRef,
     next_z_hi: z3.BoolRef,
 ):
+    """Z3 implementation of the corner z-coordinate mapping."""
     return z3.If(
         z3.And(ax == 0, hi == x_hi),
         z3.If(
@@ -175,6 +189,9 @@ def z3_corner_z_hi(
 def corner_r(
     x_hi: bool, z_hi: bool, r: int, cw: bool, ax: int, hi: bool, dr: int
 ) -> int:
+    """Determine the new corner r-value given its current coordinates,
+    current r-value and the move.
+    """
     if dr != 2:
         if ax == 0 and hi == x_hi:
             if cw:
@@ -199,6 +216,7 @@ def z3_corner_r(
     dr: z3.ArithRef,
     next_r: z3.ArithRef,
 ):
+    """Z3 implementation of the corner r-value mapping."""
     # Condition for next == (r + 1) % 3
     add_one = z3.If(r == 0, next_r == 1, z3.If(r == 1, next_r == 2, next_r == 0))
 
@@ -223,6 +241,9 @@ def z3_corner_r(
 def corner_cw(
     x_hi: bool, y_hi: bool, z_hi: bool, cw: bool, ax: int, hi: bool, dr: int
 ) -> bool:
+    """Determine the new corner cw-value given its current coordinates,
+    current cw-value and the move.
+    """
     if dr != 2 and (
         (ax == 0 and hi == x_hi) or (ax == 1 and hi == y_hi) or (ax == 2 and hi == z_hi)
     ):
@@ -240,6 +261,7 @@ def z3_corner_cw(
     dr: z3.ArithRef,
     next_cw: z3.BoolRef,
 ):
+    """Z3 implementation of the corner cw-value mapping."""
     return z3.If(
         z3.And(
             dr != 2,
@@ -255,6 +277,9 @@ def z3_corner_cw(
 
 
 def edge_a(a: int, x_hi: bool, y_hi: bool, ax: int, hi: bool, dr: int) -> int:
+    """Determine the new edge a-value given its current coordinates,
+    current a-value and the move.
+    """
     if dr != 2:
         if a == 0:
             if ax == 1 and hi == y_hi:
@@ -283,6 +308,7 @@ def z3_edge_a(
     dr: z3.ArithRef,
     next_a: z3.ArithRef,
 ):
+    """Z3 implementation of the edge a-value mapping."""
     return z3.If(
         dr != 2,
         z3.If(
@@ -311,6 +337,9 @@ def z3_edge_a(
 
 
 def edge_x_hi(a: int, x_hi: bool, y_hi: bool, ax: int, hi: bool, dr: int) -> bool:
+    """Determine the new edge x-coordinate given its current coordinates,
+    current a-value and the move.
+    """
     if a == 0:
         if ax == 1 and hi == y_hi and dr != 1:
             return not x_hi
@@ -341,6 +370,7 @@ def z3_edge_x_hi(
     dr: z3.ArithRef,
     next_x_hi: z3.BoolRef,
 ):
+    """Z3 implementation of the edge x-coordinate mapping."""
     return z3.If(
         a == 0,
         z3.If(
@@ -369,6 +399,9 @@ def z3_edge_x_hi(
 
 
 def edge_y_hi(a: int, x_hi: bool, y_hi: bool, ax: int, hi: bool, dr: int) -> bool:
+    """Determine the new edge y-coordinate given its current coordinates,
+    current a-value and the move.
+    """
     if a == 0:
         if ax == 2 and hi == x_hi:
             if dr == 2:
@@ -400,6 +433,7 @@ def z3_edge_y_hi(
     dr: z3.ArithRef,
     next_y_hi: z3.BoolRef,
 ):
+    """Z3 implementation of the edge y-coordinate mapping."""
     return z3.If(
         z3.And(a == 0, ax == 2, hi == x_hi),
         z3.If(dr == 2, next_y_hi != y_hi, next_y_hi == x_hi),
@@ -428,6 +462,9 @@ def z3_edge_y_hi(
 
 
 def edge_r(a: int, next_a: int, r: bool) -> bool:
+    """Determine the new edge r-value given its current a-value, next-a value
+    and current r-value.
+    """
     if (a == 0 and next_a == 1) or (a == 1 and next_a == 0):
         return not r
     return r
@@ -439,6 +476,7 @@ def z3_edge_r(
     r: z3.BoolRef,
     next_r: z3.BoolRef,
 ):
+    """Z3 implementation of the edge r-value mapping."""
     return z3.If(
         z3.Or(z3.And(a == 0, next_a == 1), z3.And(a == 1, next_a == 0)),
         next_r != r,

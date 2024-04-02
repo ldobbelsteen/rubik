@@ -1,3 +1,5 @@
+"""Miscellaneous tools."""
+
 import os
 import re
 from datetime import datetime
@@ -17,7 +19,8 @@ def create_parent_directory(file_path: str):
 
 def natural_sorted(ls: list[str]):
     """Sort a list of strings 'naturally', such that strings with numbers in them
-    are sorted increasingly instead of alphabetically."""
+    are sorted increasingly instead of alphabetically.
+    """
 
     def convert(s: str):
         return int(s) if s.isdigit() else s.lower()

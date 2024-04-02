@@ -1,3 +1,5 @@
+"""Various (but not exhaustive) tests for all modules."""
+
 import os
 import random
 import unittest
@@ -20,7 +22,10 @@ from puzzle import (
 
 
 class Testing(unittest.TestCase):
+    """Various unit tests."""
+
     def test_cubicle_type(self):
+        """Test whether the cubicle type function works as expected."""
         self.assertEqual(cubicle_type(2, (1, 1, 1)), 0)
         self.assertEqual(cubicle_type(3, (1, 1, 1)), -1)
         self.assertEqual(cubicle_type(3, (2, 2, 2)), 0)
@@ -28,6 +33,7 @@ class Testing(unittest.TestCase):
         self.assertEqual(cubicle_type(3, (1, 2, 2)), 2)
 
     def test_cubicle_colors(self):
+        """Test whether the cubicle colors function works as expected."""
         self.assertEqual(cubicle_colors(2, (0, 0, 0), DEFAULT_CENTER_COLORS), [5, 0, 3])
         self.assertEqual(cubicle_colors(3, (0, 0, 0), DEFAULT_CENTER_COLORS), [5, 0, 3])
         self.assertEqual(cubicle_colors(3, (2, 2, 2), DEFAULT_CENTER_COLORS), [4, 2, 1])
@@ -35,6 +41,7 @@ class Testing(unittest.TestCase):
         self.assertEqual(cubicle_colors(3, (2, 2, 1), DEFAULT_CENTER_COLORS), [4, 1])
 
     def test_facelet_cubicle(self):
+        """Test whether the facelet cubicle function works as expected."""
         self.assertEqual(facelet_cubicle(2, (0, 1, 1)), (1, 1, 0))
         self.assertEqual(facelet_cubicle(3, (2, 2, 1)), (1, 2, 2))
         self.assertEqual(facelet_cubicle(3, (4, 2, 2)), (2, 2, 2))
@@ -60,9 +67,11 @@ class Testing(unittest.TestCase):
                                 )
 
     def test_all_moves(self):
+        """Test whether the list of all moves is complete."""
         self.assertEqual(len(all_moves()), 18)
 
     def test_encoding_decoding_moves(self):
+        """Test whether encoding and decoding moves is bijective."""
         for move in all_moves():
             self.assertEqual(move, parse_move(move_name(move)))
 
@@ -71,9 +80,9 @@ class Testing(unittest.TestCase):
         for filename in os.listdir(PUZZLE_DIR):
             if filename.endswith(".txt"):
                 path = os.path.join(PUZZLE_DIR, filename)
-                with open(path, "r") as file:
+                with open(path) as file:
                     puzzle = file.read()
-                    self.assertEqual(Puzzle.from_str(puzzle).to_str(), puzzle)
+                    self.assertEqual(str(Puzzle.from_str(puzzle)), puzzle)
 
     def test_move_consistency(self):
         """Test whether executing moves and reverting them is bijective."""

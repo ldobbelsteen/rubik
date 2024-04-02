@@ -1,2 +1,12 @@
 [lint]
-select = ["N", "I", "W", "E", "F", "ARG"]
+select = ["F", "E", "W", "C90", "I", "N", "D", "UP", "ARG", "PL", "PERF", "RUF"]
+ignore = [
+    "D205",
+    "PLR0913",
+    "PLR0911",
+    "C901",
+    "D401",
+    "PLR2004",
+    "PLR0912",
+    "PLR0915",
+]

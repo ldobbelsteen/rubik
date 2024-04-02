@@ -1,3 +1,7 @@
+"""Script for finding move sequence filters which filter out
+symmetric move sequences.
+"""
+
 import argparse
 import re
 from enum import Enum
@@ -12,18 +16,24 @@ from tools import print_stamped
 
 
 class Variable:
-    def __init__(self, name: str, s: int):
+    """Represents a variable in the filter model."""
+
+    def __init__(self, name: str, step: int):
+        """Initializes a new variable given its name and step."""
         self.name = name
-        self.s = s
+        self.s = step
 
     def ref(self):
+        """Returns a reference to the Z3 boolean."""
         return z3.Bool(str(self))
 
     def __str__(self):
+        """Returns a human-readable representation of the variable."""
         return f"{self.name}(s + {self.s})"
 
     @staticmethod
     def from_str(s: str):
+        """Parses a variable from a string."""
         parsed = re.search(r"(.+)\(s \+ (\d+)\)", s)
         if parsed is None:
             raise Exception(f"invalid variable string: {s}")
@@ -31,6 +41,8 @@ class Variable:
 
 
 class Operator(Enum):
+    """Represents the supported comparison operators."""
+
     EQ = "=="
     INEQ = "!="
     LT = ">"
@@ -40,24 +52,32 @@ class Operator(Enum):
 
 
 class Condition:
+    """Represents a condition in the filter model."""
+
     def __init__(
         self,
         left: Variable,
         op: Operator,
         right: int | Variable,
     ):
+        """Initializes a new condition given its left-hand side, operator,
+        and right-hand side. The right hand side can be a variable or integer.
+        """
         self.left = left
         self.op = op
         self.right = right
 
     def ref(self):
+        """Returns a reference to the Z3 boolean."""
         return z3.Bool(str(self))
 
     def __str__(self):
+        """Returns a human-readable representation of the condition."""
         return f"{self.left} {self.op.value} {self.right}"
 
     @staticmethod
     def from_str(s: str):
+        """Parses a condition from a string."""
         parsed = re.search(r"(.+) (.+) (.+)", s)
         if parsed is None:
             raise Exception(f"invalid variable string: {s}")
@@ -70,6 +90,8 @@ class Condition:
 
 
 class FilterComponent:
+    """Represents a part of a filter in the filter model."""
+
     def __init__(
         self,
         name: str,
@@ -77,105 +99,157 @@ class FilterComponent:
         k: int,
         solver: z3.Optimize,
     ):
+        """Initializes a new filter component given its name, domain,
+        and sequence length.
+        """
         assert domain == sorted(domain)
         assert len(domain) >= 2
         self.name = name
         self.domain = domain
         self.k = k
 
-        self.vars = [Variable(name, s) for s in range(k)]
+        self.vars = [Variable(name, step) for step in range(k)]
         self.conditions: list[list[Condition]] = [[] for _ in range(k)]
-        for s in range(k):
-            for v in domain:
-                self.conditions[s].append(Condition(self.vars[s], Operator.EQ, v))
-                self.conditions[s].append(Condition(self.vars[s], Operator.INEQ, v))
-            for f in range(s + 1, k):
-                self.conditions[s].append(
-                    Condition(self.vars[s], Operator.EQ, self.vars[f])
+        for step in range(k):
+            for val in domain:
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.EQ, val)
                 )
-                self.conditions[s].append(
-                    Condition(self.vars[s], Operator.INEQ, self.vars[f])
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.INEQ, val)
                 )
-                self.conditions[s].append(
-                    Condition(self.vars[s], Operator.LT, self.vars[f])
+            for f in range(step + 1, k):
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.EQ, self.vars[f])
                 )
-                self.conditions[s].append(
-                    Condition(self.vars[s], Operator.ST, self.vars[f])
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.INEQ, self.vars[f])
                 )
-                self.conditions[s].append(
-                    Condition(self.vars[s], Operator.LTE, self.vars[f])
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.LT, self.vars[f])
                 )
-                self.conditions[s].append(
-                    Condition(self.vars[s], Operator.STE, self.vars[f])
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.ST, self.vars[f])
+                )
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.LTE, self.vars[f])
+                )
+                self.conditions[step].append(
+                    Condition(self.vars[step], Operator.STE, self.vars[f])
                 )
 
         # Disable comparators incompatible with booleans when domain is binary.
         if len(domain) == 2:
-            for s in range(k):
-                for cond in self.conditions[s]:
-                    if (
-                        cond.op == Operator.LT
-                        or cond.op == Operator.ST
-                        or cond.op == Operator.LTE
-                        or cond.op == Operator.STE
+            for step in range(k):
+                for cond in self.conditions[step]:
+                    if cond.op in (
+                        Operator.LT,
+                        Operator.ST,
+                        Operator.LTE,
+                        Operator.STE,
                     ):
                         solver.add(z3.Not(cond.ref()))
 
-    def facilitates(self, s: int, vs: list[int]):
+    def facilitates(self, step: int, vs: list[int]):
+        """Returns a Z3 expression that represents whether the filter allows the list
+        of values at the specified step.
+        """
         conds = []
-        for cond in self.conditions[s]:
+        for cond in self.conditions[step]:
             right = cond.right if isinstance(cond.right, int) else vs[cond.right.s]
             match cond.op:
                 case Operator.EQ:
-                    conds.append(z3.Implies(cond.ref(), vs[s] == right))
+                    conds.append(z3.Implies(cond.ref(), vs[step] == right))
                 case Operator.INEQ:
-                    conds.append(z3.Implies(cond.ref(), vs[s] != right))
+                    conds.append(z3.Implies(cond.ref(), vs[step] != right))
                 case Operator.LT:
-                    conds.append(z3.Implies(cond.ref(), vs[s] > right))
+                    conds.append(z3.Implies(cond.ref(), vs[step] > right))
                 case Operator.ST:
-                    conds.append(z3.Implies(cond.ref(), vs[s] < right))
+                    conds.append(z3.Implies(cond.ref(), vs[step] < right))
                 case Operator.LTE:
-                    conds.append(z3.Implies(cond.ref(), vs[s] >= right))
+                    conds.append(z3.Implies(cond.ref(), vs[step] >= right))
                 case Operator.STE:
-                    conds.append(z3.Implies(cond.ref(), vs[s] <= right))
+                    conds.append(z3.Implies(cond.ref(), vs[step] <= right))
         return z3.And(conds)
 
-    def not_facilitates(self, s: int, vs: list[int]):
+    def not_facilitates(self, step: int, vs: list[int]):
+        """Returns a Z3 expression that represents whether the filter does not allow
+        the list of values at the specified step. This is equal to the negation of the
+        facilitates function, but is faster since it uses ors.
+        """
         conds = []
-        for cond in self.conditions[s]:
+        for cond in self.conditions[step]:
             right = cond.right if isinstance(cond.right, int) else vs[cond.right.s]
             match cond.op:
                 case Operator.EQ:
-                    conds.append(z3.And(cond.ref(), vs[s] != right))
+                    conds.append(z3.And(cond.ref(), vs[step] != right))
                 case Operator.INEQ:
-                    conds.append(z3.And(cond.ref(), vs[s] == right))
+                    conds.append(z3.And(cond.ref(), vs[step] == right))
                 case Operator.LT:
-                    conds.append(z3.And(cond.ref(), vs[s] <= right))
+                    conds.append(z3.And(cond.ref(), vs[step] <= right))
                 case Operator.ST:
-                    conds.append(z3.And(cond.ref(), vs[s] >= right))
+                    conds.append(z3.And(cond.ref(), vs[step] >= right))
                 case Operator.LTE:
-                    conds.append(z3.And(cond.ref(), vs[s] < right))
+                    conds.append(z3.And(cond.ref(), vs[step] < right))
                 case Operator.STE:
-                    conds.append(z3.And(cond.ref(), vs[s] > right))
+                    conds.append(z3.And(cond.ref(), vs[step] > right))
         return z3.Or(conds)
 
     def conditions_from_model(self, m: z3.ModelRef):
-        result: list[Condition] = []
-        for s in range(self.k):
-            for cond in self.conditions[s]:
-                if z3.is_true(m.get_interp(cond.ref())):
-                    result.append(cond)
-        return result
+        """Get the enabled condition from the model."""
+        return [
+            cond
+            for step in range(self.k)
+            for cond in self.conditions[step]
+            if z3.is_true(m.get_interp(cond.ref()))
+        ]
 
 
 class Filter:
+    """Represents a filter in the filter model."""
+
     def __init__(self, k: int, solver: z3.Optimize):
+        """Initializes a new filter given the sequence length.
+        Creates a filter component for ax, hi and dr.
+        """
         self.k = k
         self.ax = FilterComponent("ax", [0, 1, 2], k, solver)
         self.hi = FilterComponent("hi", [0, 1], k, solver)
         self.dr = FilterComponent("dr", [0, 1, 2], k, solver)
 
+    def facilitates(self, axs: list[int], his: list[int], drs: list[int]):
+        """Returns a Z3 expression that represents whether the filter allows the lists
+        of values at the specified step.
+        """
+        return z3.And(
+            [
+                z3.And(
+                    self.ax.facilitates(step, axs),
+                    self.hi.facilitates(step, his),
+                    self.dr.facilitates(step, drs),
+                )
+                for step in range(self.k)
+            ]
+        )
+
+    def not_facilitates(self, axs: list[int], his: list[int], drs: list[int]):
+        """Returns a Z3 expression that represents whether the filter does not allow
+        the lists of values at the specified step. This is equal to the negation of the
+        facilitates function, but is faster since it uses ors.
+        """
+        return z3.Or(
+            [
+                z3.Or(
+                    self.ax.not_facilitates(step, axs),
+                    self.hi.not_facilitates(step, his),
+                    self.dr.not_facilitates(step, drs),
+                )
+                for step in range(self.k)
+            ]
+        )
+
     def facilitates_seq(self, ms: MoveSeq):
+        """Wrapper around the facilitates function that takes a move sequence."""
         return self.facilitates(
             [m[0] for m in ms],
             [1 if m[1] else 0 for m in ms],
@@ -183,37 +257,15 @@ class Filter:
         )
 
     def not_facilitates_seq(self, ms: MoveSeq):
+        """Wrapper around the not facilitates function that takes a move sequence."""
         return self.not_facilitates(
             [m[0] for m in ms],
             [1 if m[1] else 0 for m in ms],
             [m[2] for m in ms],
         )
 
-    def facilitates(self, axs: list[int], his: list[int], drs: list[int]):
-        return z3.And(
-            [
-                z3.And(
-                    self.ax.facilitates(s, axs),
-                    self.hi.facilitates(s, his),
-                    self.dr.facilitates(s, drs),
-                )
-                for s in range(self.k)
-            ]
-        )
-
-    def not_facilitates(self, axs: list[int], his: list[int], drs: list[int]):
-        return z3.Or(
-            [
-                z3.Or(
-                    self.ax.not_facilitates(s, axs),
-                    self.hi.not_facilitates(s, his),
-                    self.dr.not_facilitates(s, drs),
-                )
-                for s in range(self.k)
-            ]
-        )
-
     def all_conditions(self):
+        """Return all conditions in the filter."""
         return [
             cond
             for cond in chain(
@@ -224,6 +276,7 @@ class Filter:
         ]
 
     def conditions_from_model(self, m: z3.ModelRef):
+        """Get the enabled conditions from the model."""
         return (
             self.ax.conditions_from_model(m)
             + self.hi.conditions_from_model(m)
@@ -232,6 +285,10 @@ class Filter:
 
 
 def find(n: int, k: int):
+    """Finds a new move sequence filter for the given puzzle size and sequence length.
+    Uses the pre-generated move symmetry files and maximizes the number of filtered
+    sequences.
+    """
     print_stamped("building model...")
 
     z3.set_param("parallel.enable", True)
@@ -248,7 +305,7 @@ def find(n: int, k: int):
         # it too can be filtered out, as long as one stays unfiltered.
         if len(seq) == k:
             filterable.append(seq)
-            solver.add(z3.Or([filter.not_facilitates_seq(s) for s in syms + [seq]]))
+            solver.add(z3.Or([filter.not_facilitates_seq(s) for s in [*syms, seq]]))
 
     if len(filterable) == 0:
         raise Exception("there are no move sequences to filter")

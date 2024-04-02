@@ -1,3 +1,5 @@
+"""Functions and classes pertaining to representing the Rubik's cube."""
+
 import argparse
 import itertools
 
@@ -116,6 +118,7 @@ def move_name(move: Move) -> str:
 
 
 def move_names(seq: MoveSeq):
+    """Convert a sequences of move to their canonical names."""
     return tuple(move_name(m) for m in seq)
 
 
@@ -185,14 +188,15 @@ def all_moves() -> list[Move]:
 
 def cubicle_type(n: int, cubicle: CubicleCoords):
     """Determine the type of a cubicle by its coordinates. 0 = corner, 1 = center,
-    2 = edge and -1 = internal."""
+    2 = edge and -1 = internal.
+    """
     x, y, z = cubicle
-    if (x == 0 or x == n - 1) and (y == 0 or y == n - 1) and (z == 0 or z == n - 1):
+    if (x in (0, n - 1)) and (y in (0, n - 1)) and (z in (0, n - 1)):
         return 0
     if (
-        ((x == 0 or x == n - 1) and y > 0 and y < n - 1 and z > 0 and z < n - 1)
-        or ((y == 0 or y == n - 1) and x > 0 and x < n - 1 and z > 0 and z < n - 1)
-        or ((z == 0 or z == n - 1) and x > 0 and x < n - 1 and y > 0 and y < n - 1)
+        ((x in (0, n - 1)) and y > 0 and y < n - 1 and z > 0 and z < n - 1)
+        or ((y in (0, n - 1)) and x > 0 and x < n - 1 and z > 0 and z < n - 1)
+        or ((z in (0, n - 1)) and x > 0 and x < n - 1 and y > 0 and y < n - 1)
     ):
         return 1
     if x > 0 and x < n - 1 and y > 0 and y < n - 1 and z > 0 and z < n - 1:
@@ -204,7 +208,8 @@ def cubicle_colors(
     n: int, cubicle: CubicleCoords, center_colors: tuple[int, ...]
 ) -> list[int]:
     """Get the list of colors of a cubicle in a finished puzzle. The list is sorted
-    by the global face ordering."""
+    by the global face ordering.
+    """
     x, y, z = cubicle
     faces = set()
     if x == 0:
@@ -225,7 +230,8 @@ def cubicle_colors(
 
 def cubicle_facelets(n: int, cubicle: CubicleCoords) -> list[FaceletCoords]:
     """Get the list of facelets of a cubicle. The list is sorted by the global
-    face ordering."""
+    face ordering.
+    """
     x, y, z = cubicle
     facelets = []
     for ff in FACE_ORDERING:
@@ -302,7 +308,8 @@ def decode_edge(n: int, edge: EdgeState) -> CubicleCoords:
 
 def corner_clockwise(corner: CornerState) -> bool:
     """Determine whether a corner cubicle's colors are labeled clockwise or not.
-    This is a result of the global face ordering."""
+    This is a result of the global face ordering.
+    """
     x, y, z, _, _ = corner
     return (
         (not x and y and not z)
@@ -313,6 +320,7 @@ def corner_clockwise(corner: CornerState) -> bool:
 
 
 def corner_mapping(corner: CornerState, move: Move) -> CornerState:
+    """Apply a move to a corner cubie's state."""
     x_hi, y_hi, z_hi, r, cw = corner
     ax, hi, dr = move
     return (
@@ -325,6 +333,7 @@ def corner_mapping(corner: CornerState, move: Move) -> CornerState:
 
 
 def edge_mapping(edge: EdgeState, move: Move) -> EdgeState:
+    """Apply a move to an edge cubie's state."""
     a, x_hi, y_hi, r = edge
     ax, hi, dr = move
     next_a = move_mappers.default.edge_a(a, x_hi, y_hi, ax, hi, dr)
@@ -337,6 +346,10 @@ def edge_mapping(edge: EdgeState, move: Move) -> EdgeState:
 
 
 class Puzzle:
+    """A representation of a Rubik's cube. The cube is represented by its corner, edge
+    and center states.
+    """
+
     def __init__(
         self,
         n: int,
@@ -344,6 +357,7 @@ class Puzzle:
         edge_states: tuple[EdgeState, ...],
         center_colors: tuple[int, ...],
     ):
+        """Create a new puzzle with the given corner, edge and center states."""
         self.n = n
         self.corner_states = corner_states
         self.edge_states = edge_states
@@ -351,16 +365,18 @@ class Puzzle:
 
     @staticmethod
     def from_file(path: str):
-        with open(path, "r") as file:
+        """Parse a puzzle from a file in the facelet color representation."""
+        with open(path) as file:
             content = file.read()
             return Puzzle.from_str(content)
 
     @staticmethod
     def from_str(s: str):
+        """Parse a puzzle from a string in the facelet color representation."""
         n = int((len(s) / 6) ** 0.5)
         if len(s) != 6 * n * n:
             raise Exception("invalid puzzle string length")
-        if n != 2 and n != 3:
+        if n not in (2, 3):
             raise Exception(f"n = {n} not supported")
 
         return Puzzle.from_facelet_colors(
@@ -376,6 +392,10 @@ class Puzzle:
 
     @staticmethod
     def from_facelet_colors(n: int, facelet_colors: list[list[list[int]]]):
+        """Extract the states from a facelet color representation. This is done by
+        matching the colors of the facelets to the colors of the cubicles in the
+        finished state.
+        """
         if n == 3:
             center_colors = extract_center_colors(n, facelet_colors)
         else:
@@ -436,6 +456,7 @@ class Puzzle:
 
     @staticmethod
     def finished(n: int, center_colors: tuple[int, ...]):
+        """Get the finished state of a cube with the given center colors permutation."""
         corners: list[CornerState] = []
         edges: list[EdgeState] = []
         for x in range(n):
@@ -456,6 +477,7 @@ class Puzzle:
         )
 
     def __eq__(self, other: "Puzzle"):
+        """Check whether two puzzles are equal."""
         return (
             self.n == other.n
             and self.corner_states == other.corner_states
@@ -464,9 +486,11 @@ class Puzzle:
         )
 
     def __hash__(self):
+        """Get a hash of the puzzle."""
         return hash((self.n, self.corner_states, self.edge_states, self.center_colors))
 
-    def to_str(self):
+    def __str__(self):
+        """Convert the puzzle to a facelet color representation and output to string."""
         facelet_colors = [
             [
                 [self.facelet_color((f, y, x)) for x in range(self.n)]
@@ -485,6 +509,7 @@ class Puzzle:
         return "".join([str(c) for c in flattened])
 
     def execute_move(self, move: Move) -> "Puzzle":
+        """Apply a move to the puzzle and return the new state."""
         return Puzzle(
             self.n,
             tuple([corner_mapping(c, move) for c in self.corner_states]),
@@ -493,6 +518,7 @@ class Puzzle:
         )
 
     def facelet_color(self, facelet: FaceletCoords) -> int:
+        """Get the color of a facelet in the puzzle given its coordinates."""
         finished = Puzzle.finished(self.n, self.center_colors)
         cubicle = facelet_cubicle(self.n, facelet)
 
@@ -539,6 +565,7 @@ class Puzzle:
         raise Exception(f"invalid facelet: {facelet}")
 
     def print(self):
+        """Print the puzzle in a human-readable image using matplotlib."""
         facelet_size = 48
         image_size = (3 * self.n * facelet_size, 4 * self.n * facelet_size)
         im = Image.new(mode="RGB", size=image_size)

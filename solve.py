@@ -1,3 +1,5 @@
+"""Solve a puzzle using Z3."""
+
 import argparse
 import operator
 import os
@@ -16,6 +18,9 @@ from tools import gods_number, natural_sorted, print_stamped
 
 
 def validate_solution(puzzle: Puzzle, solution: MoveSeq):
+    """Check whether a solution is actually valid for a puzzle and whether the
+    move sequence is allowed by the filters.
+    """
     canon = move_names(solution)
 
     if not move_symmetries.allowed_by_filters(puzzle.n, solution):
@@ -31,7 +36,8 @@ def z3_int(
     solver: z3.Solver | z3.Optimize, name: str, low: int, high: int
 ) -> z3.ArithRef:
     """Create Z3 integer and add its value range to the solver. The range is
-    inclusive on both sides."""
+    inclusive on both sides.
+    """
     var = z3.Int(name)
     solver.add(z3.And(var >= low, var <= high))
     return var
@@ -45,7 +51,8 @@ def solve_for_k(
 ):
     """Compute the optimal solution for a puzzle with a maximum number of moves k.
     Returns list of moves or nothing if impossible. In both cases, also returns the time
-    it took to prepare the SAT model and the time it took to solve it."""
+    it took to prepare the SAT model and the time it took to solve it.
+    """
     finished = Puzzle.finished(puzzle.n, puzzle.center_colors)
     prep_start = datetime.now()
     n = puzzle.n
@@ -430,7 +437,8 @@ def solve(
     k_upperbound: int | None = None,
 ) -> Stats:
     """Compute the optimal solution for a puzzle within an upperbound for the number
-    of moves. If no upperbound is given, God's number is used."""
+    of moves. If no upperbound is given, God's number is used.
+    """
     if k_upperbound is None:
         k_upperbound = gods_number(puzzle.n)
 
@@ -468,12 +476,14 @@ def solve(
 
 
 def solve_file(file: str, config: SolveConfig):
+    """Helper function for solving a puzzle in a file."""
     puzzle = Puzzle.from_file(file)
     stats = solve(puzzle, config)
     stats.write_to_file(file)
 
 
 def solve_dir(dir: str, config: SolveConfig):
+    """Helper function for solving all puzzles in a directory."""
     puzzle_paths: list[str] = []
     for filename in os.listdir(dir):
         path = os.path.join(dir, filename)

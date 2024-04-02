@@ -1,5 +1,9 @@
+# ruff: noqa: D103
+
 """Stacked versions of the flat mapper functions (only Z3 variants). It allows applying
-multiple moves at once and has to use the flat mappers to achieve this."""
+multiple moves at once and has to use the flat mappers to achieve this. All functions
+use recursion to apply the moves stepwise.
+"""
 
 import z3
 

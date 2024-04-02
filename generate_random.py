@@ -1,3 +1,5 @@
+"""Script for generating random (but valid) permutations of the Rubik's cube."""
+
 import argparse
 import os
 import random
@@ -10,8 +12,9 @@ PUZZLE_DIR = "./puzzles"
 
 def generate_random(n: int, randomizations: int, write_to_file: bool) -> Puzzle:
     """Generate a random puzzle by taking a specified number of random moves
-    on a finished puzzle. The result is optionally output to file."""
-    if n != 2 and n != 3:
+    on a finished puzzle. The result is optionally output to file.
+    """
+    if n not in (2, 3):
         raise Exception(f"n = {n} not supported")
 
     puzzle = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
@@ -25,7 +28,7 @@ def generate_random(n: int, randomizations: int, write_to_file: bool) -> Puzzle:
         path = os.path.join(PUZZLE_DIR, f"n{n}-random{randomizations}.txt")
         create_parent_directory(path)
         with open(path, "w") as file:
-            file.write(puzzle.to_str())
+            file.write(str(puzzle))
 
     return puzzle
 

@@ -1,6 +1,9 @@
-"""Flattened versions of the mapper functions (only Z3 variants). Instead of returning
-an equality, it returns the value the next value should equal. This, in general, has
-worse performance."""
+# ruff: noqa: D103
+
+"""Flattened versions of the mapper functions (only the Z3 variants). Instead of
+returning an equality, it returns the value the next value should equal to. This,
+in general, has worse performance, but is useful for move stacking.
+"""
 
 from typing import cast
 
