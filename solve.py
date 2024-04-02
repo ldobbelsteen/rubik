@@ -11,10 +11,19 @@ import z3
 import move_mappers.default
 import move_mappers.stacked
 import move_symmetries
-from puzzle import MoveSeq, Puzzle, move_names
-from solve_config import SolveConfig
-from stats import Stats
-from tools import gods_number, natural_sorted, print_stamped
+from puzzle import (
+    PUZZLE_DIR,
+    CornerState,
+    EdgeState,
+    MoveSeq,
+    Puzzle,
+    finished_corner_states,
+    finished_edge_states,
+    move_names,
+)
+from solve_config import SolveConfig, gods_number
+from stats import SolveStats
+from tools import natural_sorted, print_stamped
 
 
 def validate_solution(puzzle: Puzzle, solution: MoveSeq):
@@ -28,7 +37,7 @@ def validate_solution(puzzle: Puzzle, solution: MoveSeq):
 
     for move in solution:
         puzzle = puzzle.execute_move(move)
-    if puzzle != Puzzle.finished(puzzle.n, puzzle.center_colors):
+    if not puzzle.is_finished():
         raise Exception(f"solution is not actual solution: {canon}")
 
 
@@ -53,7 +62,8 @@ def solve_for_k(
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it.
     """
-    finished = Puzzle.finished(puzzle.n, puzzle.center_colors)
+    fin_corner_states = finished_corner_states(puzzle.n)
+    fin_edge_states = finished_edge_states(puzzle.n)
     prep_start = datetime.now()
     n = puzzle.n
 
@@ -61,52 +71,51 @@ def solve_for_k(
     z3.set_param("parallel.enable", True)
     z3.set_param("parallel.threads.max", config.max_solver_threads)
 
-    if config.use_sat_solver:
-        # Boil down to SAT and use SAT solver.
-        tactics = [
-            "normalize-bounds",
-            "purify-arith",
-            # "elim-term-ite",  # fails
-            # "blast-term-ite",  # big negative impact
-            "solve-eqs",
-            "simplify",
-            "dom-simplify",
-            # "lia2pb",
-            "lia2card",
-            # "simplify",
-            # "eq2bv",
-            # "pb2bv",
-            "card2bv",
-            "propagate-bv-bounds",
-            "bit-blast",
-            # "aig",
-            "sat-preprocess",
-        ]
-        solver = z3.Then(*tactics, "psat").solver()
-    else:
-        # Use quantifier-free finite domain solver.
-        # TODO: it seems SAT results returned are not always valid. It does not seem
-        # to do with the specific tactics used, but rather with the QF_FD solver (since
-        # running it on just z3.SolverFor("QF_FD") also fails for some puzzles).
-        tactics = [
-            "normalize-bounds",  # medium positive impact
-            "purify-arith",  # tiny positive impact (could be variance)
-            # "elim-term-ite",  # fails
-            # "blast-term-ite",  # big negative impact
-            "solve-eqs",  # medium positive impact
-            "simplify",  # small positive impact
-            "dom-simplify",  # small positive impact
-            # "lia2pb",  # medium negative impact
-            "lia2card",  # small positive impact
-            # "eq2bv",  # big negative impact
-            # "pb2bv",  # medium negative impact
-            # "card2bv",  # big negative impact
-            # "propagate-bv-bounds",  # no impact
-            # "bit-blast",  # tiny negative impact (could be variance)
-            # "aig",  # big negative impact
-            # "sat-preprocess",  # big negative impact
-        ]
-        solver = z3.Then(*tactics, "pqffd").solver()
+    # Boil down to SAT and use SAT solver.
+    tactics = [
+        "normalize-bounds",
+        "purify-arith",
+        # "elim-term-ite",  # fails
+        # "blast-term-ite",  # big negative impact
+        "solve-eqs",
+        "simplify",
+        "dom-simplify",
+        # "lia2pb",
+        "lia2card",
+        # "simplify",
+        # "eq2bv",
+        # "pb2bv",
+        "card2bv",
+        "propagate-bv-bounds",
+        "bit-blast",
+        # "aig",
+        "sat-preprocess",
+    ]
+    solver = z3.Then(*tactics, "psat").solver()
+
+    # # Use quantifier-free finite domain solver.
+    # # TODO: it seems SAT results returned are not always valid. It does not seem
+    # # to do with the specific tactics used, but rather with the QF_FD solver (since
+    # # running it on just z3.SolverFor("QF_FD") also fails for some puzzles).
+    # tactics = [
+    #     "normalize-bounds",  # medium positive impact
+    #     "purify-arith",  # tiny positive impact (could be variance)
+    #     # "elim-term-ite",  # fails
+    #     # "blast-term-ite",  # big negative impact
+    #     "solve-eqs",  # medium positive impact
+    #     "simplify",  # small positive impact
+    #     "dom-simplify",  # small positive impact
+    #     # "lia2pb",  # medium negative impact
+    #     "lia2card",  # small positive impact
+    #     # "eq2bv",  # big negative impact
+    #     # "pb2bv",  # medium negative impact
+    #     # "card2bv",  # big negative impact
+    #     # "propagate-bv-bounds",  # no impact
+    #     # "bit-blast",  # tiny negative impact (could be variance)
+    #     # "aig",  # big negative impact
+    #     # "sat-preprocess",  # big negative impact
+    # ]
+    # solver = z3.Then(*tactics, "pqffd").solver()
 
     # Nested lists representing the cube at each state.
     corners = [
@@ -118,7 +127,7 @@ def solve_for_k(
                 z3_int(solver, f"corner({x},{y},{z}) s({s}) r", 0, 2),
                 z3.Bool(f"corner({x},{y},{z}) s({s}) c"),
             )
-            for x, y, z, _, _ in finished.corner_states
+            for x, y, z, _, _ in fin_corner_states
         ]
         for s in range(k + 1)
     ]
@@ -130,7 +139,7 @@ def solve_for_k(
                 z3.Bool(f"edge({x},{y},{z}) s({s}) y_hi"),
                 z3.Bool(f"edge({x},{y},{z}) s({s}) r"),
             )
-            for x, y, z, _ in finished.edge_states
+            for x, y, z, _ in fin_edge_states
         ]
         for s in range(k + 1)
     ]
@@ -140,13 +149,17 @@ def solve_for_k(
     his = [z3.Bool(f"s({s}) hi") for s in range(k)]
     drs = [z3_int(solver, f"s({s}) dr", 0, 2) for s in range(k)]
 
-    def fix_state(s: int, puzzle: Puzzle):
-        """Return conditions of a state being equal to a puzzle object."""
+    def fix_state(
+        s: int,
+        corner_states: tuple[CornerState, ...],
+        edge_states: tuple[EdgeState, ...],
+    ):
+        """Return conditions of a state being equal to a state."""
         conditions: list[z3.BoolRef | bool] = []
-        for c1, c2 in zip(corners[s], puzzle.corner_states):
+        for c1, c2 in zip(corners[s], corner_states):
             for v1, v2 in zip(c1, c2):
                 conditions.append(v1 == v2)
-        for e1, e2 in zip(edges[s], puzzle.edge_states):
+        for e1, e2 in zip(edges[s], edge_states):
             for v1, v2 in zip(e1, e2):
                 conditions.append(v1 == v2)
         return conditions
@@ -163,10 +176,10 @@ def solve_for_k(
         return conditions
 
     # Fix the first state to the puzzle state.
-    solver.add(z3.And(fix_state(0, puzzle)))
+    solver.add(z3.And(fix_state(0, puzzle.corner_states, puzzle.edge_states)))
 
     # Fix the last state to the finished state.
-    solver.add(z3.And(fix_state(-1, finished)))
+    solver.add(z3.And(fix_state(-1, fin_corner_states, fin_edge_states)))
 
     # Restrict cubie states according to moves.
     for s in range(k):
@@ -431,43 +444,37 @@ def solve_for_k(
         raise Exception(f"unexpected solver result: {res}")
 
 
-def solve(
-    puzzle: Puzzle,
-    config: SolveConfig,
-    k_upperbound: int | None = None,
-) -> Stats:
+def solve(puzzle: Puzzle, config: SolveConfig, print_info: bool) -> SolveStats:
     """Compute the optimal solution for a puzzle within an upperbound for the number
     of moves. If no upperbound is given, God's number is used.
     """
-    if k_upperbound is None:
-        k_upperbound = gods_number(puzzle.n)
-
-    stats = Stats(config.max_solver_threads, k_upperbound)
+    stats = SolveStats(puzzle, config)
+    k_upperbound = gods_number(puzzle.n)
 
     for k in range(k_upperbound + 1):
         solution, prep_time, solve_time = solve_for_k(puzzle, k, config)
         stats.register_solution(k, solution, prep_time, solve_time)
 
         if solution is None:
-            if config.print_info:
+            if print_info:
                 print_stamped(
                     f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep"
                 )
         else:
-            if config.print_info:
+            if print_info:
                 print_stamped(
                     f"k = {k}: SAT found in {solve_time} with {prep_time} prep"
                 )
             break
 
     if stats.solution is None:
-        if config.print_info:
+        if print_info:
             print_stamped(
-                f"foud no k ≤ {stats.k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
+                f"foud no k ≤ {k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
     else:
         validate_solution(puzzle, stats.solution)
-        if config.print_info:
+        if print_info:
             print_stamped(
                 f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
@@ -475,37 +482,31 @@ def solve(
     return stats
 
 
-def solve_file(file: str, config: SolveConfig):
-    """Helper function for solving a puzzle in a file."""
-    puzzle = Puzzle.from_file(file)
-    stats = solve(puzzle, config)
-    stats.write_to_file(file)
+def solve_one(name: str, config: SolveConfig, print_info: bool):
+    """Helper function for solving a single puzzle."""
+    puzzle = Puzzle.from_file(name)
+    stats = solve(puzzle, config, print_info)
+    stats.to_file()
 
 
-def solve_dir(dir: str, config: SolveConfig):
-    """Helper function for solving all puzzles in a directory."""
-    puzzle_paths: list[str] = []
-    for filename in os.listdir(dir):
-        path = os.path.join(dir, filename)
-        if os.path.isfile(path) and path.endswith(".txt"):
-            puzzle_paths.append(path)
-    puzzle_paths = natural_sorted(puzzle_paths)
+def solve_all(config: SolveConfig, print_info: bool):
+    """Helper function for solving all puzzles."""
+    names = [filename for filename in os.listdir(PUZZLE_DIR)]
+    names = natural_sorted(names)
 
-    # Solve the puzzles.
-    for path in puzzle_paths:
-        if config.print_info:
-            print_stamped(f"solving '{path}'")
-        puzzle = Puzzle.from_file(path)
-        stats = solve(puzzle, config)
-        stats.write_to_file(path)
+    puzzles = [Puzzle.from_file(name) for name in names]
+    for puzzle in puzzles:
+        print_stamped(f"solving {puzzle.name}...")
+        stats = solve(puzzle, config, print_info)
+        stats.to_file()
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("path", type=str)
+    parser.add_argument("name", type=str, nargs="?")
     args = parser.parse_args()
 
-    if os.path.isdir(args.path):
-        solve_dir(args.path, SolveConfig())
+    if args.name is None:
+        solve_all(SolveConfig.default(), True)
     else:
-        solve_file(args.path, SolveConfig())
+        solve_one(args.name, SolveConfig.default(), True)

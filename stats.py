@@ -1,18 +1,22 @@
 """Functions and classes pertaining to the statistics of the solver."""
 
 import json
+import os
 from datetime import timedelta
 
-from puzzle import MoveSeq, move_names
+from puzzle import MoveSeq, Puzzle, move_names
+from solve_config import SolveConfig
+
+RESULTS_DIR = "./results"
 
 
-class Stats:
+class SolveStats:
     """Statistics about the solving process."""
 
-    def __init__(self, max_solver_threads: int, k_upperbound: int):
+    def __init__(self, puzzle: Puzzle, config: SolveConfig):
         """Initialize the statistics."""
-        self.max_solver_threads = max_solver_threads
-        self.k_upperbound = k_upperbound
+        self.puzzle = puzzle
+        self.config = config
 
         self.solution = None
         self.prep_times: dict[int, timedelta] = {}
@@ -73,17 +77,11 @@ class Stats:
         result["total_solve_time"] = str(self.total_solve_time())
         result["prep_times"] = {k: str(t) for k, t in sorted(self.prep_times.items())}
         result["solve_times"] = {k: str(t) for k, t in sorted(self.solve_times.items())}
-        result["k_upperbound"] = self.k_upperbound
-        result["max_solver_threads"] = self.max_solver_threads
 
         return result
 
-    @staticmethod
-    def path(puzzle_path: str):
-        """Return the path to the statistics file for a specific puzzle."""
-        return f"{puzzle_path}.stats"
-
-    def write_to_file(self, puzzle_path: str):
+    def to_file(self):
         """Write the statistics to a file."""
-        with open(self.path(puzzle_path), "w") as file:
+        os.makedirs(RESULTS_DIR, exist_ok=True)
+        with open(os.path.join(RESULTS_DIR, f"{self.puzzle.name}"), "w") as file:
             file.write(json.dumps(self.to_dict(), indent=4))

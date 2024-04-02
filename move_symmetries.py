@@ -12,28 +12,27 @@ from puzzle import (
     move_names,
     parse_move,
 )
-from tools import create_parent_directory, print_stamped
+from tools import print_stamped
+
+GENERATED_DIR = "./generated_moves"
 
 
 def symmetries_file_path(n: int, d: int):
     """Return the file path for found symmetrical move sequences."""
-    dir = os.path.dirname(__file__)
-    filename = f"./generated_move_symmetries/n{n}-d{d}-symmetries.txt"
-    return os.path.join(dir, filename)
+    os.makedirs(GENERATED_DIR, exist_ok=True)
+    return os.path.join(GENERATED_DIR, f"symmetrical/n{n}-d{d}.txt")
 
 
 def filtered_file_path(n: int, d: int):
     """Return the file path for found filtered move sequences."""
-    dir = os.path.dirname(__file__)
-    filename = f"./generated_move_symmetries/n{n}-d{d}-filtered.txt"
-    return os.path.join(dir, filename)
+    os.makedirs(GENERATED_DIR, exist_ok=True)
+    return os.path.join(GENERATED_DIR, f"filtered/n{n}-d{d}.txt")
 
 
 def unique_file_path(n: int, d: int):
     """Return the file path for found unique move sequences."""
-    dir = os.path.dirname(__file__)
-    filename = f"./generated_move_symmetries/n{n}-d{d}-unique.txt"
-    return os.path.join(dir, filename)
+    os.makedirs(GENERATED_DIR, exist_ok=True)
+    return os.path.join(GENERATED_DIR, f"unique/n{n}-d{d}.txt")
 
 
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
@@ -162,7 +161,7 @@ def generate(n: int, d: int):
     given n and a depth.
     """
     moves = all_moves()
-    finished = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
+    finished = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
     paths: dict[Puzzle, MoveSeq] = {finished: tuple()}
     fresh: set[Puzzle] = {finished}
 
@@ -212,34 +211,28 @@ def generate(n: int, d: int):
                 )
 
         # Write found symmetrical move sequences to file.
-        path = symmetries_file_path(n, cd)
-        create_parent_directory(path)
         output = [(k, sorted(v)) for k, v in symmetries.items()]
         output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
-        with open(path, "w") as file:
+        with open(symmetries_file_path(n, cd), "w") as file:
             for seq, syms in output:
                 seq_canon = move_names(seq)
                 syms_canon = [move_names(seq) for seq in syms]
                 file.write(f"{seq_canon!s} -> {syms_canon!s}\n")
 
         # Write found filtered move sequences to file.
-        path = filtered_file_path(n, cd)
-        create_parent_directory(path)
         output = []
         for ftd in filtered.values():
             output.extend(ftd)
         output.sort()
-        with open(path, "w") as file:
+        with open(filtered_file_path(n, cd), "w") as file:
             for seq in output:
                 seq_canon = move_names(seq)
                 file.write(f"{seq_canon!s}\n")
 
         # Write found unique move sequences to file.
-        path = unique_file_path(n, cd)
-        create_parent_directory(path)
         output = list(unique)
         output.sort()
-        with open(path, "w") as file:
+        with open(unique_file_path(n, cd), "w") as file:
             for seq in output:
                 seq_canon = move_names(seq)
                 file.write(f"{seq_canon!s}\n")

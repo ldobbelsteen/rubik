@@ -29,17 +29,15 @@ def validate_random_move_solvability_rec(
             )
 
 
-def validate_random_move_solvability(max_d: int):
+def validate_random_move_solvability(d: int):
     """Validate the solvability of a puzzle after a random move."""
-    config = SolveConfig()
-    config.print_info = False
     for n in [2, 3]:
         print_stamped(f"validating solvability for n = {n}")
         validate_random_move_solvability_rec(
-            config,
-            Puzzle.finished(n, DEFAULT_CENTER_COLORS),
+            SolveConfig.default(),
+            Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS),
             (),
-            max_d,
+            d,
         )
 
 

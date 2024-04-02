@@ -1,13 +1,9 @@
 """Script for generating random (but valid) permutations of the Rubik's cube."""
 
 import argparse
-import os
 import random
 
 from puzzle import DEFAULT_CENTER_COLORS, Puzzle, all_moves
-from tools import create_parent_directory
-
-PUZZLE_DIR = "./puzzles"
 
 
 def generate_random(n: int, randomizations: int, write_to_file: bool) -> Puzzle:
@@ -17,7 +13,8 @@ def generate_random(n: int, randomizations: int, write_to_file: bool) -> Puzzle:
     if n not in (2, 3):
         raise Exception(f"n = {n} not supported")
 
-    puzzle = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
+    name = f"n{n}-random{randomizations}.txt"
+    puzzle = Puzzle.finished(n, name, DEFAULT_CENTER_COLORS)
     moves = all_moves()
 
     for _ in range(randomizations):
@@ -25,10 +22,7 @@ def generate_random(n: int, randomizations: int, write_to_file: bool) -> Puzzle:
         puzzle = puzzle.execute_move(move)
 
     if write_to_file:
-        path = os.path.join(PUZZLE_DIR, f"n{n}-random{randomizations}.txt")
-        create_parent_directory(path)
-        with open(path, "w") as file:
-            file.write(str(puzzle))
+        puzzle.to_file()
 
     return puzzle
 

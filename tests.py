@@ -4,9 +4,10 @@ import os
 import random
 import unittest
 
-from generate_random import PUZZLE_DIR, all_moves
+from generate_random import all_moves
 from puzzle import (
     DEFAULT_CENTER_COLORS,
+    PUZZLE_DIR,
     Puzzle,
     cubicle_colors,
     cubicle_type,
@@ -78,11 +79,10 @@ class Testing(unittest.TestCase):
     def test_puzzle_parsing(self):
         """Test whether parsing and serializing puzzles is bijective."""
         for filename in os.listdir(PUZZLE_DIR):
-            if filename.endswith(".txt"):
-                path = os.path.join(PUZZLE_DIR, filename)
-                with open(path) as file:
-                    puzzle = file.read()
-                    self.assertEqual(str(Puzzle.from_str(puzzle)), puzzle)
+            path = os.path.join(PUZZLE_DIR, filename)
+            with open(path) as file:
+                puzzle = file.read()
+                self.assertEqual(str(Puzzle.from_str(puzzle, filename)), puzzle)
 
     def test_move_consistency(self):
         """Test whether executing moves and reverting them is bijective."""
@@ -91,7 +91,7 @@ class Testing(unittest.TestCase):
             moves = all_moves()
             random.shuffle(moves)
 
-            state = Puzzle.finished(n, DEFAULT_CENTER_COLORS)
+            state = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
             states = []
 
             # Execute the moves and store the states before each move.
