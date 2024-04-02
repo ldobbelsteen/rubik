@@ -47,16 +47,22 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     if n == 2:
         # Move filter #1 and #2
         for s in range(k - 1):
-            if axs(s) == axs(s + 1) and (not his(s + 1) or his(s)):
-                return False
+            if axs(s) == axs(s + 1):
+                if not his(s + 1):
+                    return False
+                if his(s):
+                    return False
 
         return True
 
     if n == 3:
         # Move filter #1 and #2
         for s in range(k - 1):
-            if axs(s) == axs(s + 1) and (not his(s) or his(s + 1)):
-                return False
+            if axs(s) == axs(s + 1):
+                if not his(s):
+                    return False
+                if his(s + 1):
+                    return False
 
         # Move filter #3 and #4
         for s in range(k - 3):
@@ -70,144 +76,80 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
                 ):
                     return False
 
+        # # Manual move filter #5
+        # for s in range(k - 4):
+        #     if (
+        #         axs(s) != axs(s + 2)
+        #         and drs(s + 2) == 2
+        #         and axs(s) == axs(s + 4)
+        #         and (
+        #             (
+        #                 axs(s) == axs(s + 1)
+        #                 and axs(s + 2) == axs(s + 3)
+        #                 and drs(s + 3) == 2
+        #                 and (drs(s) == 2 or (drs(s + 1) == 2))
+        #                 and ((drs(s) == 2) + (drs(s + 1) == 2) + (drs(s + 4) == 2)) >= 2
+        #             )
+        #             or (
+        #                 axs(s) == axs(s + 3)
+        #                 and axs(s + 1) == axs(s + 2)
+        #                 and drs(s + 1) == 2
+        #                 and (drs(s) == 2 or (drs(s + 3) == 2))
+        #                 and ((drs(s) == 2) + (drs(s + 3) == 2) + (drs(s + 4) == 2)) >= 2
+        #             )
+        #         )
+        #     ):
+        #         return False
+
+        # # Manual move filter #6
+        # for s in range(k - 4):
+        #     if (
+        #         axs(s) == axs(s + 2)
+        #         and axs(s + 1) == axs(s + 3)
+        #         and axs(s + 3) == axs(s + 4)
+        #         and drs(s) == drs(s + 2)
+        #         and his(s) == his(s + 2)
+        #         and drs(s) == 2
+        #         and drs(s + 3) != 2
+        #         and drs(s + 3) == drs(s + 4)
+        #     ):
+        #         return False
+
+        # # Manual move filter #7
+        # for s in range(k - 4):
+        #     if (
+        #         axs(s) == axs(s + 1)
+        #         and axs(s + 1) == axs(s + 4)
+        #         and (drs(s) == 2 or drs(s + 1) == 2 or drs(s + 4) == 2)
+        #         and axs(s + 2) == axs(s + 3)
+        #         and his(s + 2) != his(s + 3)
+        #         and drs(s + 2) == drs(s + 3)
+        #         and drs(s + 2) == 2
+        #     ):
+        #         if ((drs(s + 1) == 2 or drs(s + 4) == 2) and drs(s) == 1) or (
+        #             drs(s) == 2 and drs(s + 1) == 1
+        #         ):
+        #             return False
+
+        # # Manual move filter #8
+        # for s in range(k - 4):
+        #     if (
+        #         axs(s + 1) == axs(s + 3)
+        #         and drs(s + 1) == 2
+        #         and drs(s + 1) == drs(s + 3)
+        #         and his(s + 1) == his(s + 3)
+        #     ):
+        #         if axs(s) == axs(s + 2) and axs(s + 2) == axs(s + 4):
+        #             if his(s) == his(s + 4) and (
+        #                 (drs(s) != drs(s + 4) and drs(s) != 2 and drs(s + 4) != 2)
+        #                 or (drs(s) == 2 and drs(s + 4) == 2)
+        #             ):
+        #                 if his(s) != 0:
+        #                     return False
+
         return True
 
     raise Exception("invalid n or misconfigured filters")
-
-    if n == 3:
-        for s in range(k - 3):
-            if drs(s) == 2 and drs(s + 1) == 2 and drs(s + 2) == 2 and drs(s + 3) == 2:
-                # Move filter #3
-                if axs(s) == axs(s + 3) and axs(s + 1) == axs(s + 2) and his(s):
-                    return False
-
-                # Move filter #4
-                if (
-                    axs(s) == axs(s + 1)
-                    and axs(s + 2) == axs(s + 3)
-                    and axs(s) > axs(s + 3)
-                ):
-                    return False
-
-    # Symmetric move filter #1
-    for s in range(k - 1):
-        if axs(s) == axs(s + 1) and his(s) and not his(s + 1):
-            return False
-
-    # Symmetric move filter #2
-    for s in range(k - 1):
-        for f in range(s + 1, min(s + 3, k)):
-            if (
-                axs(f) == axs(s)
-                and his(f) == his(s)
-                and all([axs(s) == axs(b) for b in range(s + 1, f)])
-            ):
-                return False
-
-    if n == 3:
-        for s in range(k - 3):
-            if drs(s) == 2 and drs(s + 1) == 2 and drs(s + 2) == 2 and drs(s + 3) == 2:
-                # Symmetric move filter #3
-                if (
-                    axs(s) == axs(s + 3)
-                    and axs(s + 1) == axs(s + 2)
-                    and axs(s) != axs(s + 1)
-                ):
-                    if not his(s + 3):
-                        return False
-
-                # Symmetric move filter #4
-                if (
-                    axs(s) == axs(s + 1)
-                    and axs(s + 2) == axs(s + 3)
-                    and axs(s + 1) != axs(s + 2)
-                ):
-                    if axs(s + 1) > axs(s + 2):
-                        return False
-
-    # Symmetric move filter #5
-    if n == 3:
-        for s in range(k - 4):
-            if (
-                (
-                    (
-                        axs(s) == axs(s + 1)
-                        and axs(s + 2) == axs(s + 3)
-                        and drs(s + 3) == 2
-                        and (drs(s) == 2 or (drs(s + 1) == 2))
-                    )
-                    or (
-                        axs(s) == axs(s + 3)
-                        and axs(s + 1) == axs(s + 2)
-                        and drs(s + 1) == 2
-                        and (drs(s) == 2 or (drs(s + 3) == 2))
-                    )
-                )
-                and (axs(s) != axs(s + 2))
-                and drs(s + 2) == 2
-            ):
-                if axs(s) == axs(s + 4) and (
-                    (
-                        axs(s + 1) == axs(s + 4)
-                        and ((drs(s) == 2) + (drs(s + 1) == 2) + (drs(s + 4) == 2)) >= 2
-                    )
-                    or (
-                        axs(s + 3) == axs(s + 4)
-                        and ((drs(s) == 2) + (drs(s + 3) == 2) + (drs(s + 4) == 2)) >= 2
-                    )
-                ):
-                    return False
-
-    # Symmetric move filter #6
-    if n == 3:
-        for s in range(k - 4):
-            if (
-                axs(s) == axs(s + 2)
-                and axs(s + 1) == axs(s + 3)
-                and axs(s + 3) == axs(s + 4)
-                and drs(s) == drs(s + 2)
-                and his(s) == his(s + 2)
-                and drs(s) == 2
-                and drs(s + 3) != 2
-                and drs(s + 3) == drs(s + 4)
-            ):
-                return False
-
-    # Symmetric move filter #7
-    if n == 3:
-        for s in range(k - 4):
-            if (
-                axs(s) == axs(s + 1)
-                and axs(s + 1) == axs(s + 4)
-                and (drs(s) == 2 or drs(s + 1) == 2 or drs(s + 4) == 2)
-                and axs(s + 2) == axs(s + 3)
-                and his(s + 2) != his(s + 3)
-                and drs(s + 2) == drs(s + 3)
-                and drs(s + 2) == 2
-            ):
-                if ((drs(s + 1) == 2 or drs(s + 4) == 2) and drs(s) == 1) or (
-                    drs(s) == 2 and drs(s + 1) == 1
-                ):
-                    return False
-
-    # Symmetric move filter #8
-    if n == 3:
-        for s in range(k - 4):
-            if (
-                axs(s + 1) == axs(s + 3)
-                and drs(s + 1) == 2
-                and drs(s + 1) == drs(s + 3)
-                and his(s + 1) == his(s + 3)
-            ):
-                if axs(s) == axs(s + 2) and axs(s + 2) == axs(s + 4):
-                    if his(s) == his(s + 4) and (
-                        (drs(s) != drs(s + 4) and drs(s) != 2 and drs(s + 4) != 2)
-                        or (drs(s) == 2 and drs(s + 4) == 2)
-                    ):
-                        if his(s) != 0:
-                            return False
-
-    return True
 
 
 def generate(n: int, max_d: int):
