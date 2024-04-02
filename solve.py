@@ -300,153 +300,60 @@ def solve_for_k(
                     == move_mappers.stacked.z3_edge_r(a, x_hi, y_hi, r, axl, hil, drl)
                 )
 
-    # Symmetric move filter #1
-    # Subsequent moves in the same axis have fixed side order: first low, then high.
-    for s in range(k - 1):
-        solver.add(z3.Not(z3.And(axs[s] == axs[s + 1], his[s], z3.Not(his[s + 1]))))
-
-    # Symmetric move filter #2
-    # If we make a move at an axis and side, we cannot make a move at the same axis and
-    # side for two moves, unless a different axis has been turned in the meantime.
-    for s in range(k - 1):
-        solver.add(
-            z3.And(
-                [
+    # Add symmetric move sequence filters for n = 2.
+    if n == 2:
+        # Move filter #1 and #2
+        for s in range(k - 1):
+            solver.add(
+                z3.Implies(
+                    axs[s] == axs[s + 1],
                     z3.Not(
-                        z3.And(
-                            axs[f] == axs[s],
-                            his[f] == his[s],
-                            z3.And([axs[s] == axs[b] for b in range(s + 1, f)]),
+                        z3.Or(
+                            z3.Not(his[s + 1]),
+                            his[s],
                         )
-                    )
-                    for f in range(s + 1, min(s + 3, k))
-                ]
+                    ),
+                )
             )
-        )
 
-    # Symmetric move filters #3 and #4
-    # For four consecutive half moves, there are the following two requirements:
-    # 1. If the moves have axis pattern XYYX, then the first and last moves have a fixed
-    #    side order: first low, then high OR first high, then high.
-    # 2. If the moves have axis pattern XXYY, then X < Y, since they are commutative.
+    # Add symmetric move sequence filters for n = 3.
     if n == 3:
+        # Move filter #1 and #2
+        for s in range(k - 1):
+            solver.add(
+                z3.Implies(
+                    axs[s] == axs[s + 1],
+                    z3.Not(
+                        z3.Or(
+                            z3.Not(his[s]),
+                            his[s + 1],
+                        )
+                    ),
+                )
+            )
+
+        # Move filter #3 and #4
         for s in range(k - 3):
             solver.add(
                 z3.Implies(
                     z3.And(
-                        drs[s] == 2, drs[s + 1] == 2, drs[s + 2] == 2, drs[s + 3] == 2
-                    ),
-                    z3.And(
-                        z3.Implies(
-                            z3.And(
-                                axs[s] == axs[s + 3],
-                                axs[s + 1] == axs[s + 2],
-                                axs[s] != axs[s + 1],
-                            ),
-                            his[s + 3],
-                        ),
-                        z3.Implies(
-                            z3.And(
-                                axs[s] == axs[s + 1],
-                                axs[s + 2] == axs[s + 3],
-                                axs[s + 1] != axs[s + 2],
-                            ),
-                            z3.Not(axs[s + 1] > axs[s + 2]),
-                        ),
-                    ),
-                )
-            )
-
-    # Symmetric move filter #5
-    if n == 3:
-        for s in range(k - 4):
-            solver.add(
-                z3.Implies(
-                    z3.And(
-                        z3.Or(
-                            z3.And(
-                                axs[s] == axs[s + 1],
-                                axs[s + 2] == axs[s + 3],
-                                drs[s + 3] == 2,
-                                z3.Or(drs[s] == 2, drs[s + 1] == 2),
-                            ),
-                            z3.And(
-                                axs[s] == axs[s + 3],
-                                axs[s + 1] == axs[s + 2],
-                                drs[s + 1] == 2,
-                                z3.Or(drs[s] == 2, drs[s + 3] == 2),
-                            ),
-                        ),
-                        axs[s] != axs[s + 2],
-                        drs[s + 2] == 2,
-                    ),
-                    z3.Not(
-                        z3.And(
-                            axs[s] == axs[s + 4],
-                            z3.Or(
-                                z3.And(
-                                    axs[s + 1] == axs[s + 4],
-                                    (
-                                        (drs[s] == 2)
-                                        + (drs[s + 1] == 2)
-                                        + (drs[s + 4] == 2)
-                                    )
-                                    >= 2,
-                                ),
-                                z3.And(
-                                    axs[s + 3] == axs[s + 4],
-                                    (
-                                        (drs[s] == 2)
-                                        + (drs[s + 3] == 2)
-                                        + (drs[s + 4] == 2)
-                                    )
-                                    >= 2,
-                                ),
-                            ),
-                        )
-                    ),
-                )
-            )
-
-    # Symmetric move filter #6
-    if n == 3:
-        for s in range(k - 4):
-            solver.add(
-                z3.Not(
-                    z3.And(
-                        axs[s] == axs[s + 2],
-                        axs[s + 1] == axs[s + 3],
-                        axs[s + 3] == axs[s + 4],
-                        drs[s] == drs[s + 2],
-                        his[s] == his[s + 2],
                         drs[s] == 2,
-                        drs[s + 3] != 2,
-                        drs[s + 3] == drs[s + 4],
-                    )
-                )
-            )
-
-    # Symmetric move filter #7
-    if n == 3:
-        for s in range(k - 4):
-            solver.add(
-                z3.Implies(
-                    z3.And(
-                        axs[s] == axs[s + 1],
-                        axs[s + 1] == axs[s + 4],
-                        z3.Or(drs[s] == 2, drs[s + 1] == 2, drs[s + 4] == 2),
-                        axs[s + 2] == axs[s + 3],
-                        his[s + 2] != his[s + 3],
-                        drs[s + 2] == drs[s + 3],
+                        drs[s + 1] == 2,
                         drs[s + 2] == 2,
+                        drs[s + 3] == 2,
                     ),
                     z3.Not(
                         z3.Or(
                             z3.And(
-                                z3.Or(drs[s + 1] == 2, drs[s + 4] == 2),
-                                drs[s] == 1,
+                                axs[s] == axs[s + 3],
+                                axs[s + 1] == axs[s + 2],
+                                z3.Not(his[s]),
                             ),
-                            z3.And(drs[s] == 2, drs[s + 1] == 1),
+                            z3.And(
+                                axs[s] == axs[s + 1],
+                                axs[s + 1] > axs[s + 2],
+                                axs[s + 2] == axs[s + 3],
+                            ),
                         )
                     ),
                 )
@@ -475,15 +382,6 @@ def solve_for_k(
     # Ban the move sequences from the parameters.
     for b in banned:
         solver.add(ban_move_sequence(b))
-
-    # Ban computed symmetric move sequences up to the specified depth.
-    for _, syms in move_symmetries.load_unfiltered(
-        n,
-        config.symmetric_move_ban_depth,
-        True,
-    ).items():
-        for sym in syms:
-            solver.add(ban_move_sequence(sym))
 
     # States cannot be repeated.
     for s1 in range(k + 1):
