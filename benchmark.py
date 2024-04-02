@@ -12,14 +12,12 @@ from tools import print_stamped
 
 BENCHMARK_DIR = "./benchmarks"
 BENCHMARK_PUZZLES = [
-    "n2-random5.txt",
-    "n2-random7.txt",
-    "n2-random9999.txt",
-    "n2-random10000.txt",
-    "n2-random10001.txt",
-    "n2-random10002.txt",
-    "n3-random7.txt",
-    "n3-random9999.txt",
+    "n2-k7-0.txt",
+    "n2-k8-0.txt",
+    "n2-k9-0.txt",
+    "n3-k7-0.txt",
+    "n3-k8-1.txt",
+    "n3-k9-0.txt",
 ]
 
 
