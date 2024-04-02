@@ -88,14 +88,14 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
         #                 and axs(s + 2) == axs(s + 3)
         #                 and drs(s + 3) == 2
         #                 and (drs(s) == 2 or (drs(s + 1) == 2))
-        #                 and ((drs(s) == 2) + (drs(s + 1) == 2) + (drs(s + 4) == 2)) >= 2
+        #                 and (drs(s) == 2 + drs(s + 1) == 2 + drs(s + 4) == 2) >= 2
         #             )
         #             or (
         #                 axs(s) == axs(s + 3)
         #                 and axs(s + 1) == axs(s + 2)
         #                 and drs(s + 1) == 2
         #                 and (drs(s) == 2 or (drs(s + 3) == 2))
-        #                 and ((drs(s) == 2) + (drs(s + 3) == 2) + (drs(s + 4) == 2)) >= 2
+        #                 and (drs(s) == 2 + drs(s + 3) == 2 + drs(s + 4) == 2) >= 2
         #             )
         #         )
         #     ):
