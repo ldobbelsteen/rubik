@@ -2,7 +2,6 @@
 
 import argparse
 import operator
-import os
 from datetime import datetime
 from functools import reduce
 
@@ -12,18 +11,18 @@ import move_mappers.default
 import move_mappers.stacked
 import move_symmetries
 from puzzle import (
-    PUZZLE_DIR,
     CornerState,
     EdgeState,
     MoveSeq,
     Puzzle,
+    all_puzzles_names,
     finished_corner_states,
     finished_edge_states,
     move_names,
 )
 from solve_config import SolveConfig, gods_number
 from stats import SolveStats
-from tools import natural_sorted, print_stamped
+from tools import print_stamped
 
 
 def validate_solution(puzzle: Puzzle, solution: MoveSeq):
@@ -491,9 +490,7 @@ def solve_one(name: str, config: SolveConfig, print_info: bool):
 
 def solve_all(config: SolveConfig, print_info: bool):
     """Helper function for solving all puzzles."""
-    names = [filename for filename in os.listdir(PUZZLE_DIR)]
-    names = natural_sorted(names)
-
+    names = all_puzzles_names()
     puzzles = [Puzzle.from_file(name) for name in names]
     for puzzle in puzzles:
         print_stamped(f"solving {puzzle.name}...")

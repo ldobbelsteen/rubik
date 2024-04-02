@@ -9,6 +9,7 @@ from puzzle import (
     DEFAULT_CENTER_COLORS,
     PUZZLE_DIR,
     Puzzle,
+    all_puzzles_names,
     cubicle_colors,
     cubicle_type,
     decode_corner,
@@ -97,11 +98,11 @@ class PuzzleModule(unittest.TestCase):
 
     def test_puzzle_encoding_decoding(self):
         """Test whether parsing and serializing puzzles is bijective."""
-        for filename in os.listdir(PUZZLE_DIR):
-            path = os.path.join(PUZZLE_DIR, filename)
+        for name in all_puzzles_names():
+            path = os.path.join(PUZZLE_DIR, name)
             with open(path) as file:
                 puzzle = file.read()
-                self.assertEqual(str(Puzzle.from_str(puzzle, filename)), puzzle)
+                self.assertEqual(str(Puzzle.from_str(puzzle, name)), puzzle)
 
     def test_puzzle_execute_move_consistency(self):
         """Test whether executing moves and reverting them is bijective."""

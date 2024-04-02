@@ -7,7 +7,7 @@ import os
 from PIL import Image, ImageDraw
 
 import move_mappers.default
-from tools import rotate_list
+from tools import natural_sorted, rotate_list
 
 PUZZLE_DIR = "./puzzles"
 
@@ -187,6 +187,11 @@ def inverse_move(move: Move) -> Move:
 def all_moves() -> list[Move]:
     """List all valid moves."""
     return list(itertools.product([0, 1, 2], [False, True], [0, 1, 2]))
+
+
+def all_puzzles_names() -> list[str]:
+    """List all puzzles in the puzzle directory."""
+    return natural_sorted([filename for filename in os.listdir(PUZZLE_DIR)])
 
 
 def cubicle_type(n: int, cubicle: CubicleCoords):
