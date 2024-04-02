@@ -19,20 +19,23 @@ GENERATED_DIR = "./generated_moves"
 
 def symmetries_file_path(n: int, d: int):
     """Return the file path for found symmetrical move sequences."""
-    os.makedirs(GENERATED_DIR, exist_ok=True)
-    return os.path.join(GENERATED_DIR, f"symmetrical/n{n}-d{d}.txt")
+    dir = os.path.join(GENERATED_DIR, "symmetrical")
+    os.makedirs(dir, exist_ok=True)
+    return os.path.join(dir, f"n{n}-d{d}.txt")
 
 
 def filtered_file_path(n: int, d: int):
     """Return the file path for found filtered move sequences."""
-    os.makedirs(GENERATED_DIR, exist_ok=True)
-    return os.path.join(GENERATED_DIR, f"filtered/n{n}-d{d}.txt")
+    dir = os.path.join(GENERATED_DIR, "filtered")
+    os.makedirs(dir, exist_ok=True)
+    return os.path.join(dir, f"n{n}-d{d}.txt")
 
 
 def unique_file_path(n: int, d: int):
     """Return the file path for found unique move sequences."""
-    os.makedirs(GENERATED_DIR, exist_ok=True)
-    return os.path.join(GENERATED_DIR, f"unique/n{n}-d{d}.txt")
+    dir = os.path.join(GENERATED_DIR, "unique")
+    os.makedirs(dir, exist_ok=True)
+    return os.path.join(dir, f"n{n}-d{d}.txt")
 
 
 def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
