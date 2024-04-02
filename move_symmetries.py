@@ -214,34 +214,34 @@ def generate(n: int, d: int):
                 )
 
         # Write found symmetrical move sequences to file.
-        output = [(k, sorted(v)) for k, v in symmetries.items()]
-        output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
+        symmetrical_output = [(k, sorted(v)) for k, v in symmetries.items()]
+        symmetrical_output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
         with open(symmetries_file_path(n, cd), "w") as file:
-            for seq, syms in output:
+            for seq, syms in symmetrical_output:
                 seq_canon = move_names(seq)
                 syms_canon = [move_names(seq) for seq in syms]
                 file.write(f"{seq_canon!s} -> {syms_canon!s}\n")
 
         # Write found filtered move sequences to file.
-        output = []
-        for ftd in filtered.values():
-            output.extend(ftd)
-        output.sort()
+        filtered_output = []
+        for vs in filtered.values():
+            filtered_output.extend(vs)
+        filtered_output.sort()
         with open(filtered_file_path(n, cd), "w") as file:
-            for seq in output:
+            for seq in filtered_output:
                 seq_canon = move_names(seq)
                 file.write(f"{seq_canon!s}\n")
 
         # Write found unique move sequences to file.
-        output = list(unique)
-        output.sort()
+        unique_output = list(unique)
+        unique_output.sort()
         with open(unique_file_path(n, cd), "w") as file:
-            for seq in output:
+            for seq in unique_output:
                 seq_canon = move_names(seq)
                 file.write(f"{seq_canon!s}\n")
 
-        fil = sum(len(s) for s in filtered.values())
-        pot = sum(len(s) for s in symmetries.values())
+        fil = len(filtered_output)
+        pot = sum(len(s) for _, s in symmetrical_output)
         print_stamped(f"d = {cd}: filtered {fil}, with {pot} more filterable")
         fresh = next_fresh
 

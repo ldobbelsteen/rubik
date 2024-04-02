@@ -4,7 +4,7 @@ import os
 import random
 import unittest
 
-from generate_random import all_moves
+from generate_random import all_moves, generate_random
 from puzzle import (
     DEFAULT_CENTER_COLORS,
     PUZZLE_DIR,
@@ -16,14 +16,35 @@ from puzzle import (
     encode_corner,
     encode_edge,
     facelet_cubicle,
+    finished_corner_states,
+    finished_edge_states,
     inverse_move,
     move_name,
     parse_move,
 )
 
 
-class Testing(unittest.TestCase):
-    """Various unit tests."""
+class PuzzleModule(unittest.TestCase):
+    """Various unit tests for the puzzle module."""
+
+    def test_encoding_decoding_moves(self):
+        """Test whether encoding and decoding moves is bijective."""
+        for move in all_moves():
+            self.assertEqual(move, parse_move(move_name(move)))
+
+    def test_inverse_move(self):
+        """Test whether the inverse move function result reverts a move."""
+        for n in (2, 3):
+            for move in all_moves():
+                puzzle = generate_random(n, 20, False)
+                self.assertEqual(
+                    puzzle,
+                    puzzle.execute_move(move).execute_move(inverse_move(move)),
+                )
+
+    def test_all_moves_len(self):
+        """Test whether the list of all moves is complete."""
+        self.assertEqual(len(all_moves()), 18)
 
     def test_cubicle_type(self):
         """Test whether the cubicle type function works as expected."""
@@ -50,7 +71,7 @@ class Testing(unittest.TestCase):
 
     def test_encoding_decoding_cubies(self):
         """Test whether encoding and decoding cubie coordinates is bijective."""
-        for n in [2, 3]:
+        for n in (2, 3):
             for x in range(n):
                 for y in range(n):
                     for z in range(n):
@@ -67,16 +88,14 @@ class Testing(unittest.TestCase):
                                     decode_edge(n, encode_edge(n, cubicle)),
                                 )
 
-    def test_all_moves(self):
-        """Test whether the list of all moves is complete."""
-        self.assertEqual(len(all_moves()), 18)
+    def test_finished_states_len(self):
+        """Test whether the number of finished states is as expected."""
+        self.assertEqual(len(finished_corner_states(2)), 8)
+        self.assertEqual(len(finished_edge_states(2)), 0)
+        self.assertEqual(len(finished_corner_states(3)), 8)
+        self.assertEqual(len(finished_edge_states(3)), 12)
 
-    def test_encoding_decoding_moves(self):
-        """Test whether encoding and decoding moves is bijective."""
-        for move in all_moves():
-            self.assertEqual(move, parse_move(move_name(move)))
-
-    def test_puzzle_parsing(self):
+    def test_puzzle_encoding_decoding(self):
         """Test whether parsing and serializing puzzles is bijective."""
         for filename in os.listdir(PUZZLE_DIR):
             path = os.path.join(PUZZLE_DIR, filename)
@@ -84,14 +103,15 @@ class Testing(unittest.TestCase):
                 puzzle = file.read()
                 self.assertEqual(str(Puzzle.from_str(puzzle, filename)), puzzle)
 
-    def test_move_consistency(self):
+    def test_puzzle_execute_move_consistency(self):
         """Test whether executing moves and reverting them is bijective."""
-        for n in [2, 3]:
+        for n in (2, 3):
             # Take a random permutation of all possible moves.
             moves = all_moves()
             random.shuffle(moves)
 
-            state = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
+            # Take a random puzzle state.
+            state = generate_random(n, 20, False)
             states = []
 
             # Execute the moves and store the states before each move.
@@ -105,6 +125,18 @@ class Testing(unittest.TestCase):
             for i, move in enumerate(moves):
                 state = state.execute_move(inverse_move(move))
                 self.assertEqual(state, states[i])
+
+    def test_puzzle_is_finished(self):
+        """Test whether the is_finished function works as expected."""
+        for n in (2, 3):
+            moves = random.choices(all_moves(), k=20)
+            puzzle = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
+            self.assertTrue(puzzle.is_finished())
+            for move in moves:
+                puzzle = puzzle.execute_move(move)
+            for move in reversed(moves):
+                puzzle = puzzle.execute_move(inverse_move(move))
+            self.assertTrue(puzzle.is_finished())
 
 
 if __name__ == "__main__":
