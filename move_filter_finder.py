@@ -288,11 +288,11 @@ def find(n: int, k: int):
     lt_cond_count = z3.Sum(
         [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.LT]
     )
-    eq_cond_count = z3.Sum(
-        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.EQ]
-    )
     ineq_cond_count = z3.Sum(
         [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.INEQ]
+    )
+    eq_cond_count = z3.Sum(
+        [z3.If(c.ref(), 1, 0) for c in filter.all_conditions() if c.op == Operator.EQ]
     )
     solver.minimize(cond_count)
     solver.minimize(symb_cond_count)
