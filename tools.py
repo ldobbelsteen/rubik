@@ -27,3 +27,14 @@ def rotate_list(ls: list[int]):
     """Rotate a list by appending its last element to the front."""
     last = ls.pop()
     ls.insert(0, last)
+
+
+def closest_factors(c: int):
+    """Find the two closest factors of a number."""
+    a, b, i = 1, c, 0
+    while a < b:
+        i += 1
+        if c % i == 0:
+            a = i
+            b = c // a
+    return b, a

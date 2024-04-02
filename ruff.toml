@@ -10,3 +10,4 @@ ignore = [
     "PLR0912",
     "PLR0915",
 ]
+exclude = ["benchmark.ipynb"]
