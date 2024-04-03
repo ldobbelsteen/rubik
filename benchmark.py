@@ -15,8 +15,9 @@ BENCHMARK_PUZZLES = [
     # "n2-k8-0.txt",
     # "n2-k9-0.txt",
     "n3-k7-0.txt",
+    "n3-k8-0.txt",
     "n3-k8-1.txt",
-    "n3-k9-0.txt",
+    # "n3-k9-0.txt",
 ]
 
 
