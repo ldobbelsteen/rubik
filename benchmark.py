@@ -2,17 +2,23 @@
 
 import os
 import signal
+import time
 
 from puzzle import Puzzle
 from solve import solve
 from solve_config import SolveConfig
 from tools import print_stamped
 
+TIMEOUT_FACTOR = 3
+MIN_TIMEOUT_SECS = 20
 BENCHMARK_DIR = "./benchmarks"
 BENCHMARK_PUZZLES = [
+    "n2-k5-0.txt",
     "n2-k7-0.txt",
     "n2-k8-0.txt",
+    "n2-k8-1.txt",
     "n2-k9-0.txt",
+    "n2-k9-1.txt",
     "n3-k7-0.txt",
     "n3-k8-0.txt",
     "n3-k8-1.txt",
@@ -52,33 +58,45 @@ def benchmark_parameter(
                 ",".join(
                     ["puzzle_name", parameter_name, "prep_time", "solve_time", "k"]
                 )
+                + "\n"
             )
 
     # Run the solver for each puzzle and parameter value.
-    with open(path, "a") as f:
+    with open(path, "a", buffering=1) as f:
         for puzzle in load_benchmark_puzzles():
             print_stamped(f"puzzle {puzzle.name}...")
-            fastest_time_seconds: float | None = None
+            fastest_time: float | None = None
 
             for parameter_value in parameter_values:
                 print_stamped(f"value {parameter_value}...")
                 setattr(base_config, parameter_name, parameter_value)
 
-                # Set timeout for 3 times the fastest time so far.
-                if fastest_time_seconds is not None:
-                    signal.alarm(int(fastest_time_seconds * 3))
+                # Set timeout so we won't wait forever on slow parameters.
+                if fastest_time is not None:
+                    timeout_secs = max(
+                        int(fastest_time * TIMEOUT_FACTOR),
+                        MIN_TIMEOUT_SECS,
+                    )
+                    signal.alarm(timeout_secs)
 
                 try:
+                    start = time.time()
                     stats = solve(puzzle, base_config, False)
                 except Exception:
-                    print_stamped("timeout occurred, skipping...")
+                    print_stamped("timeout, skipping...")
 
                     # Write result with values -1 for timeout.
                     f.write(
                         ",".join(
                             map(
                                 str,
-                                [puzzle.name, parameter_value, -1, -1, -1],
+                                [
+                                    puzzle.name,
+                                    parameter_value,
+                                    f">{timeout_secs}",
+                                    f">{timeout_secs}",
+                                    "?",
+                                ],
                             )
                         )
                         + "\n"
@@ -101,22 +119,17 @@ def benchmark_parameter(
                                 ],
                             )
                         )
+                        + "\n"
                     )
 
                     # Update fastest time if faster.
-                    time_seconds = (
-                        stats.total_prep_time().total_seconds()
-                        + stats.total_solve_time().total_seconds()
-                    )
-                    if (
-                        fastest_time_seconds is None
-                        or time_seconds < fastest_time_seconds
-                    ):
-                        fastest_time_seconds = time_seconds
+                    duration = time.time() - start
+                    if fastest_time is None or duration < fastest_time:
+                        fastest_time = duration
 
 
 if __name__ == "__main__":
     benchmark_parameter(SolveConfig.default(), "move_size", [1, 2, 3, 4])
     benchmark_parameter(SolveConfig.default(), "max_solver_threads", [1, 2, 4, 7])
     benchmark_parameter(SolveConfig.default(), "apply_theorem_11a", [True, False])
-    benchmark_parameter(SolveConfig.default(), "apply_theorem_11b", [True, False])
+    # benchmark_parameter(SolveConfig.default(), "apply_theorem_11b", [True, False])
