@@ -25,119 +25,98 @@ def load_benchmark_puzzles() -> list[Puzzle]:
     return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES]
 
 
-def raise_(ex):
-    """Raise an exception."""
-    raise ex
+def benchmark_parameter(
+    base_config: SolveConfig,
+    parameter_name: str,
+    parameter_values: list[int],
+):
+    """Benchmark the solve function for a list of parameter values."""
+    print_stamped(f"benchmarking '{parameter_name}' parameter...")
+    path = os.path.join(BENCHMARK_DIR, f"{parameter_name}.csv")
+    os.makedirs(BENCHMARK_DIR, exist_ok=True)
 
+    def raise_(e: Exception):
+        """Raise an exception."""
+        raise e
 
-def benchmark_move_sizes(config: SolveConfig, move_sizes: list[int]):
-    """Benchmark the solve function for a list of move sizes."""
-    print_stamped("benchmarking move sizes...")
+    # Raise a timeout exception when a SIGALRM signal is received.
     signal.signal(
         signal.SIGALRM,
-        lambda signum, frame: raise_(Exception(f"timeout {signum} {frame}")),
+        lambda *_: raise_(Exception("timeout")),
     )
 
-    path = os.path.join(BENCHMARK_DIR, "move_sizes.csv")
+    # Add CSV file headers if new file.
     if not os.path.exists(path):
         with open(path, "w") as f:
-            f.write("puzzle_name,move_size,prep_time,solve_time,k\n")
+            f.write(
+                ",".join(
+                    ["puzzle_name", parameter_name, "prep_time", "solve_time", "k"]
+                )
+            )
 
+    # Run the solver for each puzzle and parameter value.
     with open(path, "a") as f:
         for puzzle in load_benchmark_puzzles():
             print_stamped(f"puzzle {puzzle.name}...")
-            fastest: float | None = None
+            fastest_time_seconds: float | None = None
 
-            for move_size in move_sizes:
-                print_stamped(f"move size {move_size}...")
-                config.move_size = move_size
+            for parameter_value in parameter_values:
+                print_stamped(f"value {parameter_value}...")
+                setattr(base_config, parameter_name, parameter_value)
 
-                if fastest is not None:
-                    signal.alarm(int(fastest * 3))
+                # Set timeout for 3 times the fastest time so far.
+                if fastest_time_seconds is not None:
+                    signal.alarm(int(fastest_time_seconds * 3))
 
                 try:
-                    stats = solve(puzzle, config, False)
-                except Exception as e:
-                    print_stamped(f"exception occurred: {e}")
-                    f.write(
-                        ",".join([puzzle.name, str(move_size), "-1", "-1", "-1"]) + "\n"
-                    )
-                else:
-                    signal.alarm(0)
+                    stats = solve(puzzle, base_config, False)
+                except Exception:
+                    print_stamped("timeout occurred, skipping...")
+
+                    # Write result with values -1 for timeout.
                     f.write(
                         ",".join(
-                            [
-                                puzzle.name,
-                                str(move_size),
-                                str(stats.total_prep_time().total_seconds()),
-                                str(stats.total_solve_time().total_seconds()),
-                                str(stats.k()),
-                            ]
+                            map(
+                                str,
+                                [puzzle.name, parameter_value, -1, -1, -1],
+                            )
                         )
-                    )
-                    total = (
-                        stats.total_prep_time().total_seconds()
-                        + stats.total_solve_time().total_seconds()
-                    )
-                    if fastest is None or total < fastest:
-                        fastest = total
-
-
-def benchmark_thread_counts(config: SolveConfig, thread_counts: list[int]):
-    """Benchmark the solve function for a list of thread counts."""
-    print_stamped("benchmarking thread counts...")
-    signal.signal(
-        signal.SIGALRM,
-        lambda signum, frame: raise_(Exception(f"timeout {signum} {frame}")),
-    )
-
-    path = os.path.join(BENCHMARK_DIR, "thread_counts.csv")
-    if not os.path.exists(path):
-        with open(path, "w") as f:
-            f.write("puzzle_name,thread_count,prep_time,solve_time,k\n")
-
-    with open(path, "a") as f:
-        for puzzle in load_benchmark_puzzles():
-            print_stamped(f"puzzle {puzzle.name}...")
-            fastest: float | None = None
-
-            for thread_count in thread_counts:
-                print_stamped(f"thread count {thread_count}...")
-                config.max_solver_threads = thread_count
-
-                if fastest is not None:
-                    signal.alarm(int(fastest * 3))
-
-                try:
-                    stats = solve(puzzle, config, False)
-                except Exception as e:
-                    print_stamped(f"exception occurred: {e}")
-                    f.write(
-                        ",".join([puzzle.name, str(thread_count), "-1", "-1", "-1"])
                         + "\n"
                     )
                 else:
+                    # Cancel timeout.
                     signal.alarm(0)
+
+                    # Write result to CSV file.
                     f.write(
                         ",".join(
-                            [
-                                puzzle.name,
-                                str(thread_count),
-                                str(stats.total_prep_time().total_seconds()),
-                                str(stats.total_solve_time().total_seconds()),
-                                str(stats.k()),
-                            ]
+                            map(
+                                str,
+                                [
+                                    puzzle.name,
+                                    parameter_value,
+                                    stats.total_prep_time().total_seconds(),
+                                    stats.total_solve_time().total_seconds(),
+                                    stats.k(),
+                                ],
+                            )
                         )
                     )
-                    total = (
+
+                    # Update fastest time if faster.
+                    time_seconds = (
                         stats.total_prep_time().total_seconds()
                         + stats.total_solve_time().total_seconds()
                     )
-                    if fastest is None or total < fastest:
-                        fastest = total
+                    if (
+                        fastest_time_seconds is None
+                        or time_seconds < fastest_time_seconds
+                    ):
+                        fastest_time_seconds = time_seconds
 
 
 if __name__ == "__main__":
-    os.makedirs(BENCHMARK_DIR, exist_ok=True)
-    benchmark_thread_counts(SolveConfig.default(), [1, 2, 4, 7])
-    benchmark_move_sizes(SolveConfig.default(), [1, 2, 3, 4])
+    benchmark_parameter(SolveConfig.default(), "move_size", [1, 2, 3, 4])
+    benchmark_parameter(SolveConfig.default(), "max_solver_threads", [1, 2, 4, 7])
+    benchmark_parameter(SolveConfig.default(), "apply_theorem_11a", [True, False])
+    benchmark_parameter(SolveConfig.default(), "apply_theorem_11b", [True, False])
