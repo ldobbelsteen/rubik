@@ -30,8 +30,10 @@ def benchmark_move_sizes(config: SolveConfig, move_sizes: list[int]):
     """Benchmark the solve function for a list of move sizes."""
     print_stamped("benchmarking move sizes...")
     results = []
-    for puzzle in tqdm(load_benchmark_puzzles()):
+    for puzzle in load_benchmark_puzzles():
+        print_stamped(f"puzzle {puzzle.name}...")
         for move_size in tqdm(move_sizes):
+            print_stamped(f"move size {move_size}...")
             config.move_size = move_size
             stats = solve(puzzle, config, False)
             results.append(
@@ -54,8 +56,10 @@ def benchmark_thread_count(config: SolveConfig, thread_counts: list[int]):
     """Benchmark the solve function for a list of thread counts."""
     print_stamped("benchmarking thread counts...")
     results = []
-    for puzzle in tqdm(load_benchmark_puzzles()):
-        for thread_count in tqdm(thread_counts):
+    for puzzle in load_benchmark_puzzles():
+        print_stamped(f"puzzle {puzzle.name}...")
+        for thread_count in thread_counts:
+            print_stamped(f"thread count {thread_count}...")
             config.max_solver_threads = thread_count
             stats = solve(puzzle, config, False)
             results.append(
