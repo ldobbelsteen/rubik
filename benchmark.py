@@ -3,7 +3,6 @@
 import os
 
 import pandas as pd
-from tqdm import tqdm
 
 from puzzle import Puzzle
 from solve import solve
@@ -32,7 +31,7 @@ def benchmark_move_sizes(config: SolveConfig, move_sizes: list[int]):
     results = []
     for puzzle in load_benchmark_puzzles():
         print_stamped(f"puzzle {puzzle.name}...")
-        for move_size in tqdm(move_sizes):
+        for move_size in move_sizes:
             print_stamped(f"move size {move_size}...")
             config.move_size = move_size
             stats = solve(puzzle, config, False)
