@@ -76,5 +76,5 @@ def benchmark_thread_count(config: SolveConfig, thread_counts: list[int]):
 
 if __name__ == "__main__":
     os.makedirs(BENCHMARK_DIR, exist_ok=True)
-    benchmark_move_sizes(SolveConfig.default(), [1, 2, 3, 4])
     benchmark_thread_count(SolveConfig.default(), [1, 2, 4, 7])
+    benchmark_move_sizes(SolveConfig.default(), [1, 2, 3, 4])
