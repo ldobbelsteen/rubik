@@ -1,4 +1,4 @@
-Pillow == 10.2.0
+Pillow == 10.3.0
 z3-solver == 4.13.0.0
 matplotlib == 3.8.3
 tqdm == 4.66.2
