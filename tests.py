@@ -110,6 +110,16 @@ class StateModule(unittest.TestCase):
         for move in Move.list_all():
             self.assertEqual(move, move.from_str(str(move)))
 
+    def test_encoding_decoding_corner_state(self):
+        for n in (2, 3):
+            for corner_state in CornerState.all_finished(n):
+                self.assertEqual(corner_state, CornerState.from_str(str(corner_state)))
+
+    def test_encoding_decoding_edge_state(self):
+        for n in (2, 3):
+            for edge_state in EdgeState.all_finished(n):
+                self.assertEqual(edge_state, EdgeState.from_str(str(edge_state)))
+
     def test_inverse_move(self):
         for n in (2, 3):
             for move in Move.list_all():

@@ -1,3 +1,4 @@
+import ast
 import itertools
 from typing import cast
 
@@ -268,6 +269,17 @@ class CornerState:
         """Return the hash of the corner state."""
         return hash((self.n, self.x_hi, self.y_hi, self.z_hi, self.r, self.cw))
 
+    def __str__(self):
+        """Return the string representation of the corner state."""
+        # TODO: make more human-readable
+        return str((self.n, self.x_hi, self.y_hi, self.z_hi, self.r, self.cw))
+
+    @staticmethod
+    def from_str(s: str):
+        """Create a new corner state from the given string representation."""
+        vals = ast.literal_eval(s)
+        return CornerState(*vals)
+
     def next_x_hi(self, m: Move) -> bool:
         """Return the next value of x_hi, given a move."""
         if m.ax == 1 and m.hi == self.y_hi:
@@ -418,6 +430,17 @@ class EdgeState:
     def __hash__(self):
         """Return the hash of the edge state."""
         return hash((self.n, self.a, self.x_hi, self.y_hi, self.r))
+
+    def __str__(self):
+        """Return the string representation of the edge state."""
+        # TODO: make more human-readable
+        return str((self.n, self.a, self.x_hi, self.y_hi, self.r))
+
+    @staticmethod
+    def from_str(s: str):
+        """Create a new edge state from the given string representation."""
+        vals = ast.literal_eval(s)
+        return EdgeState(*vals)
 
     def next_a(self, m: Move) -> int:
         """Return the next value of a, given a move."""
@@ -608,15 +631,29 @@ class CornerStateZ3:
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) c"),
         )
 
-    def fix(self, other: "CornerState | CornerStateZ3"):
+    def __eq__(self, other: "CornerState | CornerStateZ3"):
         """Return the conditions for two corner states being equal."""
-        return [
-            self.x_hi == other.x_hi,
-            self.y_hi == other.y_hi,
-            self.z_hi == other.z_hi,
-            self.r == other.r,
-            self.cw == other.cw,
-        ]
+        return z3.And(
+            [
+                self.x_hi == other.x_hi,
+                self.y_hi == other.y_hi,
+                self.z_hi == other.z_hi,
+                self.r == other.r,
+                self.cw == other.cw,
+            ]
+        )
+
+    def __ne__(self, other: "CornerState | CornerStateZ3"):
+        """Return the conditions for two corner states being different."""
+        return z3.Or(
+            [
+                self.x_hi != other.x_hi,
+                self.y_hi != other.y_hi,
+                self.z_hi != other.z_hi,
+                self.r != other.r,
+                self.cw != other.cw,
+            ]
+        )
 
 
 class EdgeStateZ3:
@@ -639,11 +676,24 @@ class EdgeStateZ3:
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) r"),
         )
 
-    def fix(self, other: "EdgeState | EdgeStateZ3"):
+    def __eq__(self, other: "EdgeState | EdgeStateZ3"):
         """Return the conditions for two edge states being equal."""
-        return [
-            self.a == other.a,
-            self.x_hi == other.x_hi,
-            self.y_hi == other.y_hi,
-            self.r == other.r,
-        ]
+        return z3.And(
+            [
+                self.a == other.a,
+                self.x_hi == other.x_hi,
+                self.y_hi == other.y_hi,
+                self.r == other.r,
+            ]
+        )
+
+    def __ne__(self, other: "EdgeState | EdgeStateZ3"):
+        """Return the conditions for two edge states being different."""
+        return z3.Or(
+            [
+                self.a != other.a,
+                self.x_hi != other.x_hi,
+                self.y_hi != other.y_hi,
+                self.r != other.r,
+            ]
+        )

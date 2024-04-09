@@ -199,3 +199,5 @@ if __name__ == "__main__":
     # benchmark_param("apply_theorem_11b", [False, True])
     benchmark_param("ban_repeated_states", [False, True])
     benchmark_param("k_search_start", [0, 4, 8, 10])
+    benchmark_param("enable_corner_min_patterns", [False, True])
+    benchmark_param("enable_edge_min_patterns", [False, True])

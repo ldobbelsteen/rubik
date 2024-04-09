@@ -86,6 +86,8 @@ class SolveConfig:
         apply_theorem_11b=False,
         ban_repeated_states=False,
         k_search_start=8,
+        enable_corner_min_patterns=False,
+        enable_edge_min_patterns=False,
     ):
         """Create a new solve configuration."""
         self.tactics = tactics
@@ -98,3 +100,5 @@ class SolveConfig:
         self.apply_theorem_11b = apply_theorem_11b
         self.ban_repeated_states = ban_repeated_states
         self.k_search_start = k_search_start
+        self.enable_corner_min_patterns = enable_corner_min_patterns
+        self.enable_edge_min_patterns = enable_edge_min_patterns

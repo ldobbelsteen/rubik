@@ -9,6 +9,7 @@ import z3
 import move_mappers
 import move_mappers_stacked
 import move_symmetries
+from cubie_min_patterns import load_corner_min_patterns, load_edge_min_patterns
 from puzzle import (
     CornerState,
     EdgeState,
@@ -81,18 +82,18 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
         """Return conditions of a state being equal to a state."""
         conditions = []
         for c1, c2 in zip(corners[s], corner_states):
-            conditions.extend(c1.fix(c2))
+            conditions.append(c1 == c2)
         for e1, e2 in zip(edges[s], edge_states):
-            conditions.extend(e1.fix(e2))
+            conditions.append(e1 == e2)
         return conditions
 
     def identical_states(s1: int, s2: int):
         """Return conditions of two states being equal."""
         conditions = []
         for c1, c2 in zip(corners[s1], corners[s2]):
-            conditions.extend(c1.fix(c2))
+            conditions.append(c1 == c2)
         for e1, e2 in zip(edges[s1], edges[s2]):
-            conditions.extend(e1.fix(e2))
+            conditions.append(e1 == e2)
         return conditions
 
     # Fix the first state to the puzzle state.
@@ -251,6 +252,18 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
                     ],
                 )
                 solver.add(edge_sum % 2 == 0)
+
+    if config.enable_corner_min_patterns:
+        for i, patterns in enumerate(load_corner_min_patterns(n)):
+            for corner, depth in patterns.items():
+                for s in range(k + 1 - depth, k + 1):
+                    solver.add(corners[s][i] != corner)
+
+    if config.enable_edge_min_patterns:
+        for i, patterns in enumerate(load_edge_min_patterns(n)):
+            for edge, depth in patterns.items():
+                for s in range(k + 1 - depth, k + 1):
+                    solver.add(edges[s][i] != edge)
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
