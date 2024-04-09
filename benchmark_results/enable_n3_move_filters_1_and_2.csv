@@ -1,0 +1,21 @@
+puzzle_name,enable_n3_move_filters_1_and_2,prep_time,solve_time,k,message
+n2-k5-0.txt,True,0.609121,0.160134,5,
+n2-k5-0.txt,False,0.591194,0.163209,5,
+n2-k7-0.txt,True,1.105064,0.946778,7,
+n2-k7-0.txt,False,1.126143,0.980156,7,
+n2-k8-0.txt,True,1.467172,13.466458,8,
+n2-k8-0.txt,False,1.407205,13.577088,8,
+n2-k8-1.txt,True,1.435408,8.229299,8,
+n2-k8-1.txt,False,1.470833,8.202257,8,
+n2-k9-0.txt,True,1.732047,71.977143,9,
+n2-k9-0.txt,False,1.909234,72.141302,9,
+n2-k9-1.txt,True,1.912349,38.643564,9,
+n2-k9-1.txt,False,1.784758,38.331875,9,
+n3-k7-0.txt,True,3.843926,0.702016,7,
+n3-k7-0.txt,False,,,,timeout after 60s
+n3-k8-0.txt,True,4.930967,1.570677,8,
+n3-k8-0.txt,False,,,,timeout after 60s
+n3-k8-1.txt,True,4.920854,2.06805,8,
+n3-k8-1.txt,False,,,,timeout after 60s
+n3-k9-0.txt,True,6.060688,20.75099,9,
+n3-k9-0.txt,False,5.981953,8.463183,9,

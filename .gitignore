@@ -1,0 +1,5 @@
+/.idea
+/__pycache__
+/move_symmetry_results
+/**/*.png
+/venv
