@@ -203,15 +203,12 @@ class Puzzle:
 
         return True
 
-    def is_solution(self, solution: MoveSeq):
+    def is_solution(self, solution: MoveSeq) -> bool:
         """Check whether a given sequence of moves is a solution to the puzzle."""
         state = self
         for move in solution:
             state = state.execute_move(move)
-        if not state.is_finished():
-            raise Exception(
-                f"solution is not actual solution: {list(map(str, solution))}"
-            )
+        return state.is_finished()
 
     @staticmethod
     def finished(n: int, name: str, center_colors: tuple[int, ...]):
