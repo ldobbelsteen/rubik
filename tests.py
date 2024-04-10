@@ -23,7 +23,8 @@ class GenerateRandomModule(unittest.TestCase):
             for randomizations in range(10):
                 puzzle, moves = generate_random(n, randomizations, False)
                 self.assertTrue(puzzle.is_valid())
-                self.assertTrue(puzzle.is_solution(moves))
+                solution = [move.inverse() for move in reversed(moves)]
+                self.assertTrue(puzzle.is_solution(tuple(solution)))
 
 
 class MoveFilterFinderModule(unittest.TestCase):
