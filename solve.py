@@ -8,7 +8,6 @@ import z3
 
 import move_mappers
 import move_mappers_stacked
-import move_symmetries
 from cubie_min_patterns import load_corner_min_patterns, load_edge_min_patterns
 from puzzle import (
     CornerState,
@@ -20,21 +19,6 @@ from solve_config import SolveConfig, gods_number
 from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3
 from stats import SolveStats
 from tools import print_stamped
-
-
-def validate_solution(puzzle: Puzzle, solution: MoveSeq):
-    """Check whether a solution is actually valid for a puzzle and whether the
-    move sequence is allowed by the filters.
-    """
-    canon = list(map(str, solution))
-
-    for move in solution:
-        puzzle = puzzle.execute_move(move)
-    if not puzzle.is_finished():
-        raise Exception(f"solution is not actual solution: {canon}")
-
-    if not move_symmetries.allowed_by_filters(puzzle.n, solution):
-        raise Exception(f"solution should have been filtered: {canon}")
 
 
 def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
@@ -317,7 +301,7 @@ def solve(puzzle: Puzzle, config: SolveConfig, print_info: bool) -> SolveStats:
                 f"foud no k ≤ {k_upperbound} to be possible in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
     else:
-        validate_solution(puzzle, stats.solution)
+        assert puzzle.is_solution(stats.solution)
         if print_info:
             print_stamped(
                 f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501

@@ -21,8 +21,9 @@ class GenerateRandomModule(unittest.TestCase):
     def test_generate_random(self):
         for n in (2, 3):
             for randomizations in range(10):
-                puzzle = generate_random(n, randomizations, False)
+                puzzle, moves = generate_random(n, randomizations, False)
                 self.assertTrue(puzzle.is_valid())
+                self.assertTrue(puzzle.is_solution(moves))
 
 
 class MoveFilterFinderModule(unittest.TestCase):
@@ -76,7 +77,7 @@ class PuzzleModule(unittest.TestCase):
             random.shuffle(moves)
 
             # Take a random puzzle state.
-            state = generate_random(n, 20, False)
+            state, _ = generate_random(n, 20, False)
             states = []
 
             # Execute the moves and store the states before each move.
@@ -123,7 +124,7 @@ class StateModule(unittest.TestCase):
     def test_inverse_move(self):
         for n in (2, 3):
             for move in Move.list_all():
-                puzzle = generate_random(n, 20, False)
+                puzzle, _ = generate_random(n, 20, False)
                 self.assertEqual(
                     puzzle,
                     puzzle.execute_move(move).execute_move(move.inverse()),
