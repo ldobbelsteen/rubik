@@ -1,91 +1,91 @@
 puzzle_name,tactics,prep_time,solve_time,k,message
-n2-k5-0.txt,se;s,0.596109,0.078183,5,
-n2-k5-0.txt,se;s;sp,0.590364,0.156083,5,
-n2-k5-0.txt,se;s;cs,0.632446,8.016957,5,
-n2-k5-0.txt,se;s;cs;sp,0.586761,7.64554,5,
-n2-k5-0.txt,se;s;ds,0.592592,0.072202,5,
-n2-k5-0.txt,se;s;ds;sp,0.61743,0.165059,5,
-n2-k5-0.txt,se;s;ds;cs;sp,0.611621,7.526692,5,
-n2-k5-0.txt,se;s;pv;pi;sp,0.58431,0.14906,5,
-n2-k5-0.txt,pa;se;s;pv;pi;sp,0.584404,0.147749,5,
-n2-k7-0.txt,se;s,1.074927,0.594845,7,
-n2-k7-0.txt,se;s;sp,1.072148,0.972537,7,
+n2-k5-0.txt,se;s,0.831822,0.093842,5,
+n2-k5-0.txt,se;s;sp,0.828819,0.078105,5,
+n2-k5-0.txt,se;s;cs,,,,timeout after 60s
+n2-k5-0.txt,se;s;cs;sp,,,,timeout after 60.03472447395325s
+n2-k5-0.txt,se;s;ds,0.824878,0.104391,5,
+n2-k5-0.txt,se;s;ds;sp,0.814588,0.077348,5,
+n2-k5-0.txt,se;s;ds;cs;sp,,,,timeout after 60.10034489631653s
+n2-k5-0.txt,se;s;pv;pi;sp,0.819982,0.080263,5,
+n2-k5-0.txt,pa;se;s;pv;pi;sp,0.8272,0.084159,5,
+n2-k7-0.txt,se;s,1.230753,0.718935,7,
+n2-k7-0.txt,se;s;sp,1.221982,0.879525,7,
 n2-k7-0.txt,se;s;cs,,,,timeout after 60s
-n2-k7-0.txt,se;s;cs;sp,,,,timeout after 60.03715920448303s
-n2-k7-0.txt,se;s;ds,1.081544,0.616919,7,
-n2-k7-0.txt,se;s;ds;sp,1.112935,0.983444,7,
-n2-k7-0.txt,se;s;ds;cs;sp,,,,timeout after 60.10523533821106s
-n2-k7-0.txt,se;s;pv;pi;sp,1.070584,1.052935,7,
-n2-k7-0.txt,pa;se;s;pv;pi;sp,1.092289,0.976947,7,
-n2-k8-0.txt,se;s,1.437539,4.492595,8,
-n2-k8-0.txt,se;s;sp,1.399228,13.385612,8,
+n2-k7-0.txt,se;s;cs;sp,,,,timeout after 60.01876401901245s
+n2-k7-0.txt,se;s;ds,1.228818,0.796435,7,
+n2-k7-0.txt,se;s;ds;sp,1.202253,0.91805,7,
+n2-k7-0.txt,se;s;ds;cs;sp,,,,timeout after 60.07128357887268s
+n2-k7-0.txt,se;s;pv;pi;sp,1.21826,0.927523,7,
+n2-k7-0.txt,pa;se;s;pv;pi;sp,1.213856,1.053887,7,
+n2-k8-0.txt,se;s,1.422547,14.687992,8,
+n2-k8-0.txt,se;s;sp,1.451797,12.888926,8,
 n2-k8-0.txt,se;s;cs,,,,timeout after 60s
-n2-k8-0.txt,se;s;cs;sp,,,,timeout after 60.04467511177063s
-n2-k8-0.txt,se;s;ds,1.400649,4.608131,8,
-n2-k8-0.txt,se;s;ds;sp,1.391946,13.604357,8,
-n2-k8-0.txt,se;s;ds;cs;sp,,,,timeout after 60.111313819885254s
-n2-k8-0.txt,se;s;pv;pi;sp,1.37016,6.578572,8,
-n2-k8-0.txt,pa;se;s;pv;pi;sp,1.428753,15.743849,8,
-n2-k8-1.txt,se;s,1.488553,7.868259,8,
-n2-k8-1.txt,se;s;sp,1.435925,8.212217,8,
+n2-k8-0.txt,se;s;cs;sp,,,,timeout after 60.06494212150574s
+n2-k8-0.txt,se;s;ds,1.463299,14.484961,8,
+n2-k8-0.txt,se;s;ds;sp,1.476766,12.816275,8,
+n2-k8-0.txt,se;s;ds;cs;sp,,,,timeout after 60.10267972946167s
+n2-k8-0.txt,se;s;pv;pi;sp,1.520322,12.880314,8,
+n2-k8-0.txt,pa;se;s;pv;pi;sp,1.450697,8.490111,8,
+n2-k8-1.txt,se;s,1.446559,4.829441,8,
+n2-k8-1.txt,se;s;sp,1.439837,4.017481,8,
 n2-k8-1.txt,se;s;cs,,,,timeout after 60s
-n2-k8-1.txt,se;s;cs;sp,,,,timeout after 60.04905962944031s
-n2-k8-1.txt,se;s;ds,1.46057,7.875809,8,
-n2-k8-1.txt,se;s;ds;sp,1.394273,8.086408,8,
-n2-k8-1.txt,se;s;ds;cs;sp,,,,timeout after 60.096224308013916s
-n2-k8-1.txt,se;s;pv;pi;sp,1.403886,15.600746,8,
-n2-k8-1.txt,pa;se;s;pv;pi;sp,1.400559,4.849871,8,
-n2-k9-0.txt,se;s,1.754353,186.767026,9,
-n2-k9-0.txt,se;s;sp,1.856367,72.574977,9,
-n2-k9-0.txt,se;s;cs,,,,timeout after 223.3884994983673s
-n2-k9-0.txt,se;s;cs;sp,,,,timeout after 223.49157857894897s
-n2-k9-0.txt,se;s;ds,,,,timeout after 223.50851702690125s
-n2-k9-0.txt,se;s;ds;sp,1.816919,72.036026,9,
-n2-k9-0.txt,se;s;ds;cs;sp,,,,timeout after 223.64153122901917s
-n2-k9-0.txt,se;s;pv;pi;sp,1.739837,120.820761,9,
-n2-k9-0.txt,pa;se;s;pv;pi;sp,1.830075,120.784387,9,
-n2-k9-1.txt,se;s,1.740602,42.846584,9,
-n2-k9-1.txt,se;s;sp,1.747253,38.190237,9,
-n2-k9-1.txt,se;s;cs,,,,timeout after 119.89111304283142s
-n2-k9-1.txt,se;s;cs;sp,,,,timeout after 119.95907711982727s
-n2-k9-1.txt,se;s;ds,1.848236,44.422726,9,
-n2-k9-1.txt,se;s;ds;sp,1.784105,38.890424,9,
-n2-k9-1.txt,se;s;ds;cs;sp,,,,timeout after 120.02749824523926s
-n2-k9-1.txt,se;s;pv;pi;sp,1.730046,48.288002,9,
-n2-k9-1.txt,pa;se;s;pv;pi;sp,1.903612,66.709521,9,
-n3-k7-0.txt,se;s,3.806896,0.596969,7,
-n3-k7-0.txt,se;s;sp,3.811218,0.668923,7,
-n3-k7-0.txt,se;s;cs,,,,timeout after 60s
-n3-k7-0.txt,se;s;cs;sp,,,,timeout after 60.063183546066284s
-n3-k7-0.txt,se;s;ds,3.730496,1.058047,7,
-n3-k7-0.txt,se;s;ds;sp,3.800895,0.902006,7,
-n3-k7-0.txt,se;s;ds;cs;sp,,,,timeout after 60.12978410720825s
-n3-k7-0.txt,se;s;pv;pi;sp,3.831131,0.813549,7,
-n3-k7-0.txt,pa;se;s;pv;pi;sp,3.749088,0.808819,7,
-n3-k8-0.txt,se;s,4.857226,1.36282,8,
-n3-k8-0.txt,se;s;sp,4.867176,1.536643,8,
+n2-k8-1.txt,se;s;cs;sp,,,,timeout after 60.06596851348877s
+n2-k8-1.txt,se;s;ds,1.421238,4.82135,8,
+n2-k8-1.txt,se;s;ds;sp,1.415613,4.040291,8,
+n2-k8-1.txt,se;s;ds;cs;sp,,,,timeout after 60.131572008132935s
+n2-k8-1.txt,se;s;pv;pi;sp,1.456176,3.989183,8,
+n2-k8-1.txt,pa;se;s;pv;pi;sp,1.475926,7.999616,8,
+n2-k9-0.txt,se;s,1.641055,63.60831,9,
+n2-k9-0.txt,se;s;sp,1.798664,77.471383,9,
+n2-k9-0.txt,se;s;cs,,,,timeout after 195.8378176689148s
+n2-k9-0.txt,se;s;cs;sp,,,,timeout after 195.9426989555359s
+n2-k9-0.txt,se;s;ds,1.6755,63.599493,9,
+n2-k9-0.txt,se;s;ds;sp,1.680026,77.958788,9,
+n2-k9-0.txt,se;s;ds;cs;sp,,,,timeout after 196.00212025642395s
+n2-k9-0.txt,se;s;pv;pi;sp,1.648604,76.994217,9,
+n2-k9-0.txt,pa;se;s;pv;pi;sp,1.693878,45.050797,9,
+n2-k9-1.txt,se;s,1.683984,29.757577,9,
+n2-k9-1.txt,se;s;sp,1.648115,45.809749,9,
+n2-k9-1.txt,se;s;cs,,,,timeout after 94.39683079719543s
+n2-k9-1.txt,se;s;cs;sp,,,,timeout after 94.49308586120605s
+n2-k9-1.txt,se;s;ds,1.670534,29.203461,9,
+n2-k9-1.txt,se;s;ds;sp,1.727573,45.478066,9,
+n2-k9-1.txt,se;s;ds;cs;sp,,,,timeout after 94.50555348396301s
+n2-k9-1.txt,se;s;pv;pi;sp,1.657841,45.402595,9,
+n2-k9-1.txt,pa;se;s;pv;pi;sp,1.739013,43.863005,9,
+n3-k7-0.txt,se;s,9.666038,34.247702,10,
+n3-k7-0.txt,se;s;sp,9.46243,45.97332,10,
+n3-k7-0.txt,se;s;cs,,,,timeout after 131.82861471176147s
+n3-k7-0.txt,se;s;cs;sp,,,,timeout after 131.93479752540588s
+n3-k7-0.txt,se;s;ds,9.560984,25.560391,10,
+n3-k7-0.txt,se;s;ds;sp,9.489818,34.419954,10,
+n3-k7-0.txt,se;s;ds;cs;sp,,,,timeout after 132.0074851512909s
+n3-k7-0.txt,se;s;pv;pi;sp,9.738645,25.617274,10,
+n3-k7-0.txt,pa;se;s;pv;pi;sp,9.72564,39.907588,10,
+n3-k8-0.txt,se;s,5.263465,1.216292,8,
+n3-k8-0.txt,se;s;sp,5.17255,2.168316,8,
 n3-k8-0.txt,se;s;cs,,,,timeout after 60s
-n3-k8-0.txt,se;s;cs;sp,,,,timeout after 60.06561899185181s
-n3-k8-0.txt,se;s;ds,4.779393,2.571193,8,
-n3-k8-0.txt,se;s;ds;sp,4.920299,2.463157,8,
-n3-k8-0.txt,se;s;ds;cs;sp,,,,timeout after 60.119651556015015s
-n3-k8-0.txt,se;s;pv;pi;sp,4.933555,3.064792,8,
-n3-k8-0.txt,pa;se;s;pv;pi;sp,4.77981,1.487666,8,
-n3-k8-1.txt,se;s,4.856011,3.375119,8,
-n3-k8-1.txt,se;s;sp,4.910884,2.029185,8,
+n3-k8-0.txt,se;s;cs;sp,,,,timeout after 60.06032872200012s
+n3-k8-0.txt,se;s;ds,5.217953,1.409479,8,
+n3-k8-0.txt,se;s;ds;sp,5.140722,1.54805,8,
+n3-k8-0.txt,se;s;ds;cs;sp,,,,timeout after 60.12606167793274s
+n3-k8-0.txt,se;s;pv;pi;sp,5.235423,1.773262,8,
+n3-k8-0.txt,pa;se;s;pv;pi;sp,5.208721,1.59545,8,
+n3-k8-1.txt,se;s,5.33758,2.913085,8,
+n3-k8-1.txt,se;s;sp,5.228323,1.693754,8,
 n3-k8-1.txt,se;s;cs,,,,timeout after 60s
-n3-k8-1.txt,se;s;cs;sp,,,,timeout after 60.03500270843506s
-n3-k8-1.txt,se;s;ds,4.772319,1.540975,8,
-n3-k8-1.txt,se;s;ds;sp,4.799024,2.218215,8,
-n3-k8-1.txt,se;s;ds;cs;sp,,,,timeout after 60.10267353057861s
-n3-k8-1.txt,se;s;pv;pi;sp,4.823486,1.615451,8,
-n3-k8-1.txt,pa;se;s;pv;pi;sp,4.843013,3.181649,8,
-n3-k9-0.txt,se;s,6.105658,24.494526,9,
-n3-k9-0.txt,se;s;sp,6.078776,20.496517,9,
-n3-k9-0.txt,se;s;cs,,,,timeout after 79.83559942245483s
-n3-k9-0.txt,se;s;cs;sp,,,,timeout after 79.92206287384033s
-n3-k9-0.txt,se;s;ds,6.001739,12.693856,9,
-n3-k9-0.txt,se;s;ds;sp,6.015913,10.325409,9,
-n3-k9-0.txt,se;s;ds;cs;sp,,,,timeout after 80.00883650779724s
-n3-k9-0.txt,se;s;pv;pi;sp,5.954575,18.172311,9,
-n3-k9-0.txt,pa;se;s;pv;pi;sp,6.103329,18.603261,9,
+n3-k8-1.txt,se;s;cs;sp,,,,timeout after 60.02184438705444s
+n3-k8-1.txt,se;s;ds,5.164721,1.293717,8,
+n3-k8-1.txt,se;s;ds;sp,5.223066,2.71887,8,
+n3-k8-1.txt,se;s;ds;cs;sp,,,,timeout after 60.086971044540405s
+n3-k8-1.txt,se;s;pv;pi;sp,5.202745,2.955074,8,
+n3-k8-1.txt,pa;se;s;pv;pi;sp,5.203845,1.683599,8,
+n3-k9-0.txt,se;s,5.898606,11.395457,9,
+n3-k9-0.txt,se;s;sp,5.985642,7.641626,9,
+n3-k9-0.txt,se;s;cs,,,,timeout after 60s
+n3-k9-0.txt,se;s;cs;sp,,,,timeout after 60.04810333251953s
+n3-k9-0.txt,se;s;ds,5.912569,11.206437,9,
+n3-k9-0.txt,se;s;ds;sp,6.054466,12.493513,9,
+n3-k9-0.txt,se;s;ds;cs;sp,,,,timeout after 60.114814043045044s
+n3-k9-0.txt,se;s;pv;pi;sp,5.963451,14.776034,9,
+n3-k9-0.txt,pa;se;s;pv;pi;sp,5.983401,19.581203,9,
