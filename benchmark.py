@@ -130,6 +130,9 @@ def benchmark_param(parameter_name: str, parameter_values: list):
                     if process.is_alive():
                         process.kill()
                         process.join()
+                    assert process.exitcode is not None
+                    if process.exitcode > 0:
+                        raise Exception(f"process exited with code {process.exitcode}")
                     process.close()
 
                     # Write the result to the CSV file.
