@@ -290,39 +290,26 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
 
 def solve(puzzle: Puzzle, config: SolveConfig, print_info: bool) -> SolveStats:
     """Compute the optimal solution for a puzzle within an upperbound for the number
-    of moves. If no upperbound is given, God's number is used.
+    of moves. Returns the statistics of the solve operation.
     """
     stats = SolveStats(puzzle, config)
     k_upperbound = gods_number(puzzle.n)
-    k_prospects = list(range(k_upperbound + 1))
-    increasing_search: bool | None = None
 
-    while len(k_prospects) > 0:
-        if increasing_search is None:
-            k = min(config.k_search_start, k_upperbound)
-        elif increasing_search:
-            k = k_prospects[0]
-        else:
-            k = k_prospects[-1]
-
+    for k in range(k_upperbound + 1):
         solution, prep_time, solve_time = solve_for_k(puzzle, k, config)
         stats.register_solution(k, solution, prep_time, solve_time)
 
         if solution is None:
-            k_prospects = [kp for kp in k_prospects if kp > k]
             if print_info:
                 print_stamped(
                     f"k = {k}: UNSAT found in {solve_time} with {prep_time} prep"
                 )
         else:
-            k_prospects = [kp for kp in k_prospects if kp < k]
             if print_info:
                 print_stamped(
                     f"k = {k}: SAT found in {solve_time} with {prep_time} prep"
                 )
-
-        if increasing_search is None:
-            increasing_search = solution is None
+            break
 
     if stats.solution is None:
         if print_info:
