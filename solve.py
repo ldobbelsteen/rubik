@@ -7,7 +7,6 @@ from typing import cast
 import z3
 
 import move_mappers
-import move_mappers_stacked
 from cubie_min_patterns import load_corner_min_patterns, load_edge_min_patterns
 from puzzle import (
     CornerState,
@@ -16,9 +15,49 @@ from puzzle import (
     all_puzzles_names,
 )
 from solve_config import SolveConfig, gods_number
-from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3
+from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3, TernaryZ3
 from stats import SolveStats
 from tools import print_stamped
+
+
+def corner_stacked(c: CornerStateZ3, moves: list[MoveZ3]):
+    """Return the corner state after applying the moves in the given list."""
+    states: list[CornerStateZ3] = [c]
+    for move in moves:
+        states.append(
+            CornerStateZ3(
+                c.n,
+                move_mappers.corner_x_hi_flat(states[-1], move),
+                move_mappers.corner_y_hi_flat(states[-1], move),
+                move_mappers.corner_z_hi_flat(states[-1], move),
+                TernaryZ3(
+                    move_mappers.corner_r_b1_flat(states[-1], move),
+                    move_mappers.corner_r_b2_flat(states[-1], move),
+                ),
+                move_mappers.corner_cw_flat(states[-1], move),
+            )
+        )
+    return states[-1]
+
+
+def edge_stacked(e: EdgeStateZ3, moves: list[MoveZ3]):
+    """Return the edge state after applying the moves in the given list."""
+    states: list[EdgeStateZ3] = [e]
+    for move in moves:
+        next_a = TernaryZ3(
+            move_mappers.edge_a_b1_flat(states[-1], move),
+            move_mappers.edge_a_b2_flat(states[-1], move),
+        )
+        states.append(
+            EdgeStateZ3(
+                e.n,
+                next_a,
+                move_mappers.edge_x_hi_flat(states[-1], move),
+                move_mappers.edge_y_hi_flat(states[-1], move),
+                move_mappers.edge_r_flat(states[-1], next_a),
+            )
+        )
+    return states[-1]
 
 
 def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
@@ -42,14 +81,14 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
     # Nested lists representing the cube at each state.
     corners = [
         [
-            CornerStateZ3.new(s, corner.x_hi, corner.y_hi, corner.z_hi, solver)
+            CornerStateZ3.new(n, s, corner.x_hi, corner.y_hi, corner.z_hi, solver)
             for corner in CornerState.all_finished(n)
         ]
         for s in range(k + 1)
     ]
     edges = [
         [
-            EdgeStateZ3.new(s, edge.a, edge.x_hi, edge.y_hi, solver)
+            EdgeStateZ3.new(n, s, edge.a, edge.x_hi, edge.y_hi, solver)
             for edge in EdgeState.all_finished(n)
         ]
         for s in range(k + 1)
@@ -123,19 +162,12 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
             # Add restrictions for the corner cubies.
             for i, c in enumerate(corners[s]):
                 next = corners[s + move_size][i]
-                solver.add(next.x_hi == move_mappers_stacked.corner_x_hi(c, moveset))
-                solver.add(next.y_hi == move_mappers_stacked.corner_y_hi(c, moveset))
-                solver.add(next.z_hi == move_mappers_stacked.corner_z_hi(c, moveset))
-                solver.add(next.r == move_mappers_stacked.corner_r(c, moveset))
-                solver.add(next.cw == move_mappers_stacked.corner_cw(c, moveset))
+                solver.add(next == corner_stacked(c, moveset))
 
             # Add restrictions for the edge cubies.
             for i, e in enumerate(edges[s]):
                 next = edges[s + move_size][i]
-                solver.add(next.a == move_mappers_stacked.edge_a(e, moveset))
-                solver.add(next.x_hi == move_mappers_stacked.edge_x_hi(e, moveset))
-                solver.add(next.y_hi == move_mappers_stacked.edge_y_hi(e, moveset))
-                solver.add(next.r == move_mappers_stacked.edge_r(e, moveset))
+                solver.add(next == edge_stacked(e, moveset))
 
     # Add symmetric move sequence filters for n = 2.
     if n == 2:

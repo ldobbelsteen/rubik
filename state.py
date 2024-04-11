@@ -319,7 +319,7 @@ class CornerState:
             ]
         )
 
-    def __eq__(self, other: "CornerState"):
+    def __eq__(self, other: "CornerState | CornerStateZ3"):
         """Return whether two corner states are equal."""
         return (
             self.n == other.n
@@ -496,7 +496,7 @@ class EdgeState:
             ]
         )
 
-    def __eq__(self, other: "EdgeState"):
+    def __eq__(self, other: "EdgeState | EdgeStateZ3"):
         """Return whether two edge states are equal."""
         return (
             self.n == other.n
@@ -692,6 +692,7 @@ class CornerStateZ3:
 
     def __init__(
         self,
+        n: int,
         x_hi: z3.BoolRef,
         y_hi: z3.BoolRef,
         z_hi: z3.BoolRef,
@@ -699,6 +700,7 @@ class CornerStateZ3:
         cw: z3.BoolRef,
     ):
         """Create a new corner state with the given variables."""
+        self.n = n
         self.x_hi = x_hi
         self.y_hi = y_hi
         self.z_hi = z_hi
@@ -706,9 +708,10 @@ class CornerStateZ3:
         self.cw = cw
 
     @staticmethod
-    def new(s: int, x_hi: bool, y_hi: bool, z_hi: bool, solver: z3.Solver):
+    def new(n: int, s: int, x_hi: bool, y_hi: bool, z_hi: bool, solver: z3.Solver):
         """Create a new corner state with the given coordinates and orientation."""
         return CornerStateZ3(
+            n,
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) x_hi"),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) y_hi"),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) z_hi"),
@@ -720,6 +723,7 @@ class CornerStateZ3:
         """Return the conditions for two corner states being equal."""
         return z3.And(
             [
+                self.n == other.n,
                 self.x_hi == other.x_hi,
                 self.y_hi == other.y_hi,
                 self.z_hi == other.z_hi,
@@ -732,6 +736,7 @@ class CornerStateZ3:
         """Return the conditions for two corner states being different."""
         return z3.Or(
             [
+                self.n != other.n,
                 self.x_hi != other.x_hi,
                 self.y_hi != other.y_hi,
                 self.z_hi != other.z_hi,
@@ -744,17 +749,26 @@ class CornerStateZ3:
 class EdgeStateZ3:
     """A class for representing edge states in Z3."""
 
-    def __init__(self, a: TernaryZ3, x_hi: z3.BoolRef, y_hi: z3.BoolRef, r: z3.BoolRef):
+    def __init__(
+        self,
+        n: int,
+        a: TernaryZ3,
+        x_hi: z3.BoolRef,
+        y_hi: z3.BoolRef,
+        r: z3.BoolRef,
+    ):
         """Create a new edge state with the given variables."""
+        self.n = n
         self.a = a
         self.x_hi = x_hi
         self.y_hi = y_hi
         self.r = r
 
     @staticmethod
-    def new(s: int, a: int, x_hi: bool, y_hi: bool, solver: z3.Solver):
+    def new(n: int, s: int, a: int, x_hi: bool, y_hi: bool, solver: z3.Solver):
         """Create a new edge state with the given coordinates and orientation."""
         return EdgeStateZ3(
+            n,
             TernaryZ3.new(f"edge({a},{x_hi},{y_hi}) s({s}) a", solver),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) x_hi"),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) y_hi"),
@@ -765,6 +779,7 @@ class EdgeStateZ3:
         """Return the conditions for two edge states being equal."""
         return z3.And(
             [
+                self.n == other.n,
                 self.a == other.a,
                 self.x_hi == other.x_hi,
                 self.y_hi == other.y_hi,
@@ -776,6 +791,7 @@ class EdgeStateZ3:
         """Return the conditions for two edge states being different."""
         return z3.Or(
             [
+                self.n != other.a,
                 self.a != other.a,
                 self.x_hi != other.x_hi,
                 self.y_hi != other.y_hi,
