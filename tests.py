@@ -1,12 +1,10 @@
 # ruff: noqa: D101, D102
 
-import os
 import unittest
 
 import move_filter_finder
 from puzzle import (
     DEFAULT_CENTER_COLORS,
-    PUZZLE_DIR,
     Puzzle,
     all_puzzles_names,
     cubie_colors,
@@ -52,12 +50,9 @@ class PuzzleModule(unittest.TestCase):
 
     def test_puzzle_encoding_decoding(self):
         for name in all_puzzles_names():
-            path = os.path.join(PUZZLE_DIR, name)
-            with open(path) as file:
-                puzzle_str = file.read()
-                puzzle = Puzzle.from_str(puzzle_str, name)
-                self.assertTrue(puzzle.is_valid())
-                self.assertEqual(str(puzzle), puzzle_str)
+            puzzle = Puzzle.from_file(name)
+            self.assertTrue(puzzle.is_valid())
+            self.assertEqual(puzzle, Puzzle.from_str(str(puzzle), name))
 
     def test_puzzle_execute_move_consistency(self):
         for n in (2, 3):
