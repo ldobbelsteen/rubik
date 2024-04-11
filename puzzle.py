@@ -59,7 +59,9 @@ def color_name(c: int) -> str:
 
 def all_puzzles_names() -> list[str]:
     """List all puzzles in the puzzle directory."""
-    return natural_sorted([filename for filename in os.listdir(PUZZLE_DIR)])
+    return natural_sorted(
+        [filename.rstrip(".txt") for filename in os.listdir(PUZZLE_DIR)]
+    )
 
 
 def cubie_colors(
