@@ -1,9 +1,10 @@
-import ast
 import itertools
 import random
 from typing import cast
 
 import z3
+
+from tools import b2s, s2b
 
 
 class Move:
@@ -335,14 +336,28 @@ class CornerState:
 
     def __str__(self):
         """Return the string representation of the corner state."""
-        # TODO: make more human-readable
-        return str((self.n, self.x_hi, self.y_hi, self.z_hi, self.r, self.cw))
+        return ";".join(
+            [
+                b2s(self.x_hi),
+                b2s(self.y_hi),
+                b2s(self.z_hi),
+                str(self.r),
+                b2s(self.cw),
+            ]
+        )
 
     @staticmethod
-    def from_str(s: str):
+    def from_str(n: int, s: str):
         """Create a new corner state from the given string representation."""
-        vals = ast.literal_eval(s)
-        return CornerState(*vals)
+        x_hi_raw, y_hi_raw, z_hi_raw, r_raw, cw_raw = s.split(";")
+        return CornerState(
+            n,
+            s2b(x_hi_raw),
+            s2b(y_hi_raw),
+            s2b(z_hi_raw),
+            int(r_raw),
+            s2b(cw_raw),
+        )
 
     def next_x_hi(self, m: Move) -> bool:
         """Return the next value of x_hi, given a move."""
@@ -497,14 +512,20 @@ class EdgeState:
 
     def __str__(self):
         """Return the string representation of the edge state."""
-        # TODO: make more human-readable
-        return str((self.n, self.a, self.x_hi, self.y_hi, self.r))
+        return ";".join(
+            [
+                str(self.a),
+                b2s(self.x_hi),
+                b2s(self.y_hi),
+                b2s(self.r),
+            ]
+        )
 
     @staticmethod
-    def from_str(s: str):
+    def from_str(n: int, s: str):
         """Create a new edge state from the given string representation."""
-        vals = ast.literal_eval(s)
-        return EdgeState(*vals)
+        a_raw, x_hi_raw, y_hi_raw, r_raw = s.split(";")
+        return EdgeState(n, int(a_raw), s2b(x_hi_raw), s2b(y_hi_raw), s2b(r_raw))
 
     def next_a(self, m: Move) -> int:
         """Return the next value of a, given a move."""

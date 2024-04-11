@@ -84,7 +84,7 @@ def load_corner_min_patterns(n: int):
             file.read()
         )
         strongest_corner_patterns = [
-            {CornerState.from_str(c): dep for c, dep in enc_corner.items()}
+            {CornerState.from_str(n, c): dep for c, dep in enc_corner.items()}
             for enc_corner in strongest_corner_patterns_raw
         ]
         return strongest_corner_patterns
@@ -101,7 +101,7 @@ def load_edge_min_patterns(n: int):
             file.read()
         )
         strongest_edge_patterns = [
-            {EdgeState.from_str(e): dep for e, dep in enc_edge.items()}
+            {EdgeState.from_str(n, e): dep for e, dep in enc_edge.items()}
             for enc_edge in strongest_edge_patterns_raw
         ]
         return strongest_edge_patterns

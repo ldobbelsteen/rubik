@@ -42,3 +42,14 @@ def str_to_file(s: str, path: str):
     """Write a string to a file."""
     with open(path, "w") as f:
         f.write(s)
+
+
+def b2s(b: bool):
+    """Convert a boolean to a string."""
+    return "T" if b else "F"
+
+
+def s2b(s: str):
+    """Convert a string to a boolean."""
+    assert s in ("T", "F")
+    return s == "T"
