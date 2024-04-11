@@ -85,5 +85,5 @@ class SolveStats:
         os.makedirs(SOLVE_RESULTS_DIR, exist_ok=True)
         str_to_file(
             json.dumps(self.to_dict(), indent=4),
-            os.path.join(SOLVE_RESULTS_DIR, f"{self.puzzle.name}"),
+            os.path.join(SOLVE_RESULTS_DIR, self.puzzle.name + ".json"),
         )
