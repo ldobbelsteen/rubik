@@ -1,5 +1,4 @@
 import argparse
-import ast
 import os
 
 from puzzle import DEFAULT_CENTER_COLORS, Puzzle
@@ -34,22 +33,13 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     """Return whether a move sequence is allowed by applying filters."""
     k = len(seq)
 
-    def axs(s: int):
-        return seq[s].ax
-
-    def his(s: int):
-        return seq[s].hi
-
-    def drs(s: int):
-        return seq[s].dr
-
     if n == 2:
         # Move filter #1 and #2
         for s in range(k - 1):
-            if axs(s) == axs(s + 1):
-                if not his(s + 1):
+            if seq.ax(s) == seq.ax(s + 1):
+                if not seq.hi(s + 1):
                     return False
-                if his(s):
+                if seq.hi(s):
                     return False
 
         return True
@@ -57,44 +47,55 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
     if n == 3:
         # Move filter #1 and #2
         for s in range(k - 1):
-            if axs(s) == axs(s + 1):
-                if not his(s):
+            if seq.ax(s) == seq.ax(s + 1):
+                if not seq.hi(s):
                     return False
-                if his(s + 1):
+                if seq.hi(s + 1):
                     return False
 
         # Move filter #3 and #4
         for s in range(k - 3):
-            if drs(s) == 2 and drs(s + 1) == 2 and drs(s + 2) == 2 and drs(s + 3) == 2:
-                if axs(s) == axs(s + 3) and axs(s + 1) == axs(s + 2) and not his(s):
+            if (
+                seq.dr(s) == 2
+                and seq.dr(s + 1) == 2
+                and seq.dr(s + 2) == 2
+                and seq.dr(s + 3) == 2
+            ):
+                if (
+                    seq.ax(s) == seq.ax(s + 3)
+                    and seq.ax(s + 1) == seq.ax(s + 2)
+                    and not seq.hi(s)
+                ):
                     return False
                 if (
-                    axs(s) == axs(s + 1)
-                    and axs(s + 1) > axs(s + 2)
-                    and axs(s + 2) == axs(s + 3)
+                    seq.ax(s) == seq.ax(s + 1)
+                    and seq.ax(s + 1) > seq.ax(s + 2)
+                    and seq.ax(s + 2) == seq.ax(s + 3)
                 ):
                     return False
 
         # # Manual move filter #5
         # for s in range(k - 4):
         #     if (
-        #         axs(s) != axs(s + 2)
-        #         and drs(s + 2) == 2
-        #         and axs(s) == axs(s + 4)
+        #         seq.ax(s) != seq.ax(s + 2)
+        #         and seq.dr(s + 2) == 2
+        #         and seq.ax(s) == seq.ax(s + 4)
         #         and (
         #             (
-        #                 axs(s) == axs(s + 1)
-        #                 and axs(s + 2) == axs(s + 3)
-        #                 and drs(s + 3) == 2
-        #                 and (drs(s) == 2 or (drs(s + 1) == 2))
-        #                 and (drs(s) == 2 + drs(s + 1) == 2 + drs(s + 4) == 2) >= 2
+        #                 seq.ax(s) == seq.ax(s + 1)
+        #                 and seq.ax(s + 2) == seq.ax(s + 3)
+        #                 and seq.dr(s + 3) == 2
+        #                 and (seq.dr(s) == 2 or (seq.dr(s + 1) == 2))
+        #                 and (seq.dr(s) == 2 + seq.dr(s + 1) == 2 + seq.dr(s + 4) == 2)
+        #                 >= 2
         #             )
         #             or (
-        #                 axs(s) == axs(s + 3)
-        #                 and axs(s + 1) == axs(s + 2)
-        #                 and drs(s + 1) == 2
-        #                 and (drs(s) == 2 or (drs(s + 3) == 2))
-        #                 and (drs(s) == 2 + drs(s + 3) == 2 + drs(s + 4) == 2) >= 2
+        #                 seq.ax(s) == seq.ax(s + 3)
+        #                 and seq.ax(s + 1) == seq.ax(s + 2)
+        #                 and seq.dr(s + 1) == 2
+        #                 and (seq.dr(s) == 2 or (seq.dr(s + 3) == 2))
+        #                 and (seq.dr(s) == 2 + seq.dr(s + 3) == 2 + seq.dr(s + 4) == 2)
+        #                 >= 2
         #             )
         #         )
         #     ):
@@ -103,47 +104,51 @@ def allowed_by_filters(n: int, seq: MoveSeq) -> bool:
         # # Manual move filter #6
         # for s in range(k - 4):
         #     if (
-        #         axs(s) == axs(s + 2)
-        #         and axs(s + 1) == axs(s + 3)
-        #         and axs(s + 3) == axs(s + 4)
-        #         and drs(s) == drs(s + 2)
-        #         and his(s) == his(s + 2)
-        #         and drs(s) == 2
-        #         and drs(s + 3) != 2
-        #         and drs(s + 3) == drs(s + 4)
+        #         seq.ax(s) == seq.ax(s + 2)
+        #         and seq.ax(s + 1) == seq.ax(s + 3)
+        #         and seq.ax(s + 3) == seq.ax(s + 4)
+        #         and seq.dr(s) == seq.dr(s + 2)
+        #         and seq.hi(s) == seq.hi(s + 2)
+        #         and seq.dr(s) == 2
+        #         and seq.dr(s + 3) != 2
+        #         and seq.dr(s + 3) == seq.dr(s + 4)
         #     ):
         #         return False
 
         # # Manual move filter #7
         # for s in range(k - 4):
         #     if (
-        #         axs(s) == axs(s + 1)
-        #         and axs(s + 1) == axs(s + 4)
-        #         and (drs(s) == 2 or drs(s + 1) == 2 or drs(s + 4) == 2)
-        #         and axs(s + 2) == axs(s + 3)
-        #         and his(s + 2) != his(s + 3)
-        #         and drs(s + 2) == drs(s + 3)
-        #         and drs(s + 2) == 2
+        #         seq.ax(s) == seq.ax(s + 1)
+        #         and seq.ax(s + 1) == seq.ax(s + 4)
+        #         and (seq.dr(s) == 2 or seq.dr(s + 1) == 2 or seq.dr(s + 4) == 2)
+        #         and seq.ax(s + 2) == seq.ax(s + 3)
+        #         and seq.hi(s + 2) != seq.hi(s + 3)
+        #         and seq.dr(s + 2) == seq.dr(s + 3)
+        #         and seq.dr(s + 2) == 2
         #     ):
-        #         if ((drs(s + 1) == 2 or drs(s + 4) == 2) and drs(s) == 1) or (
-        #             drs(s) == 2 and drs(s + 1) == 1
+        #        if ((seq.dr(s + 1) == 2 or seq.dr(s + 4) == 2) and seq.dr(s) == 1) or (
+        #             seq.dr(s) == 2 and seq.dr(s + 1) == 1
         #         ):
         #             return False
 
         # # Manual move filter #8
         # for s in range(k - 4):
         #     if (
-        #         axs(s + 1) == axs(s + 3)
-        #         and drs(s + 1) == 2
-        #         and drs(s + 1) == drs(s + 3)
-        #         and his(s + 1) == his(s + 3)
+        #         seq.ax(s + 1) == seq.ax(s + 3)
+        #         and seq.dr(s + 1) == 2
+        #         and seq.dr(s + 1) == seq.dr(s + 3)
+        #         and seq.hi(s + 1) == seq.hi(s + 3)
         #     ):
-        #         if axs(s) == axs(s + 2) and axs(s + 2) == axs(s + 4):
-        #             if his(s) == his(s + 4) and (
-        #                 (drs(s) != drs(s + 4) and drs(s) != 2 and drs(s + 4) != 2)
-        #                 or (drs(s) == 2 and drs(s + 4) == 2)
+        #         if seq.ax(s) == seq.ax(s + 2) and seq.ax(s + 2) == seq.ax(s + 4):
+        #             if seq.hi(s) == seq.hi(s + 4) and (
+        #                 (
+        #                     seq.dr(s) != seq.dr(s + 4)
+        #                     and seq.dr(s) != 2
+        #                     and seq.dr(s + 4) != 2
+        #                 )
+        #                 or (seq.dr(s) == 2 and seq.dr(s + 4) == 2)
         #             ):
-        #                 if his(s) != 0:
+        #                 if seq.hi(s) != 0:
         #                     return False
 
         return True
@@ -157,7 +162,7 @@ def generate_move_symmetries(n: int, d: int):
     """
     moves = Move.list_all()
     finished = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
-    paths: dict[Puzzle, MoveSeq] = {finished: tuple()}
+    paths: dict[Puzzle, MoveSeq] = {finished: MoveSeq(())}
     fresh: set[Puzzle] = {finished}
 
     for cd in range(1, d + 1):
@@ -169,8 +174,7 @@ def generate_move_symmetries(n: int, d: int):
         for state in fresh:
             path = paths[state]
             for move in moves:
-                new_path = (*path, move)
-
+                new_path = path.extended(move)
                 new_state = state.execute_move(move)
 
                 # Skip if the new path is not allowed by the filters.
@@ -200,9 +204,9 @@ def generate_move_symmetries(n: int, d: int):
         # Check whether the filtered out move sequences' states are still reachable.
         for state, seqs in filtered.items():
             if state not in paths:
-                canon = [list(map(str, seq)) for seq in seqs]
+                seqs_str = [str(seq) for seq in seqs]
                 raise Exception(
-                    f"following sequences should not all have been filtered:\n{canon}"
+                    f"following sequences should not all be filtered:\n{seqs_str}"
                 )
 
         # Write found symmetrical move sequences to file.
@@ -210,27 +214,27 @@ def generate_move_symmetries(n: int, d: int):
         symmetrical_output.sort(key=lambda x: (len(x[0]), len(x[1]), x[0], x[1]))
         with open(symmetries_file_path(n, cd), "w") as file:
             for seq, syms in symmetrical_output:
-                seq_canon = list(map(str, seq))
-                syms_canon = [list(map(str, seq)) for seq in syms]
-                file.write(f"{seq_canon!s} -> {syms_canon!s}\n")
+                seq_str = str(seq)
+                syms_str = ", ".join(map(str, syms))
+                file.write(f"{seq_str} -> {syms_str}\n")
 
         # Write found filtered move sequences to file.
-        filtered_output = []
+        filtered_output: list[MoveSeq] = []
         for vs in filtered.values():
             filtered_output.extend(vs)
         filtered_output.sort()
         with open(filtered_file_path(n, cd), "w") as file:
             for seq in filtered_output:
-                seq_canon = list(map(str, seq))
-                file.write(f"{seq_canon!s}\n")
+                seq_str = str(seq)
+                file.write(f"{seq_str}\n")
 
         # Write found unique move sequences to file.
         unique_output = list(unique)
         unique_output.sort()
         with open(unique_file_path(n, cd), "w") as file:
             for seq in unique_output:
-                seq_canon = list(map(str, seq))
-                file.write(f"{seq_canon!s}\n")
+                seq_str = str(seq)
+                file.write(f"{seq_str}\n")
 
         fil = len(filtered_output)
         pot = sum(len(s) for _, s in symmetrical_output)
@@ -255,10 +259,8 @@ def load_symmetries(
     with open(path) as file:
         for line in file:
             seq_raw, syms_raw = line.rstrip("\n").split(" -> ")
-            seq_canon: tuple[str, ...] = ast.literal_eval(seq_raw)
-            syms_canon: list[tuple[str, ...]] = ast.literal_eval(syms_raw)
-            seq = tuple(Move.from_str(m) for m in seq_canon)
-            syms = [tuple(Move.from_str(m) for m in sym) for sym in syms_canon]
+            seq = MoveSeq.from_str(seq_raw)
+            syms = [MoveSeq.from_str(sym) for sym in syms_raw.split(", ")]
             result[seq] = syms
 
     if include_lower:
@@ -281,8 +283,8 @@ def load_filtered(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
     result: list[MoveSeq] = []
     with open(path) as file:
         for line in file:
-            seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
-            seq = tuple(Move.from_str(m) for m in seq_canon)
+            seq_raw = line.rstrip("\n")
+            seq = MoveSeq.from_str(seq_raw)
             result.append(seq)
 
     if include_lower:
@@ -305,8 +307,8 @@ def load_unique(n: int, d: int, include_lower: bool) -> list[MoveSeq]:
     result: list[MoveSeq] = []
     with open(path) as file:
         for line in file:
-            seq_canon: tuple[str, ...] = ast.literal_eval(line.rstrip("\n"))
-            seq = tuple(Move.from_str(m) for m in seq_canon)
+            seq_raw = line.rstrip("\n")
+            seq = MoveSeq.from_str(seq_raw)
             result.append(seq)
 
     if include_lower:

@@ -5,6 +5,7 @@ from datetime import timedelta
 from puzzle import Puzzle
 from solve_config import SolveConfig
 from state import MoveSeq
+from tools import str_to_file
 
 SOLVE_RESULTS_DIR = "./solve_results"
 
@@ -82,5 +83,7 @@ class SolveStats:
     def to_file(self):
         """Write the statistics to a file."""
         os.makedirs(SOLVE_RESULTS_DIR, exist_ok=True)
-        with open(os.path.join(SOLVE_RESULTS_DIR, f"{self.puzzle.name}"), "w") as file:
-            file.write(json.dumps(self.to_dict(), indent=4))
+        str_to_file(
+            json.dumps(self.to_dict(), indent=4),
+            os.path.join(SOLVE_RESULTS_DIR, f"{self.puzzle.name}"),
+        )

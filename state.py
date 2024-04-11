@@ -1,5 +1,6 @@
 import ast
 import itertools
+import random
 from typing import cast
 
 import z3
@@ -145,7 +146,70 @@ class Move:
         ]
 
 
-MoveSeq = tuple[Move, ...]
+class MoveSeq:
+    """A class representing a sequence of moves."""
+
+    def __init__(self, moves: tuple[Move, ...]):
+        """Create a new move sequence with the given moves."""
+        self.moves = moves
+
+    def __len__(self):
+        """Return the length of the move sequence."""
+        return len(self.moves)
+
+    def __iter__(self):
+        """Return an iterator over the moves in the sequence."""
+        return iter(self.moves)
+
+    def __str__(self):
+        """Return the string representation of the move sequence."""
+        return ";".join(map(str, self.moves))
+
+    def __eq__(self, other: "MoveSeq"):
+        """Return whether two move sequences are equal."""
+        return self.moves == other.moves
+
+    def __hash__(self):
+        """Return the hash of the move sequence."""
+        return hash(self.moves)
+
+    def __lt__(self, other: "MoveSeq"):
+        """Return whether one move sequence is less than another."""
+        return self.moves < other.moves
+
+    def inverted(self) -> "MoveSeq":
+        """Return the inverse move sequence. Applying this to a puzzle will undo
+        the moves in the sequence.
+        """
+        return MoveSeq(tuple(m.inverse() for m in reversed(self.moves)))
+
+    def ax(self, s: int) -> int:
+        """Return the axis of the move at the given index."""
+        return self.moves[s].ax
+
+    def hi(self, s: int) -> bool:
+        """Return the side of the move at the given index."""
+        return self.moves[s].hi
+
+    def dr(self, s: int) -> int:
+        """Return the direction of the move at the given index."""
+        return self.moves[s].dr
+
+    def extended(self, m: Move) -> "MoveSeq":
+        """Return a new move sequence with the given move appended."""
+        return MoveSeq((*self.moves, m))
+
+    @staticmethod
+    def random(k: int) -> "MoveSeq":
+        """Create a new random move sequence of length k."""
+        return MoveSeq(tuple(random.choices(Move.list_all(), k=k)))
+
+    @staticmethod
+    def from_str(s: str):
+        """Create a new move sequence from the given string representation."""
+        if s == "":
+            return MoveSeq(())
+        return MoveSeq(tuple(map(Move.from_str, s.split(";"))))
 
 
 def generic_cubie_coord(
