@@ -240,13 +240,13 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
     if config.enable_corner_min_patterns:
         for i, patterns in enumerate(load_corner_min_patterns(n)):
             for corner, depth in patterns.items():
-                for s in range(k + 1 - depth, k + 1):
+                for s in range(max(0, k + 1 - depth), k + 1):
                     solver.add(corners[s][i] != corner)
 
     if config.enable_edge_min_patterns:
         for i, patterns in enumerate(load_edge_min_patterns(n)):
             for edge, depth in patterns.items():
-                for s in range(k + 1 - depth, k + 1):
+                for s in range(max(0, k + 1 - depth), k + 1):
                     solver.add(edges[s][i] != edge)
 
     # Check model and return moves if sat.
