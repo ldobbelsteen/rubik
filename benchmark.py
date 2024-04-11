@@ -109,7 +109,7 @@ def benchmark_param(parameter_name: str, parameter_values: list):
                         output: ValueProxy[SolveStats | None],
                     ):
                         """Wrapper function to run solve in a separate process."""
-                        result = solve(puzzle, config, False)
+                        result = solve(puzzle, config, False, False)
                         output.set(result)
 
                     result: ValueProxy[SolveStats | None] = manager.Value(

@@ -257,13 +257,15 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
 
     if res == z3.sat:
         model = solver.model()
-        solution: MoveSeq = tuple(
-            Move(
-                model.eval(moves[s].ax.arith_value()).as_long(),  # type: ignore
-                z3.is_true(model.get_interp(moves[s].hi)),
-                model.eval(moves[s].dr.arith_value()).as_long(),  # type: ignore
+        solution = MoveSeq(
+            tuple(
+                Move(
+                    model.eval(moves[s].ax.arith_value()).as_long(),  # type: ignore
+                    z3.is_true(model.get_interp(moves[s].hi)),
+                    model.eval(moves[s].dr.arith_value()).as_long(),  # type: ignore
+                )
+                for s in range(k)
             )
-            for s in range(k)
         )
         return solution, prep_time, solve_time
     elif res == z3.unsat:
@@ -272,7 +274,12 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
         raise Exception(f"unexpected solver result: {res}")
 
 
-def solve(puzzle: Puzzle, config: SolveConfig, print_info: bool) -> SolveStats:
+def solve(
+    puzzle: Puzzle,
+    config: SolveConfig,
+    print_info: bool,
+    stats_to_file: bool,
+) -> SolveStats:
     """Compute the optimal solution for a puzzle within an upperbound for the number
     of moves. Returns the statistics of the solve operation.
     """
@@ -281,7 +288,7 @@ def solve(puzzle: Puzzle, config: SolveConfig, print_info: bool) -> SolveStats:
 
     for k in range(k_upperbound + 1):
         solution, prep_time, solve_time = solve_for_k(puzzle, k, config)
-        stats.register_solution(k, solution, prep_time, solve_time)
+        stats.register_solution(k, solution, prep_time, solve_time, stats_to_file)
 
         if solution is None:
             if print_info:
@@ -307,24 +314,25 @@ def solve(puzzle: Puzzle, config: SolveConfig, print_info: bool) -> SolveStats:
                 f"minimum k = {stats.k()} found in {stats.total_solve_time()} with {stats.total_prep_time()} prep"  # noqa: E501
             )
 
+    if stats_to_file:
+        stats.to_file()
+
     return stats
 
 
-def solve_one(name: str, config: SolveConfig, print_info: bool):
+def solve_one(name: str, config: SolveConfig, print_info: bool, stats_to_file: bool):
     """Helper function for solving a single puzzle."""
     puzzle = Puzzle.from_file(name)
-    stats = solve(puzzle, config, print_info)
-    stats.to_file()
+    solve(puzzle, config, print_info, stats_to_file)
 
 
-def solve_all(config: SolveConfig, print_info: bool):
+def solve_all(config: SolveConfig, print_info: bool, stats_to_file: bool):
     """Helper function for solving all puzzles."""
     names = all_puzzles_names()
     puzzles = [Puzzle.from_file(name) for name in names]
     for puzzle in puzzles:
         print_stamped(f"solving {puzzle.name}...")
-        stats = solve(puzzle, config, print_info)
-        stats.to_file()
+        solve(puzzle, config, print_info, stats_to_file)
 
 
 if __name__ == "__main__":
@@ -333,6 +341,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.name is None:
-        solve_all(SolveConfig(), True)
+        solve_all(SolveConfig(), True, True)
     else:
-        solve_one(args.name, SolveConfig(), True)
+        solve_one(args.name, SolveConfig(), True, True)
