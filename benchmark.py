@@ -13,16 +13,16 @@ TIMEOUT_FACTOR = 3
 MIN_TIMEOUT_SECS = 60
 BENCHMARK_RESULTS_DIR = "./benchmark_results"
 BENCHMARK_PUZZLES = [
-    "n2-k5-0.txt",
-    "n2-k7-0.txt",
-    "n2-k8-0.txt",
-    "n2-k8-1.txt",
-    "n2-k9-0.txt",
-    "n2-k9-1.txt",
-    "n3-k7-0.txt",
-    "n3-k8-0.txt",
-    "n3-k8-1.txt",
-    "n3-k9-0.txt",
+    "n2-k5-0",
+    "n2-k7-0",
+    "n2-k8-0",
+    "n2-k8-1",
+    "n2-k9-0",
+    "n2-k9-1",
+    "n3-k7-0",
+    "n3-k8-0",
+    "n3-k8-1",
+    "n3-k9-0",
 ]
 
 

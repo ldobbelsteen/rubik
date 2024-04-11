@@ -279,12 +279,12 @@ class Puzzle:
     def to_file(self):
         """Write the string representation of the puzzle to a file."""
         os.makedirs(PUZZLE_DIR, exist_ok=True)
-        str_to_file(str(self), os.path.join(PUZZLE_DIR, self.name, ".txt"))
+        str_to_file(str(self), os.path.join(PUZZLE_DIR, self.name + ".txt"))
 
     @staticmethod
     def from_file(name: str):
         """Parse a puzzle from the string representation in a file."""
-        with open(os.path.join(PUZZLE_DIR, name, ".txt")) as file:
+        with open(os.path.join(PUZZLE_DIR, name + ".txt")) as file:
             return Puzzle.from_str(file.read(), name)
 
     def facelet_color(self, ff: int, fy: int, fx: int) -> int:
