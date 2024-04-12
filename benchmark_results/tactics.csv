@@ -1,0 +1,91 @@
+puzzle_name,tactics,prep_time,solve_time,k,message
+n2-k5-0,se;s,0.600482,0.088418,5,
+n2-k5-0,se;s;sp,0.615338,0.153553,5,
+n2-k5-0,se;s;cs,0.597529,6.97406,5,
+n2-k5-0,se;s;cs;sp,0.602989,7.501689,5,
+n2-k5-0,se;s;ds,0.565292,0.096866,5,
+n2-k5-0,se;s;ds;sp,0.568055,0.162016,5,
+n2-k5-0,se;s;ds;cs;sp,0.569453,7.478684,5,
+n2-k5-0,se;s;pv;pi;sp,0.570372,0.162103,5,
+n2-k5-0,pa;se;s;pv;pi;sp,0.598127,0.119731,5,
+n2-k7-0,se;s,1.078714,1.023256,7,
+n2-k7-0,se;s;sp,1.065534,1.32748,7,
+n2-k7-0,se;s;cs,,,,timeout after 60s
+n2-k7-0,se;s;cs;sp,,,,timeout after 60.06332468986511s
+n2-k7-0,se;s;ds,1.035978,1.063731,7,
+n2-k7-0,se;s;ds;sp,1.065249,1.371988,7,
+n2-k7-0,se;s;ds;cs;sp,,,,timeout after 60.12916135787964s
+n2-k7-0,se;s;pv;pi;sp,1.088039,0.882881,7,
+n2-k7-0,pa;se;s;pv;pi;sp,1.050407,2.516386,7,
+n2-k8-0,se;s,1.355181,4.364848,8,
+n2-k8-0,se;s;sp,1.452474,10.954653,8,
+n2-k8-0,se;s;cs,,,,timeout after 60s
+n2-k8-0,se;s;cs;sp,,,,timeout after 60.065958738327026s
+n2-k8-0,se;s;ds,1.355011,4.359754,8,
+n2-k8-0,se;s;ds;sp,1.377811,11.204681,8,
+n2-k8-0,se;s;ds;cs;sp,,,,timeout after 60.13285446166992s
+n2-k8-0,se;s;pv;pi;sp,1.330114,11.821153,8,
+n2-k8-0,pa;se;s;pv;pi;sp,1.364219,19.703875,8,
+n2-k8-1,se;s,1.327867,6.853204,8,
+n2-k8-1,se;s;sp,1.380757,4.711917,8,
+n2-k8-1,se;s;cs,,,,timeout after 60s
+n2-k8-1,se;s;cs;sp,,,,timeout after 60.029468297958374s
+n2-k8-1,se;s;ds,1.387217,6.80362,8,
+n2-k8-1,se;s;ds;sp,1.347268,4.705294,8,
+n2-k8-1,se;s;ds;cs;sp,,,,timeout after 60.072163581848145s
+n2-k8-1,se;s;pv;pi;sp,1.320611,5.129807,8,
+n2-k8-1,pa;se;s;pv;pi;sp,1.341895,5.114644,8,
+n2-k9-0,se;s,1.709146,115.081535,9,
+n2-k9-0,se;s;sp,1.705664,78.662113,9,
+n2-k9-0,se;s;cs,,,,timeout after 241.19427251815796s
+n2-k9-0,se;s;cs;sp,,,,timeout after 241.30128264427185s
+n2-k9-0,se;s;ds,1.70772,115.871616,9,
+n2-k9-0,se;s;ds;sp,1.789046,79.065775,9,
+n2-k9-0,se;s;ds;cs;sp,,,,timeout after 241.40257668495178s
+n2-k9-0,se;s;pv;pi;sp,1.698168,87.477202,9,
+n2-k9-0,pa;se;s;pv;pi;sp,1.727027,76.085861,9,
+n2-k9-1,se;s,1.773859,47.885866,9,
+n2-k9-1,se;s;sp,1.664999,35.190222,9,
+n2-k9-1,se;s;cs,,,,timeout after 110.64396858215332s
+n2-k9-1,se;s;cs;sp,,,,timeout after 110.68013954162598s
+n2-k9-1,se;s;ds,1.712074,48.144363,9,
+n2-k9-1,se;s;ds;sp,1.743361,34.463937,9,
+n2-k9-1,se;s;ds;cs;sp,,,,timeout after 110.76375079154968s
+n2-k9-1,se;s;pv;pi;sp,1.658646,37.804566,9,
+n2-k9-1,pa;se;s;pv;pi;sp,1.785632,46.398605,9,
+n3-k7-0,se;s,2.914801,0.808129,7,
+n3-k7-0,se;s;sp,2.925998,0.722819,7,
+n3-k7-0,se;s;cs,,,,timeout after 60s
+n3-k7-0,se;s;cs;sp,,,,timeout after 60.06536674499512s
+n3-k7-0,se;s;ds,2.888366,0.821683,7,
+n3-k7-0,se;s;ds;sp,2.910057,0.887385,7,
+n3-k7-0,se;s;ds;cs;sp,,,,timeout after 60.13076615333557s
+n3-k7-0,se;s;pv;pi;sp,2.938794,0.795183,7,
+n3-k7-0,pa;se;s;pv;pi;sp,2.933664,0.681229,7,
+n3-k8-0,se;s,3.742684,2.466933,8,
+n3-k8-0,se;s;sp,3.704637,3.256321,8,
+n3-k8-0,se;s;cs,,,,timeout after 60s
+n3-k8-0,se;s;cs;sp,,,,timeout after 60.06635355949402s
+n3-k8-0,se;s;ds,3.714472,1.666159,8,
+n3-k8-0,se;s;ds;sp,3.762351,1.97393,8,
+n3-k8-0,se;s;ds;cs;sp,,,,timeout after 60.12469506263733s
+n3-k8-0,se;s;pv;pi;sp,3.73812,2.042161,8,
+n3-k8-0,pa;se;s;pv;pi;sp,3.77538,1.587169,8,
+n3-k8-1,se;s,3.791737,1.429109,8,
+n3-k8-1,se;s;sp,3.678874,1.713448,8,
+n3-k8-1,se;s;cs,,,,timeout after 60s
+n3-k8-1,se;s;cs;sp,,,,timeout after 60.06473660469055s
+n3-k8-1,se;s;ds,3.7715,2.174689,8,
+n3-k8-1,se;s;ds;sp,3.814004,1.869397,8,
+n3-k8-1,se;s;ds;cs;sp,,,,timeout after 60.11940574645996s
+n3-k8-1,se;s;pv;pi;sp,3.719171,3.869077,8,
+n3-k8-1,pa;se;s;pv;pi;sp,3.789832,1.502207,8,
+n3-k9-0,se;s,4.674863,14.618166,9,
+n3-k9-0,se;s;sp,4.731199,15.032868,9,
+n3-k9-0,se;s;cs,,,,timeout after 60s
+n3-k9-0,se;s;cs;sp,,,,timeout after 60.00719356536865s
+n3-k9-0,se;s;ds,4.663493,8.308718,9,
+n3-k9-0,se;s;ds;sp,4.654306,7.478678,9,
+n3-k9-0,se;s;ds;cs;sp,,,,timeout after 60.07392644882202s
+n3-k9-0,se;s;pv;pi;sp,4.614099,4.715061,9,
+n3-k9-0,pa;se;s;pv;pi;sp,4.696957,13.863845,9,
