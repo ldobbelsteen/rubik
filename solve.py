@@ -17,7 +17,7 @@ from puzzle import (
 from solve_config import SolveConfig, gods_number
 from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3, TernaryZ3
 from stats import SolveStats
-from tools import print_stamped
+from tools import print_stamped, str_to_file
 
 
 def corner_stacked(c: CornerStateZ3, moves: list[MoveZ3]):
@@ -65,44 +65,33 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
     Returns list of moves or nothing if impossible. In both cases, also returns the time
     it took to prepare the SAT model and the time it took to solve it.
     """
+    goal = z3.Goal()
     prep_start = datetime.now()
     n = puzzle.n
 
-    if config.max_solver_threads == 0:
-        # Parallelism is disabled: use a single-threaded solver.
-        tactic = cast(z3.Tactic, z3.Then(*config.tactics.get(), "sat"))
-    else:
-        # Configure Z3 to use parallelism.
-        z3.set_param("parallel.enable", True)
-        z3.set_param("parallel.threads.max", config.max_solver_threads)
-        tactic = cast(z3.Tactic, z3.Then(*config.tactics.get(), "psat"))
-    solver = tactic.solver()
-
-    # Nested lists representing the cube at each state.
+    # Create the corner, edge and move states for each step.
     corners = [
         [
-            CornerStateZ3.new(n, s, corner.x_hi, corner.y_hi, corner.z_hi, solver)
+            CornerStateZ3.new(n, s, corner.x_hi, corner.y_hi, corner.z_hi, goal)
             for corner in CornerState.all_finished(n)
         ]
         for s in range(k + 1)
     ]
     edges = [
         [
-            EdgeStateZ3.new(n, s, edge.a, edge.x_hi, edge.y_hi, solver)
+            EdgeStateZ3.new(n, s, edge.a, edge.x_hi, edge.y_hi, goal)
             for edge in EdgeState.all_finished(n)
         ]
         for s in range(k + 1)
     ]
-
-    # Variables representing the move at each state.
-    moves = [MoveZ3(s, solver) for s in range(k)]
+    moves = [MoveZ3(s, goal) for s in range(k)]
 
     def fix_state(
         s: int,
         corner_states: tuple[CornerState, ...],
         edge_states: tuple[EdgeState, ...],
     ):
-        """Return conditions of a state being equal to a state."""
+        """Return conditions of a state having fixed corner and edge states."""
         conditions = []
         for c1, c2 in zip(corners[s], corner_states):
             conditions.append(c1 == c2)
@@ -120,10 +109,10 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
         return conditions
 
     # Fix the first state to the puzzle state.
-    solver.add(z3.And(fix_state(0, puzzle.corners, puzzle.edges)))
+    goal.add(z3.And(fix_state(0, puzzle.corners, puzzle.edges)))
 
     # Fix the last state to the finished state.
-    solver.add(
+    goal.add(
         z3.And(
             fix_state(
                 -1,
@@ -140,19 +129,20 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
 
             for i, c in enumerate(corners[s]):
                 next = corners[s + 1][i]
-                solver.add(move_mappers.corner_x_hi(c, m, next))
-                solver.add(move_mappers.corner_y_hi(c, m, next))
-                solver.add(move_mappers.corner_z_hi(c, m, next))
-                solver.add(move_mappers.corner_r(c, m, next))
-                solver.add(move_mappers.corner_cw(c, m, next))
+                goal.add(move_mappers.corner_x_hi(c, m, next))
+                goal.add(move_mappers.corner_y_hi(c, m, next))
+                goal.add(move_mappers.corner_z_hi(c, m, next))
+                goal.add(move_mappers.corner_r(c, m, next))
+                goal.add(move_mappers.corner_cw(c, m, next))
 
             # Add restrictions for the edge cubies.
             for i, e in enumerate(edges[s]):
                 next = edges[s + 1][i]
-                solver.add(move_mappers.edge_a(e, m, next))
-                solver.add(move_mappers.edge_x_hi(e, m, next))
-                solver.add(move_mappers.edge_y_hi(e, m, next))
-                solver.add(move_mappers.edge_r(e, next))
+                goal.add(move_mappers.edge_a(e, m, next))
+                goal.add(move_mappers.edge_x_hi(e, m, next))
+                goal.add(move_mappers.edge_y_hi(e, m, next))
+                goal.add(move_mappers.edge_r(e, next))
+
         else:  # Use stacked move mappers.
             if s % config.move_size != 0:
                 continue  # Skip if not multiple of move size.
@@ -162,19 +152,19 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
             # Add restrictions for the corner cubies.
             for i, c in enumerate(corners[s]):
                 next = corners[s + move_size][i]
-                solver.add(next == corner_stacked(c, moveset))
+                goal.add(next == corner_stacked(c, moveset))
 
             # Add restrictions for the edge cubies.
             for i, e in enumerate(edges[s]):
                 next = edges[s + move_size][i]
-                solver.add(next == edge_stacked(e, moveset))
+                goal.add(next == edge_stacked(e, moveset))
 
     # Add symmetric move sequence filters for n = 2.
     if n == 2:
         if config.enable_n2_move_filters_1_and_2:
             # Move filter #1 and #2
             for s in range(k - 1):
-                solver.add(
+                goal.add(
                     z3.Implies(
                         moves[s].ax == moves[s + 1].ax,
                         z3.Not(
@@ -191,7 +181,7 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
         if config.enable_n3_move_filters_1_and_2:
             # Move filter #1 and #2
             for s in range(k - 1):
-                solver.add(
+                goal.add(
                     z3.Implies(
                         moves[s].ax == moves[s + 1].ax,
                         z3.Not(
@@ -206,7 +196,7 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
         if config.enable_n3_move_filters_3_and_4:
             # Move filter #3 and #4
             for s in range(k - 3):
-                solver.add(
+                goal.add(
                     z3.Implies(
                         z3.And(
                             moves[s].dr == 2,
@@ -235,7 +225,7 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
         # States cannot be repeated.
         for s1 in range(k + 1):
             for s2 in range(s1 + 1, k + 1):
-                solver.add(z3.Not(z3.And(identical_states(s1, s2))))
+                goal.add(z3.Not(z3.And(identical_states(s1, s2))))
 
     if config.apply_theorem_11a:
         # Theorem 11.1a: sum x_i = 0 mod 3
@@ -251,7 +241,7 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
                         for c in corners[s]
                     ],
                 )
-                solver.add(corner_sum % 3 == 0)
+                goal.add(corner_sum % 3 == 0)
 
     if config.apply_theorem_11b:
         # Theorem 11.1b: sum y_i = 0 mod 2
@@ -267,19 +257,30 @@ def solve_for_k(puzzle: Puzzle, k: int, config: SolveConfig):
                         for e in edges[s]
                     ],
                 )
-                solver.add(edge_sum % 2 == 0)
+                goal.add(edge_sum % 2 == 0)
 
     if config.enable_corner_min_patterns:
         for i, patterns in enumerate(load_corner_min_patterns(n)):
             for corner, depth in patterns.items():
                 for s in range(max(0, k + 1 - depth), k + 1):
-                    solver.add(corners[s][i] != corner)
+                    goal.add(corners[s][i] != corner)
 
     if config.enable_edge_min_patterns:
         for i, patterns in enumerate(load_edge_min_patterns(n)):
             for edge, depth in patterns.items():
                 for s in range(max(0, k + 1 - depth), k + 1):
-                    solver.add(edges[s][i] != edge)
+                    goal.add(edges[s][i] != edge)
+
+    if config.max_solver_threads == 0:
+        # Parallelism is disabled: use a single-threaded tactic.
+        tactic = cast(z3.Tactic, z3.Then(*config.tactics.get(), "sat"))
+    else:
+        # Configure Z3 to use parallelism.
+        z3.set_param("parallel.enable", True)
+        z3.set_param("parallel.threads.max", config.max_solver_threads)
+        tactic = cast(z3.Tactic, z3.Then(*config.tactics.get(), "psat"))
+    solver = tactic.solver()
+    solver.add(goal)
 
     # Check model and return moves if sat.
     prep_time = datetime.now() - prep_start
