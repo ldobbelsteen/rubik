@@ -17,7 +17,7 @@ from puzzle import (
 from solve_config import SolveConfig, gods_number
 from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3, TernaryZ3
 from stats import SolveStats
-from tools import print_stamped, str_to_file
+from tools import print_stamped
 
 
 def corner_stacked(c: CornerStateZ3, moves: list[MoveZ3]):
