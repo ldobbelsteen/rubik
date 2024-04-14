@@ -322,6 +322,7 @@ class SolveInstance:
 
     def to_dimacs(self, path: str):
         """Write the goal to a DIMACS file."""
+        # TODO: apply normal tactics as well (perhaps already after the prep?)
         goal_cnf = z3.Tactic("tseitin-cnf").apply(self.goal)[0]
 
         def child_map(child) -> int:
