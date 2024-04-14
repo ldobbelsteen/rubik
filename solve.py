@@ -1,5 +1,6 @@
 import argparse
 import operator
+import os
 from datetime import datetime, timedelta
 from functools import reduce
 from typing import cast
@@ -318,6 +319,43 @@ class SolveInstance:
             return None, self.prep_time, solve_time
         else:
             raise Exception(f"unexpected solver result: {result}")
+
+    def to_dimacs(self, path: str):
+        """Write the goal to a DIMACS file."""
+        goal_cnf = z3.Tactic("tseitin-cnf").apply(self.goal)[0]
+
+        def child_map(child) -> int:
+            nonlocal var_count
+            assert isinstance(child, z3.BoolRef)
+            if z3.is_not(child):
+                assert child.num_args() == 1
+                name = child.arg(0).decl().name()
+                if name not in var_name_mapping:
+                    var_count += 1
+                    var_name_mapping[name] = var_count
+                return -var_name_mapping[name]
+            else:
+                name = child.decl().name()
+                if name not in var_name_mapping:
+                    var_count += 1
+                    var_name_mapping[name] = var_count
+                return var_name_mapping[name]
+
+        var_count: int = 1
+        clauses: list[list[int]] = []
+        var_name_mapping: dict[str, int] = {}
+        for clause in goal_cnf:
+            assert isinstance(clause, z3.BoolRef)
+            if z3.is_or(clause):
+                clauses.append([child_map(child) for child in clause.children()])
+            else:
+                clauses.append([child_map(clause)])
+
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as f:
+            f.write(f"p cnf {var_count} {len(clauses)}\n")
+            for c in clauses:
+                f.write(" ".join(map(str, c)) + " 0\n")
 
 
 def solve(
