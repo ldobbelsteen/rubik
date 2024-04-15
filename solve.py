@@ -133,7 +133,7 @@ class SolveInstance:
 
     def build_goal(self) -> z3.Goal:
         """Build the goal for this instance by accumulating contraints. Returns
-        a Z3 goal object.
+        a Z3 goal object (the tactics from the config are already applied).
         """
         goal = z3.Goal()
 
@@ -312,7 +312,18 @@ class SolveInstance:
                     for s in range(max(0, self.k + 1 - depth), self.k + 1):
                         goal.add(self.edges[s][i] != edge)
 
-        return goal
+        tactic_strs = self.config.tactics.get()
+        if len(tactic_strs) > 0:
+            if len(tactic_strs) > 1:
+                tactic = z3.Then(*tactic_strs)
+                assert isinstance(tactic, z3.Tactic)
+            elif len(tactic_strs) == 1:
+                tactic = z3.Tactic(tactic_strs[0])
+            applied = tactic(goal)
+            assert len(applied) == 1
+            return applied[0]
+        else:
+            return goal
 
     def solve(self) -> tuple[MoveSeq | None, timedelta, timedelta]:
         """Compute the optimal solution for this instance. Returns the solution,
@@ -323,15 +334,14 @@ class SolveInstance:
         prep_time = datetime.now() - prep_start
 
         if self.config.max_solver_threads == 0:
-            # Parallelism is disabled: use a single-threaded tactic.
-            tactic = cast(z3.Tactic, z3.Then(*self.config.tactics.get(), "sat"))
+            # Parallelism is disabled; use a single-threaded solver.
+            solver = z3.Tactic("sat").solver()
         else:
-            # Configure Z3 to use parallelism.
+            # Configure Z3 to use parallelism and create parallel solver.
             z3.set_param("parallel.enable", True)
             z3.set_param("parallel.threads.max", self.config.max_solver_threads)
-            tactic = cast(z3.Tactic, z3.Then(*self.config.tactics.get(), "psat"))
+            solver = z3.Tactic("psat").solver()
 
-        solver = tactic.solver()
         solver.add(goal)
 
         solve_start = datetime.now()
