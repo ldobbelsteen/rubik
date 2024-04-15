@@ -1,28 +1,16 @@
 # ruff: noqa: D101, D102
 
-import os
-import random
 import unittest
 
 import move_filter_finder
-from generate_random import generate_random
 from puzzle import (
     DEFAULT_CENTER_COLORS,
-    PUZZLE_DIR,
     Puzzle,
     all_puzzles_names,
     cubie_colors,
     facelet_cubie,
 )
-from state import CornerState, EdgeState, Move, cubie_type
-
-
-class GenerateRandomModule(unittest.TestCase):
-    def test_generate_random(self):
-        for n in (2, 3):
-            for randomizations in range(10):
-                puzzle = generate_random(n, randomizations, False)
-                self.assertTrue(puzzle.is_valid())
+from state import CornerState, EdgeState, Move, MoveSeq, cubie_type
 
 
 class MoveFilterFinderModule(unittest.TestCase):
@@ -62,47 +50,64 @@ class PuzzleModule(unittest.TestCase):
 
     def test_puzzle_encoding_decoding(self):
         for name in all_puzzles_names():
-            path = os.path.join(PUZZLE_DIR, name)
-            with open(path) as file:
-                puzzle_str = file.read()
-                puzzle = Puzzle.from_str(puzzle_str, name)
-                self.assertTrue(puzzle.is_valid())
-                self.assertEqual(str(puzzle), puzzle_str)
+            puzzle = Puzzle.from_file(name)
+            self.assertTrue(puzzle.is_valid())
+            self.assertEqual(puzzle, Puzzle.from_str(str(puzzle), name))
 
     def test_puzzle_execute_move_consistency(self):
         for n in (2, 3):
-            # Take a random permutation of all possible moves.
-            moves = Move.list_all()
-            random.shuffle(moves)
+            # Take a random move sequence.
+            seq = MoveSeq.random(100)
 
             # Take a random puzzle state.
-            state = generate_random(n, 20, False)
+            state = Puzzle.random(n, 100)
             states = []
 
             # Execute the moves and store the states before each move.
-            for move in moves:
+            for move in seq:
                 states.append(state)
                 state = state.execute_move(move)
                 self.assertTrue(state.is_valid())
 
             # Execute the inverted moves and check whether we get the same states.
-            moves.reverse()
             states.reverse()
-            for i, move in enumerate(moves):
-                state = state.execute_move(move.inverse())
+            for i, move in enumerate(seq.inverted()):
+                state = state.execute_move(move)
                 self.assertEqual(state, states[i])
                 self.assertTrue(state.is_valid())
 
+    def test_puzzle_execute_move_seq(self):
+        for n in (2, 3):
+            seq = MoveSeq.random(100)
+            state = Puzzle.random(n, 100)
+            self.assertEqual(
+                state,
+                state.execute_move_seq(seq).execute_move_seq(
+                    seq.inverted(),
+                ),
+            )
+
+    def test_random_puzzle_is_valid(self):
+        for n in (2, 3):
+            puzzle = Puzzle.random(n, 100)
+            self.assertTrue(puzzle.is_valid())
+
     def test_puzzle_is_finished(self):
         for n in (2, 3):
-            moves = random.choices(Move.list_all(), k=20)
-            puzzle = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
-            self.assertTrue(puzzle.is_finished())
-            for move in moves:
-                puzzle = puzzle.execute_move(move)
-            for move in reversed(moves):
-                puzzle = puzzle.execute_move(move.inverse())
-            self.assertTrue(puzzle.is_finished())
+            seq = MoveSeq.random(100)
+            finished = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
+            self.assertTrue(finished.is_finished())
+            self.assertTrue(
+                finished.execute_move_seq(seq)
+                .execute_move_seq(seq.inverted())
+                .is_finished()
+            )
+
+    def test_puzzle_is_solution(self):
+        for n in (2, 3):
+            seq = MoveSeq.random(100)
+            finished = Puzzle.finished(n, "???", DEFAULT_CENTER_COLORS)
+            self.assertTrue(finished.execute_move_seq(seq).is_solution(seq.inverted()))
 
 
 class StateModule(unittest.TestCase):
@@ -110,10 +115,27 @@ class StateModule(unittest.TestCase):
         for move in Move.list_all():
             self.assertEqual(move, move.from_str(str(move)))
 
+    def test_encoding_decoding_moveseqs(self):
+        for k in range(20):
+            seq = MoveSeq.random(k)
+            self.assertEqual(seq, MoveSeq.from_str(str(seq)))
+
+    def test_encoding_decoding_corner_state(self):
+        for n in (2, 3):
+            for corner_state in CornerState.all_finished(n):
+                self.assertEqual(
+                    corner_state, CornerState.from_str(n, str(corner_state))
+                )
+
+    def test_encoding_decoding_edge_state(self):
+        for n in (2, 3):
+            for edge_state in EdgeState.all_finished(n):
+                self.assertEqual(edge_state, EdgeState.from_str(n, str(edge_state)))
+
     def test_inverse_move(self):
         for n in (2, 3):
             for move in Move.list_all():
-                puzzle = generate_random(n, 20, False)
+                puzzle = Puzzle.random(n, 20)
                 self.assertEqual(
                     puzzle,
                     puzzle.execute_move(move).execute_move(move.inverse()),

@@ -1,5 +1,7 @@
 /.idea
 /__pycache__
+/cubie_min_patterns_results
+/dimacs_results
 /move_symmetry_results
 /**/*.png
 /venv

@@ -3,8 +3,8 @@ import os
 
 from PIL import Image, ImageDraw
 
-from state import CornerState, EdgeState, Move, cubie_type
-from tools import natural_sorted, rotate_list
+from state import CornerState, EdgeState, Move, MoveSeq, cubie_type
+from tools import natural_sorted, rotate_list, str_to_file
 
 PUZZLE_DIR = "./puzzles"
 
@@ -59,7 +59,9 @@ def color_name(c: int) -> str:
 
 def all_puzzles_names() -> list[str]:
     """List all puzzles in the puzzle directory."""
-    return natural_sorted([filename for filename in os.listdir(PUZZLE_DIR)])
+    return natural_sorted(
+        [filename.rstrip(".txt") for filename in os.listdir(PUZZLE_DIR)]
+    )
 
 
 def cubie_colors(
@@ -164,6 +166,21 @@ class Puzzle:
             self.center_colors,
         )
 
+    def execute_move_seq(self, seq: MoveSeq):
+        """Apply a sequence of moves to the puzzle and return the new state."""
+        state = self
+        for move in seq:
+            state = state.execute_move(move)
+        return state
+
+    @staticmethod
+    def random(n, randomizations: int) -> "Puzzle":
+        """Generate a random puzzle by taking a specified number of random moves."""
+        moves = MoveSeq.random(randomizations)
+        name = f"n{n}-random{randomizations}"
+        result = Puzzle.finished(n, name, DEFAULT_CENTER_COLORS)
+        return result.execute_move_seq(moves)
+
     def is_finished(self):
         """Check whether the puzzle is in a finished state. This is the case if all
         corners and edges are in their finished state (the center colors cannot change).
@@ -174,7 +191,7 @@ class Puzzle:
 
     def is_valid(self) -> bool:
         """Check whether the puzzle is in a valid state (not decisive)."""
-        # Check that corner x_hi, y_hi and z_hi are unique.
+        # Check that corner x_hi, y_hi and z_hi tuples are unique.
         corner_xyzs: set[tuple[bool, bool, bool]] = set()
         for corner in self.corners:
             corner_xyz = (corner.x_hi, corner.y_hi, corner.z_hi)
@@ -182,7 +199,7 @@ class Puzzle:
                 return False
             corner_xyzs.add(corner_xyz)
 
-        # Check that edge a, x_hi and y_hi are unique.
+        # Check that edge a, x_hi and y_hi tuples are unique.
         edge_axys: set[tuple[int, bool, bool]] = set()
         for edge in self.edges:
             edge_axy = (edge.a, edge.x_hi, edge.y_hi)
@@ -202,6 +219,10 @@ class Puzzle:
             return False
 
         return True
+
+    def is_solution(self, solution: MoveSeq) -> bool:
+        """Check whether a given sequence of moves is a solution to the puzzle."""
+        return self.execute_move_seq(solution).is_finished()
 
     @staticmethod
     def finished(n: int, name: str, center_colors: tuple[int, ...]):
@@ -260,13 +281,12 @@ class Puzzle:
     def to_file(self):
         """Write the string representation of the puzzle to a file."""
         os.makedirs(PUZZLE_DIR, exist_ok=True)
-        with open(os.path.join(PUZZLE_DIR, self.name), "w") as file:
-            file.write(str(self))
+        str_to_file(str(self), os.path.join(PUZZLE_DIR, self.name + ".txt"))
 
     @staticmethod
     def from_file(name: str):
         """Parse a puzzle from the string representation in a file."""
-        with open(os.path.join(PUZZLE_DIR, name)) as file:
+        with open(os.path.join(PUZZLE_DIR, name + ".txt")) as file:
             return Puzzle.from_str(file.read(), name)
 
     def facelet_color(self, ff: int, fy: int, fx: int) -> int:

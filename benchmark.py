@@ -13,16 +13,16 @@ TIMEOUT_FACTOR = 3
 MIN_TIMEOUT_SECS = 60
 BENCHMARK_RESULTS_DIR = "./benchmark_results"
 BENCHMARK_PUZZLES = [
-    "n2-k5-0.txt",
-    "n2-k7-0.txt",
-    "n2-k8-0.txt",
-    "n2-k8-1.txt",
-    "n2-k9-0.txt",
-    "n2-k9-1.txt",
-    "n3-k7-0.txt",
-    "n3-k8-0.txt",
-    "n3-k8-1.txt",
-    "n3-k9-0.txt",
+    "n2-k5-0",
+    "n2-k7-0",
+    "n2-k8-0",
+    "n2-k8-1",
+    "n2-k9-0",
+    "n2-k9-1",
+    "n3-k7-0",
+    "n3-k8-0",
+    "n3-k8-1",
+    "n3-k9-0",
 ]
 
 
@@ -109,7 +109,7 @@ def benchmark_param(parameter_name: str, parameter_values: list):
                         output: ValueProxy[SolveStats | None],
                     ):
                         """Wrapper function to run solve in a separate process."""
-                        result = solve(puzzle, config, False)
+                        result = solve(puzzle, config, False, False)
                         output.set(result)
 
                     result: ValueProxy[SolveStats | None] = manager.Value(
@@ -130,6 +130,9 @@ def benchmark_param(parameter_name: str, parameter_values: list):
                     if process.is_alive():
                         process.kill()
                         process.join()
+                    assert process.exitcode is not None
+                    if process.exitcode > 0:
+                        raise Exception(f"process exited with code {process.exitcode}")
                     process.close()
 
                     # Write the result to the CSV file.
@@ -198,4 +201,5 @@ if __name__ == "__main__":
     # benchmark_param("apply_theorem_11a", [False, True])
     # benchmark_param("apply_theorem_11b", [False, True])
     benchmark_param("ban_repeated_states", [False, True])
-    benchmark_param("k_search_start", [0, 4, 8, 10])
+    benchmark_param("enable_corner_min_patterns", [False, True])
+    benchmark_param("enable_edge_min_patterns", [False, True])

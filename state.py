@@ -1,7 +1,10 @@
 import itertools
+import random
 from typing import cast
 
 import z3
+
+from tools import b2s, s2b
 
 
 class Move:
@@ -144,7 +147,70 @@ class Move:
         ]
 
 
-MoveSeq = tuple[Move, ...]
+class MoveSeq:
+    """A class representing a sequence of moves."""
+
+    def __init__(self, moves: tuple[Move, ...]):
+        """Create a new move sequence with the given moves."""
+        self.moves = moves
+
+    def __len__(self):
+        """Return the length of the move sequence."""
+        return len(self.moves)
+
+    def __iter__(self):
+        """Return an iterator over the moves in the sequence."""
+        return iter(self.moves)
+
+    def __str__(self):
+        """Return the string representation of the move sequence."""
+        return ";".join(map(str, self.moves))
+
+    def __eq__(self, other: "MoveSeq"):
+        """Return whether two move sequences are equal."""
+        return self.moves == other.moves
+
+    def __hash__(self):
+        """Return the hash of the move sequence."""
+        return hash(self.moves)
+
+    def __lt__(self, other: "MoveSeq"):
+        """Return whether one move sequence is less than another."""
+        return self.moves < other.moves
+
+    def inverted(self) -> "MoveSeq":
+        """Return the inverse move sequence. Applying this to a puzzle will undo
+        the moves in the sequence.
+        """
+        return MoveSeq(tuple(m.inverse() for m in reversed(self.moves)))
+
+    def ax(self, s: int) -> int:
+        """Return the axis of the move at the given index."""
+        return self.moves[s].ax
+
+    def hi(self, s: int) -> bool:
+        """Return the side of the move at the given index."""
+        return self.moves[s].hi
+
+    def dr(self, s: int) -> int:
+        """Return the direction of the move at the given index."""
+        return self.moves[s].dr
+
+    def extended(self, m: Move) -> "MoveSeq":
+        """Return a new move sequence with the given move appended."""
+        return MoveSeq((*self.moves, m))
+
+    @staticmethod
+    def random(k: int) -> "MoveSeq":
+        """Create a new random move sequence of length k."""
+        return MoveSeq(tuple(random.choices(Move.list_all(), k=k)))
+
+    @staticmethod
+    def from_str(s: str):
+        """Create a new move sequence from the given string representation."""
+        if s == "":
+            return MoveSeq(())
+        return MoveSeq(tuple(map(Move.from_str, s.split(";"))))
 
 
 def generic_cubie_coord(
@@ -253,7 +319,7 @@ class CornerState:
             ]
         )
 
-    def __eq__(self, other: "CornerState"):
+    def __eq__(self, other: "CornerState | CornerStateZ3"):
         """Return whether two corner states are equal."""
         return (
             self.n == other.n
@@ -267,6 +333,31 @@ class CornerState:
     def __hash__(self):
         """Return the hash of the corner state."""
         return hash((self.n, self.x_hi, self.y_hi, self.z_hi, self.r, self.cw))
+
+    def __str__(self):
+        """Return the string representation of the corner state."""
+        return ";".join(
+            [
+                b2s(self.x_hi),
+                b2s(self.y_hi),
+                b2s(self.z_hi),
+                str(self.r),
+                b2s(self.cw),
+            ]
+        )
+
+    @staticmethod
+    def from_str(n: int, s: str):
+        """Create a new corner state from the given string representation."""
+        x_hi_raw, y_hi_raw, z_hi_raw, r_raw, cw_raw = s.split(";")
+        return CornerState(
+            n,
+            s2b(x_hi_raw),
+            s2b(y_hi_raw),
+            s2b(z_hi_raw),
+            int(r_raw),
+            s2b(cw_raw),
+        )
 
     def next_x_hi(self, m: Move) -> bool:
         """Return the next value of x_hi, given a move."""
@@ -405,7 +496,7 @@ class EdgeState:
             ]
         )
 
-    def __eq__(self, other: "EdgeState"):
+    def __eq__(self, other: "EdgeState | EdgeStateZ3"):
         """Return whether two edge states are equal."""
         return (
             self.n == other.n
@@ -418,6 +509,23 @@ class EdgeState:
     def __hash__(self):
         """Return the hash of the edge state."""
         return hash((self.n, self.a, self.x_hi, self.y_hi, self.r))
+
+    def __str__(self):
+        """Return the string representation of the edge state."""
+        return ";".join(
+            [
+                str(self.a),
+                b2s(self.x_hi),
+                b2s(self.y_hi),
+                b2s(self.r),
+            ]
+        )
+
+    @staticmethod
+    def from_str(n: int, s: str):
+        """Create a new edge state from the given string representation."""
+        a_raw, x_hi_raw, y_hi_raw, r_raw = s.split(";")
+        return EdgeState(n, int(a_raw), s2b(x_hi_raw), s2b(y_hi_raw), s2b(r_raw))
 
     def next_a(self, m: Move) -> int:
         """Return the next value of a, given a move."""
@@ -494,11 +602,11 @@ class EdgeState:
 class MoveZ3:
     """A class for representing moves in Z3."""
 
-    def __init__(self, s: int, solver: z3.Solver):
+    def __init__(self, s: int, base_constraints: list[z3.BoolRef]):
         """Create a new move with the given solver."""
-        self.ax = TernaryZ3.new(f"s({s}) ax", solver)
+        self.ax = TernaryZ3.new(f"s({s}) ax", base_constraints)
         self.hi = z3.Bool(f"s({s}) hi")
-        self.dr = TernaryZ3.new(f"s({s}) dr", solver)
+        self.dr = TernaryZ3.new(f"s({s}) dr", base_constraints)
 
 
 class TernaryZ3:
@@ -510,13 +618,16 @@ class TernaryZ3:
         self.b2 = b2
 
     @staticmethod
-    def new(name: str, solver: z3.Solver):
-        """Create a new ternary variable with the given name. Also disallow both values
-        being true in the solver, since that would mean a value of 3.
+    def new(name: str, base_constraints: list[z3.BoolRef]):
+        """Create a new ternary variable with the given name. Appends a constraint
+        to the base constraints that disallows both values being true (which would
+        mean a value of 3).
         """
         b1 = z3.Bool(f"{name} b1")
         b2 = z3.Bool(f"{name} b2")
-        solver.add(z3.Or(z3.Not(b1), z3.Not(b2)))
+        not_three = z3.Or(z3.Not(b1), z3.Not(b2))
+        assert isinstance(not_three, z3.BoolRef)
+        base_constraints.append(not_three)
         return TernaryZ3(b1, b2)
 
     def __eq__(self, other: "int | TernaryZ3"):
@@ -584,6 +695,7 @@ class CornerStateZ3:
 
     def __init__(
         self,
+        n: int,
         x_hi: z3.BoolRef,
         y_hi: z3.BoolRef,
         z_hi: z3.BoolRef,
@@ -591,6 +703,7 @@ class CornerStateZ3:
         cw: z3.BoolRef,
     ):
         """Create a new corner state with the given variables."""
+        self.n = n
         self.x_hi = x_hi
         self.y_hi = y_hi
         self.z_hi = z_hi
@@ -598,52 +711,107 @@ class CornerStateZ3:
         self.cw = cw
 
     @staticmethod
-    def new(s: int, x_hi: bool, y_hi: bool, z_hi: bool, solver: z3.Solver):
+    def new(
+        n: int,
+        s: int,
+        x_hi: bool,
+        y_hi: bool,
+        z_hi: bool,
+        base_constraints: list[z3.BoolRef],
+    ):
         """Create a new corner state with the given coordinates and orientation."""
         return CornerStateZ3(
+            n,
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) x_hi"),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) y_hi"),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) z_hi"),
-            TernaryZ3.new(f"corner({x_hi},{y_hi},{z_hi}) s({s}) r", solver),
+            TernaryZ3.new(f"corner({x_hi},{y_hi},{z_hi}) s({s}) r", base_constraints),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) c"),
         )
 
-    def fix(self, other: "CornerState | CornerStateZ3"):
+    def __eq__(self, other: "CornerState | CornerStateZ3"):
         """Return the conditions for two corner states being equal."""
-        return [
-            self.x_hi == other.x_hi,
-            self.y_hi == other.y_hi,
-            self.z_hi == other.z_hi,
-            self.r == other.r,
-            self.cw == other.cw,
-        ]
+        return z3.And(
+            [
+                self.n == other.n,
+                self.x_hi == other.x_hi,
+                self.y_hi == other.y_hi,
+                self.z_hi == other.z_hi,
+                self.r == other.r,
+                self.cw == other.cw,
+            ]
+        )
+
+    def __ne__(self, other: "CornerState | CornerStateZ3"):
+        """Return the conditions for two corner states being different."""
+        return z3.Or(
+            [
+                self.n != other.n,
+                self.x_hi != other.x_hi,
+                self.y_hi != other.y_hi,
+                self.z_hi != other.z_hi,
+                self.r != other.r,
+                self.cw != other.cw,
+            ]
+        )
 
 
 class EdgeStateZ3:
     """A class for representing edge states in Z3."""
 
-    def __init__(self, a: TernaryZ3, x_hi: z3.BoolRef, y_hi: z3.BoolRef, r: z3.BoolRef):
+    def __init__(
+        self,
+        n: int,
+        a: TernaryZ3,
+        x_hi: z3.BoolRef,
+        y_hi: z3.BoolRef,
+        r: z3.BoolRef,
+    ):
         """Create a new edge state with the given variables."""
+        self.n = n
         self.a = a
         self.x_hi = x_hi
         self.y_hi = y_hi
         self.r = r
 
     @staticmethod
-    def new(s: int, a: int, x_hi: bool, y_hi: bool, solver: z3.Solver):
+    def new(
+        n: int,
+        s: int,
+        a: int,
+        x_hi: bool,
+        y_hi: bool,
+        base_constraints: list[z3.BoolRef],
+    ):
         """Create a new edge state with the given coordinates and orientation."""
         return EdgeStateZ3(
-            TernaryZ3.new(f"edge({a},{x_hi},{y_hi}) s({s}) a", solver),
+            n,
+            TernaryZ3.new(f"edge({a},{x_hi},{y_hi}) s({s}) a", base_constraints),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) x_hi"),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) y_hi"),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) r"),
         )
 
-    def fix(self, other: "EdgeState | EdgeStateZ3"):
+    def __eq__(self, other: "EdgeState | EdgeStateZ3"):
         """Return the conditions for two edge states being equal."""
-        return [
-            self.a == other.a,
-            self.x_hi == other.x_hi,
-            self.y_hi == other.y_hi,
-            self.r == other.r,
-        ]
+        return z3.And(
+            [
+                self.n == other.n,
+                self.a == other.a,
+                self.x_hi == other.x_hi,
+                self.y_hi == other.y_hi,
+                self.r == other.r,
+            ]
+        )
+
+    def __ne__(self, other: "EdgeState | EdgeStateZ3"):
+        """Return the conditions for two edge states being different."""
+        return z3.Or(
+            [
+                self.n != other.a,
+                self.a != other.a,
+                self.x_hi != other.x_hi,
+                self.y_hi != other.y_hi,
+                self.r != other.r,
+            ]
+        )
