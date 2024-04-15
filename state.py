@@ -602,11 +602,11 @@ class EdgeState:
 class MoveZ3:
     """A class for representing moves in Z3."""
 
-    def __init__(self, s: int, goal: z3.Goal):
+    def __init__(self, s: int, base_constraints: list[z3.BoolRef]):
         """Create a new move with the given solver."""
-        self.ax = TernaryZ3.new(f"s({s}) ax", goal)
+        self.ax = TernaryZ3.new(f"s({s}) ax", base_constraints)
         self.hi = z3.Bool(f"s({s}) hi")
-        self.dr = TernaryZ3.new(f"s({s}) dr", goal)
+        self.dr = TernaryZ3.new(f"s({s}) dr", base_constraints)
 
 
 class TernaryZ3:
@@ -618,13 +618,16 @@ class TernaryZ3:
         self.b2 = b2
 
     @staticmethod
-    def new(name: str, goal: z3.Goal):
-        """Create a new ternary variable with the given name. Also disallow both values
-        being true in the solver, since that would mean a value of 3.
+    def new(name: str, base_constraints: list[z3.BoolRef]):
+        """Create a new ternary variable with the given name. Appends a constraint
+        to the base constraints that disallows both values being true (which would
+        mean a value of 3).
         """
         b1 = z3.Bool(f"{name} b1")
         b2 = z3.Bool(f"{name} b2")
-        goal.add(z3.Or(z3.Not(b1), z3.Not(b2)))
+        not_three = z3.Or(z3.Not(b1), z3.Not(b2))
+        assert isinstance(not_three, z3.BoolRef)
+        base_constraints.append(not_three)
         return TernaryZ3(b1, b2)
 
     def __eq__(self, other: "int | TernaryZ3"):
@@ -708,14 +711,21 @@ class CornerStateZ3:
         self.cw = cw
 
     @staticmethod
-    def new(n: int, s: int, x_hi: bool, y_hi: bool, z_hi: bool, goal: z3.Goal):
+    def new(
+        n: int,
+        s: int,
+        x_hi: bool,
+        y_hi: bool,
+        z_hi: bool,
+        base_constraints: list[z3.BoolRef],
+    ):
         """Create a new corner state with the given coordinates and orientation."""
         return CornerStateZ3(
             n,
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) x_hi"),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) y_hi"),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) z_hi"),
-            TernaryZ3.new(f"corner({x_hi},{y_hi},{z_hi}) s({s}) r", goal),
+            TernaryZ3.new(f"corner({x_hi},{y_hi},{z_hi}) s({s}) r", base_constraints),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) c"),
         )
 
@@ -765,11 +775,18 @@ class EdgeStateZ3:
         self.r = r
 
     @staticmethod
-    def new(n: int, s: int, a: int, x_hi: bool, y_hi: bool, goal: z3.Goal):
+    def new(
+        n: int,
+        s: int,
+        a: int,
+        x_hi: bool,
+        y_hi: bool,
+        base_constraints: list[z3.BoolRef],
+    ):
         """Create a new edge state with the given coordinates and orientation."""
         return EdgeStateZ3(
             n,
-            TernaryZ3.new(f"edge({a},{x_hi},{y_hi}) s({s}) a", goal),
+            TernaryZ3.new(f"edge({a},{x_hi},{y_hi}) s({s}) a", base_constraints),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) x_hi"),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) y_hi"),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) r"),

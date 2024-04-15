@@ -1,8 +1,8 @@
 import argparse
+import functools
 import operator
 import os
 from datetime import datetime, timedelta
-from functools import reduce
 from typing import cast
 
 import z3
@@ -62,93 +62,143 @@ def edge_stacked(e: EdgeStateZ3, moves: list[MoveZ3]):
 
 
 class SolveInstance:
-    """An instance of a solve operation for a puzzle."""
+    """An instance of a solve operation given a puzzle, number of moves
+    and configuration. Contains Z3 variables representing the state. A Z3 goal
+    can be built, which in turn can be solved to find a solution by Z3, or can be
+    exported to a DIMACS file.
+    """
 
     def __init__(self, puzzle: Puzzle, k: int, config: SolveConfig):
-        """Create a new solve instance by preparing all constraints in a goal."""
-        self.n = puzzle.n
-        self.k = k
+        """Initialize an instance given a puzzle, maximum no. moves and config."""
         self.puzzle = puzzle
+        self.k = k
         self.config = config
-        self.goal = z3.Goal()
-        prep_start = datetime.now()
+        self.n = puzzle.n
 
-        # Initialize corner, edge and move state variables.
+        # List of constraints which should always be present in the goal.
+        self.base_constraints: list[z3.BoolRef] = []
+
+        # Initialize the states of the corners for each step.
         self.corners = [
             [
                 CornerStateZ3.new(
-                    self.n, s, corner.x_hi, corner.y_hi, corner.z_hi, self.goal
+                    self.n,
+                    s,
+                    corner.x_hi,
+                    corner.y_hi,
+                    corner.z_hi,
+                    self.base_constraints,
                 )
                 for corner in CornerState.all_finished(self.n)
             ]
-            for s in range(k + 1)
+            for s in range(self.k + 1)
         ]
+
+        # Initialize the states of the edges for each step.
         self.edges = [
             [
-                EdgeStateZ3.new(self.n, s, edge.a, edge.x_hi, edge.y_hi, self.goal)
+                EdgeStateZ3.new(
+                    self.n,
+                    s,
+                    edge.a,
+                    edge.x_hi,
+                    edge.y_hi,
+                    self.base_constraints,
+                )
                 for edge in EdgeState.all_finished(self.n)
             ]
-            for s in range(k + 1)
+            for s in range(self.k + 1)
         ]
-        self.moves = [MoveZ3(s, self.goal) for s in range(k)]
+
+        # Initialize the move for each stpe.
+        self.moves = [MoveZ3(s, self.base_constraints) for s in range(k)]
+
+    def corner_states_equal(self, s: int, states: tuple[CornerState, ...]):
+        """Return a list of constraints that enforce the corner states to be equal."""
+        return [c1 == c2 for c1, c2 in zip(self.corners[s], states)]
+
+    def edge_states_equal(self, s: int, states: tuple[EdgeState, ...]):
+        """Return a list of constraints that enforce the edge states to be equal."""
+        return [e1 == e2 for e1, e2 in zip(self.edges[s], states)]
+
+    def identical_corner_states(self, s1: int, s2: int):
+        """Return a list of constraints that enforce the corner states
+        to be identical.
+        """
+        return [c1 == c2 for c1, c2 in zip(self.corners[s1], self.corners[s2])]
+
+    def identical_edge_states(self, s1: int, s2: int):
+        """Return a list of constraints that enforce the edge states to be identical."""
+        return [e1 == e2 for e1, e2 in zip(self.edges[s1], self.edges[s2])]
+
+    def build_goal(self) -> z3.Goal:
+        """Build the goal for this instance by accumulating contraints. Returns
+        a Z3 goal object.
+        """
+        goal = z3.Goal()
+
+        # Add base constraints to the goal.
+        goal.add(self.base_constraints)
 
         # Fix the first state to the puzzle state.
-        self.goal.add(z3.And(self.fix_state(0, puzzle.corners, puzzle.edges)))
+        goal.add(
+            z3.And(
+                *self.corner_states_equal(0, self.puzzle.corners),
+                *self.edge_states_equal(0, self.puzzle.edges),
+            )
+        )
 
         # Fix the last state to the finished state.
-        self.goal.add(
+        goal.add(
             z3.And(
-                self.fix_state(
-                    -1,
-                    CornerState.all_finished(self.n),
-                    EdgeState.all_finished(self.n),
-                )
+                *self.corner_states_equal(-1, CornerState.all_finished(self.n)),
+                *self.edge_states_equal(-1, EdgeState.all_finished(self.n)),
             )
         )
 
         # Restrict cubie states according to moves.
-        for s in range(k):
-            if config.move_size == 0:  # Use basic move mappers.
+        for s in range(self.k):
+            if self.config.move_size == 0:  # Use basic move mappers.
                 m = self.moves[s]
 
                 for i, c in enumerate(self.corners[s]):
                     next = self.corners[s + 1][i]
-                    self.goal.add(move_mappers.corner_x_hi(c, m, next))
-                    self.goal.add(move_mappers.corner_y_hi(c, m, next))
-                    self.goal.add(move_mappers.corner_z_hi(c, m, next))
-                    self.goal.add(move_mappers.corner_r(c, m, next))
-                    self.goal.add(move_mappers.corner_cw(c, m, next))
+                    goal.add(move_mappers.corner_x_hi(c, m, next))
+                    goal.add(move_mappers.corner_y_hi(c, m, next))
+                    goal.add(move_mappers.corner_z_hi(c, m, next))
+                    goal.add(move_mappers.corner_r(c, m, next))
+                    goal.add(move_mappers.corner_cw(c, m, next))
 
                 # Add restrictions for the edge cubies.
                 for i, e in enumerate(self.edges[s]):
                     next = self.edges[s + 1][i]
-                    self.goal.add(move_mappers.edge_a(e, m, next))
-                    self.goal.add(move_mappers.edge_x_hi(e, m, next))
-                    self.goal.add(move_mappers.edge_y_hi(e, m, next))
-                    self.goal.add(move_mappers.edge_r(e, next))
+                    goal.add(move_mappers.edge_a(e, m, next))
+                    goal.add(move_mappers.edge_x_hi(e, m, next))
+                    goal.add(move_mappers.edge_y_hi(e, m, next))
+                    goal.add(move_mappers.edge_r(e, next))
 
             else:  # Use stacked move mappers.
-                if s % config.move_size != 0:
+                if s % self.config.move_size != 0:
                     continue  # Skip if not multiple of move size.
-                move_size = min(k - s, config.move_size)
+                move_size = min(self.k - s, self.config.move_size)
                 moveset = self.moves[s : s + move_size]
 
                 # Add restrictions for the corner cubies.
                 for i, c in enumerate(self.corners[s]):
                     next = self.corners[s + move_size][i]
-                    self.goal.add(next == corner_stacked(c, moveset))
+                    goal.add(next == corner_stacked(c, moveset))
 
                 # Add restrictions for the edge cubies.
                 for i, e in enumerate(self.edges[s]):
                     next = self.edges[s + move_size][i]
-                    self.goal.add(next == edge_stacked(e, moveset))
+                    goal.add(next == edge_stacked(e, moveset))
 
         # Add symmetric move sequence filters for n = 2.
         if self.n == 2:
-            if config.enable_n2_move_filters_1_and_2:
+            if self.config.enable_n2_move_filters_1_and_2:
                 # Move filter #1 and #2
-                for s in range(k - 1):
-                    self.goal.add(
+                for s in range(self.k - 1):
+                    goal.add(
                         z3.Implies(
                             self.moves[s].ax == self.moves[s + 1].ax,
                             z3.Not(
@@ -162,10 +212,10 @@ class SolveInstance:
 
         # Add symmetric move sequence filters for n = 3.
         if self.n == 3:
-            if config.enable_n3_move_filters_1_and_2:
+            if self.config.enable_n3_move_filters_1_and_2:
                 # Move filter #1 and #2
-                for s in range(k - 1):
-                    self.goal.add(
+                for s in range(self.k - 1):
+                    goal.add(
                         z3.Implies(
                             self.moves[s].ax == self.moves[s + 1].ax,
                             z3.Not(
@@ -177,10 +227,10 @@ class SolveInstance:
                         )
                     )
 
-            if config.enable_n3_move_filters_3_and_4:
+            if self.config.enable_n3_move_filters_3_and_4:
                 # Move filter #3 and #4
-                for s in range(k - 3):
-                    self.goal.add(
+                for s in range(self.k - 3):
+                    goal.add(
                         z3.Implies(
                             z3.And(
                                 self.moves[s].dr == 2,
@@ -205,17 +255,24 @@ class SolveInstance:
                         )
                     )
 
-        if config.ban_repeated_states:
+        if self.config.ban_repeated_states:
             # States cannot be repeated.
-            for s1 in range(k + 1):
-                for s2 in range(s1 + 1, k + 1):
-                    self.goal.add(z3.Not(z3.And(self.identical_states(s1, s2))))
+            for s1 in range(self.k + 1):
+                for s2 in range(s1 + 1, self.k + 1):
+                    goal.add(
+                        z3.Not(
+                            z3.And(
+                                *self.identical_corner_states(s1, s2),
+                                *self.identical_edge_states(s1, s2),
+                            )
+                        )
+                    )
 
-        if config.apply_theorem_11a:
+        if self.config.apply_theorem_11a:
             # Theorem 11.1a: sum x_i = 0 mod 3
-            for s in range(k + 1):
+            for s in range(self.k + 1):
                 if len(self.corners[s]) > 0:
-                    corner_sum = reduce(
+                    corner_sum = functools.reduce(
                         operator.add,
                         [
                             cast(
@@ -225,13 +282,13 @@ class SolveInstance:
                             for c in self.corners[s]
                         ],
                     )
-                    self.goal.add(corner_sum % 3 == 0)
+                    goal.add(corner_sum % 3 == 0)
 
-        if config.apply_theorem_11b:
+        if self.config.apply_theorem_11b:
             # Theorem 11.1b: sum y_i = 0 mod 2
-            for s in range(k + 1):
+            for s in range(self.k + 1):
                 if len(self.edges[s]) > 0:
-                    edge_sum = reduce(
+                    edge_sum = functools.reduce(
                         operator.add,
                         [
                             cast(
@@ -241,51 +298,30 @@ class SolveInstance:
                             for e in self.edges[s]
                         ],
                     )
-                    self.goal.add(edge_sum % 2 == 0)
+                    goal.add(edge_sum % 2 == 0)
 
-        if config.enable_corner_min_patterns:
+        if self.config.enable_corner_min_patterns:
             for i, patterns in enumerate(load_corner_min_patterns(self.n)):
                 for corner, depth in patterns.items():
-                    for s in range(max(0, k + 1 - depth), k + 1):
-                        self.goal.add(self.corners[s][i] != corner)
+                    for s in range(max(0, self.k + 1 - depth), self.k + 1):
+                        goal.add(self.corners[s][i] != corner)
 
-        if config.enable_edge_min_patterns:
+        if self.config.enable_edge_min_patterns:
             for i, patterns in enumerate(load_edge_min_patterns(self.n)):
                 for edge, depth in patterns.items():
-                    for s in range(max(0, k + 1 - depth), k + 1):
-                        self.goal.add(self.edges[s][i] != edge)
+                    for s in range(max(0, self.k + 1 - depth), self.k + 1):
+                        goal.add(self.edges[s][i] != edge)
 
-        # Stop the timer and store the preparation time.
-        self.prep_time = datetime.now() - prep_start
-
-    def fix_state(
-        self,
-        s: int,
-        corner_states: tuple[CornerState, ...],
-        edge_states: tuple[EdgeState, ...],
-    ):
-        """Return conditions of a state having fixed corner and edge states."""
-        conditions = []
-        for c1, c2 in zip(self.corners[s], corner_states):
-            conditions.append(c1 == c2)
-        for e1, e2 in zip(self.edges[s], edge_states):
-            conditions.append(e1 == e2)
-        return conditions
-
-    def identical_states(self, s1: int, s2: int):
-        """Return conditions of two states being equal."""
-        conditions = []
-        for c1, c2 in zip(self.corners[s1], self.corners[s2]):
-            conditions.append(c1 == c2)
-        for e1, e2 in zip(self.edges[s1], self.edges[s2]):
-            conditions.append(e1 == e2)
-        return conditions
+        return goal
 
     def solve(self) -> tuple[MoveSeq | None, timedelta, timedelta]:
         """Compute the optimal solution for this instance. Returns the solution,
-        along with the time it took to prepare the SAT model and the time it took
-        to solve it.
+        along with the time it took to build the goal, and the time it took to solve it.
         """
+        prep_start = datetime.now()
+        goal = self.build_goal()
+        prep_time = datetime.now() - prep_start
+
         if self.config.max_solver_threads == 0:
             # Parallelism is disabled: use a single-threaded tactic.
             tactic = cast(z3.Tactic, z3.Then(*self.config.tactics.get(), "sat"))
@@ -296,7 +332,7 @@ class SolveInstance:
             tactic = cast(z3.Tactic, z3.Then(*self.config.tactics.get(), "psat"))
 
         solver = tactic.solver()
-        solver.add(self.goal)
+        solver.add(goal)
 
         solve_start = datetime.now()
         result = solver.check()
@@ -314,16 +350,18 @@ class SolveInstance:
                     for s in range(self.k)
                 )
             )
-            return solution, self.prep_time, solve_time
+            return solution, prep_time, solve_time
         elif result == z3.unsat:
-            return None, self.prep_time, solve_time
+            return None, prep_time, solve_time
         else:
             raise Exception(f"unexpected solver result: {result}")
 
     def to_dimacs(self, path: str):
-        """Write the goal to a DIMACS file."""
+        """Export the instance to a DIMACS file at the given path."""
         # TODO: apply normal tactics as well (perhaps already after the prep?)
-        goal_cnf = z3.Tactic("tseitin-cnf").apply(self.goal)[0]
+
+        goal = self.build_goal()
+        goal_cnf = z3.Tactic("tseitin-cnf").apply(goal)[0]
 
         def child_map(child) -> int:
             nonlocal var_count
