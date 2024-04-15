@@ -368,8 +368,6 @@ class SolveInstance:
 
     def to_dimacs(self, path: str):
         """Export the instance to a DIMACS file at the given path."""
-        # TODO: apply normal tactics as well (perhaps already after the prep?)
-
         goal = self.build_goal()
         goal_cnf = z3.Tactic("tseitin-cnf").apply(goal)[0]
 
