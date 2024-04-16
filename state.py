@@ -287,7 +287,7 @@ class CornerState:
         return CornerState(n, x == n - 1, y == n - 1, z == n - 1, 0, False)
 
     def clockwise(self) -> bool:
-        """Return whether the corner cubie is oriented clockwise."""
+        """Return whether the corner cubie colors are ordered clockwise."""
         return (
             (not self.x_hi and self.y_hi and not self.z_hi)
             or (not self.x_hi and not self.y_hi and self.z_hi)
@@ -599,16 +599,6 @@ class EdgeState:
         return self.r
 
 
-class MoveZ3:
-    """A class for representing moves in Z3."""
-
-    def __init__(self, s: int, base_constraints: list[z3.BoolRef]):
-        """Create a new move with the given solver."""
-        self.ax = TernaryZ3.new(f"s({s}) ax", base_constraints)
-        self.hi = z3.Bool(f"s({s}) hi")
-        self.dr = TernaryZ3.new(f"s({s}) dr", base_constraints)
-
-
 class TernaryZ3:
     """A class for representing ternary variables in Z3."""
 
@@ -688,6 +678,16 @@ class TernaryZ3:
         b1v = cast(z3.ArithRef, z3.If(self.b1, 2, 0))
         b2v = cast(z3.ArithRef, z3.If(self.b2, 1, 0))
         return b1v + b2v
+
+
+class MoveZ3:
+    """A class for representing moves in Z3."""
+
+    def __init__(self, s: int, base_constraints: list[z3.BoolRef]):
+        """Create a new move with the given solver."""
+        self.ax = TernaryZ3.new(f"s({s}) ax", base_constraints)
+        self.hi = z3.Bool(f"s({s}) hi")
+        self.dr = TernaryZ3.new(f"s({s}) dr", base_constraints)
 
 
 class CornerStateZ3:
