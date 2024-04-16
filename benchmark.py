@@ -203,3 +203,4 @@ if __name__ == "__main__":
     benchmark_param("ban_repeated_states", [False, True])
     benchmark_param("enable_corner_min_patterns", [False, True])
     benchmark_param("enable_edge_min_patterns", [False, True])
+    benchmark_param("repeat_tactics", [False, True])
