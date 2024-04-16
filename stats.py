@@ -2,8 +2,8 @@ import json
 import os
 from datetime import timedelta
 
+from config import SolveConfig
 from puzzle import Puzzle
-from solve_config import SolveConfig
 from state import MoveSeq
 from tools import str_to_file
 

@@ -8,6 +8,7 @@ from typing import cast
 import z3
 
 import move_mappers
+from config import SolveConfig, gods_number
 from cubie_min_patterns import load_corner_min_patterns, load_edge_min_patterns
 from puzzle import (
     CornerState,
@@ -15,7 +16,6 @@ from puzzle import (
     Puzzle,
     all_puzzles_names,
 )
-from solve_config import SolveConfig, gods_number
 from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3, TernaryZ3
 from stats import SolveStats
 from tools import print_stamped

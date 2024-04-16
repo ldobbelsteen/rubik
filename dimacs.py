@@ -1,9 +1,9 @@
 import argparse
 import os
 
+from config import SolveConfig
 from puzzle import Puzzle
 from solve import SolveInstance
-from solve_config import SolveConfig
 
 DIMACS_RESULTS = "./dimacs_results"
 

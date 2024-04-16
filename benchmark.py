@@ -3,9 +3,9 @@ import time
 from multiprocessing import Manager, Process
 from multiprocessing.managers import ValueProxy
 
+from config import SolveConfig, Tactics
 from puzzle import Puzzle
 from solve import solve
-from solve_config import SolveConfig, Tactics
 from stats import SolveStats
 from tools import print_stamped
 
