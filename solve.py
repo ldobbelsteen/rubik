@@ -69,7 +69,7 @@ class SolveInstance:
     """
 
     def __init__(self, puzzle: Puzzle, k: int, config: SolveConfig):
-        """Initialize an instance given a puzzle, maximum no. moves and config."""
+        """Initialize an instance given a puzzle, number of moves and config."""
         self.puzzle = puzzle
         self.k = k
         self.config = config
