@@ -620,12 +620,14 @@ class TernaryZ3:
         base_constraints.append(not_three)
         return TernaryZ3(b1, b2)
 
-    def __eq__(self, other: "int | TernaryZ3"):
+    def __eq__(self, other: "int | TernaryZ3") -> z3.BoolRef:
         """Return the condition of two ternary variables being equal."""
         if isinstance(other, int):
             match other:
                 case 0:
-                    return z3.And(z3.Not(self.b1), z3.Not(self.b2))
+                    result = z3.And(z3.Not(self.b1), z3.Not(self.b2))
+                    assert isinstance(result, z3.BoolRef)
+                    return result
                 case 1:
                     return self.b2
                 case 2:
@@ -633,45 +635,59 @@ class TernaryZ3:
                 case _:
                     raise Exception(f"invalid ternary value: {other}")
         elif isinstance(other, TernaryZ3):
-            return z3.And(self.b1 == other.b1, self.b2 == other.b2)
+            result = z3.And(self.b1 == other.b1, self.b2 == other.b2)
+            assert isinstance(result, z3.BoolRef)
+            return result
 
-    def __ne__(self, other: "TernaryZ3 | int"):
+    def __ne__(self, other: "TernaryZ3 | int") -> z3.BoolRef:
         """Return the condition of two ternary variables being different."""
         if isinstance(other, int):
             match other:
                 case 0:
-                    return z3.Or(self.b1, self.b2)
+                    result = z3.Or(self.b1, self.b2)
+                    assert isinstance(result, z3.BoolRef)
+                    return result
                 case 1:
-                    return z3.Not(self.b2)
+                    result = z3.Not(self.b2)
+                    assert isinstance(result, z3.BoolRef)
+                    return result
                 case 2:
-                    return z3.Not(self.b1)
+                    result = z3.Not(self.b1)
+                    assert isinstance(result, z3.BoolRef)
+                    return result
                 case _:
                     raise Exception(f"invalid ternary value: {other}")
         else:
             assert isinstance(other, TernaryZ3)
-            return z3.Or(self.b1 != other.b1, self.b2 != other.b2)
+            result = z3.Or(self.b1 != other.b1, self.b2 != other.b2)
+            assert isinstance(result, z3.BoolRef)
+            return result
 
-    def __gt__(self, other: "TernaryZ3 | int"):
+    def __gt__(self, other: "TernaryZ3 | int") -> z3.BoolRef:
         """Return the condition of one ternary variable being greater than another."""
         if isinstance(other, int):
             match other:
                 case 0:
-                    return z3.Or(self.b1, self.b2)
+                    result = z3.Or(self.b1, self.b2)
+                    assert isinstance(result, z3.BoolRef)
+                    return result
                 case 1:
                     return self.b1
                 case 2:
-                    return False
+                    return z3.BoolVal(False)
                 case _:
                     raise Exception(f"invalid ternary value: {other}")
         else:
             assert isinstance(other, TernaryZ3)
-            return z3.And(
+            result = z3.And(
                 z3.Not(other.b1),
                 z3.Or(
                     self.b1,
                     z3.And(self.b2, z3.Not(other.b2)),
                 ),
             )
+            assert isinstance(result, z3.BoolRef)
+            return result
 
     def arith_value(self) -> z3.ArithRef:
         """Return the value of the ternary variable."""
@@ -729,9 +745,20 @@ class CornerStateZ3:
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) c"),
         )
 
-    def __eq__(self, other: "CornerState | CornerStateZ3"):
+    def execute_move(self, move: MoveZ3) -> "CornerStateZ3":
+        """Return the state of the corner cubie after executing the given move."""
+        return CornerStateZ3(
+            self.n,
+            self.next_x_hi(move),
+            self.next_y_hi(move),
+            self.next_z_hi(move),
+            self.next_r(move),
+            self.next_cw(move),
+        )
+
+    def __eq__(self, other: "CornerState | CornerStateZ3") -> z3.BoolRef:
         """Return the conditions for two corner states being equal."""
-        return z3.And(
+        result = z3.And(
             [
                 self.n == other.n,
                 self.x_hi == other.x_hi,
@@ -741,10 +768,12 @@ class CornerStateZ3:
                 self.cw == other.cw,
             ]
         )
+        assert isinstance(result, z3.BoolRef)
+        return result
 
-    def __ne__(self, other: "CornerState | CornerStateZ3"):
+    def __ne__(self, other: "CornerState | CornerStateZ3") -> z3.BoolRef:
         """Return the conditions for two corner states being different."""
-        return z3.Or(
+        result = z3.Or(
             [
                 self.n != other.n,
                 self.x_hi != other.x_hi,
@@ -754,6 +783,133 @@ class CornerStateZ3:
                 self.cw != other.cw,
             ]
         )
+        assert isinstance(result, z3.BoolRef)
+        return result
+
+    def next_x_hi(self, m: MoveZ3) -> z3.BoolRef:
+        """Return the next value of x_hi, given a move."""
+        result = z3.If(
+            z3.And(m.ax == 1, m.hi == self.y_hi),
+            z3.If(
+                m.dr == 0,
+                z3.Not(self.z_hi),
+                z3.If(m.dr == 1, self.z_hi, z3.Not(self.x_hi)),
+            ),
+            z3.If(
+                z3.And(m.ax == 2, m.hi == self.z_hi),
+                z3.If(
+                    m.dr == 0,
+                    self.y_hi,
+                    z3.If(m.dr == 1, z3.Not(self.y_hi), z3.Not(self.x_hi)),
+                ),
+                self.x_hi,
+            ),
+        )
+        assert isinstance(result, z3.BoolRef)
+        return result
+
+    def next_y_hi(self, m: MoveZ3) -> z3.BoolRef:
+        """Return the next value of y_hi, given a move."""
+        result = z3.If(
+            z3.And(m.ax == 0, m.hi == self.x_hi),
+            z3.If(
+                m.dr == 0,
+                self.z_hi,
+                z3.If(m.dr == 1, z3.Not(self.z_hi), z3.Not(self.y_hi)),
+            ),
+            z3.If(
+                z3.And(m.ax == 2, m.hi == self.z_hi),
+                z3.If(
+                    m.dr == 0,
+                    z3.Not(self.x_hi),
+                    z3.If(m.dr == 1, self.x_hi, z3.Not(self.y_hi)),
+                ),
+                self.y_hi,
+            ),
+        )
+        assert isinstance(result, z3.BoolRef)
+        return result
+
+    def next_z_hi(self, m: MoveZ3) -> z3.BoolRef:
+        """Return the next value of z_hi, given a move."""
+        result = z3.If(
+            z3.And(m.ax == 0, m.hi == self.x_hi),
+            z3.If(
+                m.dr == 0,
+                z3.Not(self.y_hi),
+                z3.If(m.dr == 1, self.y_hi, z3.Not(self.z_hi)),
+            ),
+            z3.If(
+                z3.And(m.ax == 1, m.hi == self.y_hi),
+                z3.If(
+                    m.dr == 0,
+                    self.x_hi,
+                    z3.If(m.dr == 1, z3.Not(self.x_hi), z3.Not(self.z_hi)),
+                ),
+                self.z_hi,
+            ),
+        )
+        assert isinstance(result, z3.BoolRef)
+        return result
+
+    def next_r(self, m: MoveZ3) -> TernaryZ3:
+        """Return the next value of r, given a move."""
+        b1_minus_one = z3.And(
+            z3.Not(self.r.b1), z3.Not(self.r.b2)
+        )  # condition for (r - 1) % 3
+        b1_add_one = self.r.b2  # condition for (r + 1) % 3
+        next_r_b1 = z3.If(
+            m.dr != 2,
+            z3.If(
+                z3.And(m.ax == 0, m.hi == self.x_hi),
+                z3.If(self.cw, b1_minus_one, b1_add_one),
+                z3.If(
+                    z3.And(m.ax == 2, m.hi == self.z_hi),
+                    z3.If(self.cw, b1_add_one, b1_minus_one),
+                    self.r.b1,
+                ),
+            ),
+            self.r.b1,
+        )
+
+        b2_minus_one = self.r.b1  # condition for (r - 1) % 3
+        b2_add_one = z3.And(
+            z3.Not(self.r.b1), z3.Not(self.r.b2)
+        )  # condition for (r + 1) % 3
+        next_r_b2 = z3.If(
+            m.dr != 2,
+            z3.If(
+                z3.And(m.ax == 0, m.hi == self.x_hi),
+                z3.If(self.cw, b2_minus_one, b2_add_one),
+                z3.If(
+                    z3.And(m.ax == 2, m.hi == self.z_hi),
+                    z3.If(self.cw, b2_add_one, b2_minus_one),
+                    self.r.b2,
+                ),
+            ),
+            self.r.b2,
+        )
+
+        assert isinstance(next_r_b1, z3.BoolRef)
+        assert isinstance(next_r_b2, z3.BoolRef)
+        return TernaryZ3(next_r_b1, next_r_b2)
+
+    def next_cw(self, m: MoveZ3) -> z3.BoolRef:
+        """Return the next value of cw, given a move."""
+        result = z3.If(
+            z3.And(
+                m.dr != 2,
+                z3.Or(
+                    z3.And(m.ax == 0, m.hi == self.x_hi),
+                    z3.And(m.ax == 1, m.hi == self.y_hi),
+                    z3.And(m.ax == 2, m.hi == self.z_hi),
+                ),
+            ),
+            z3.Not(self.cw),
+            self.cw,
+        )
+        assert isinstance(result, z3.BoolRef)
+        return result
 
 
 class EdgeStateZ3:
@@ -792,9 +948,20 @@ class EdgeStateZ3:
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) r"),
         )
 
-    def __eq__(self, other: "EdgeState | EdgeStateZ3"):
+    def execute_move(self, move: MoveZ3) -> "EdgeStateZ3":
+        """Return the state of the edge cubie after executing the given move."""
+        next_a = self.next_a(move)
+        return EdgeStateZ3(
+            self.n,
+            next_a,
+            self.next_x_hi(move),
+            self.next_y_hi(move),
+            self.next_r(next_a),
+        )
+
+    def __eq__(self, other: "EdgeState | EdgeStateZ3") -> z3.BoolRef:
         """Return the conditions for two edge states being equal."""
-        return z3.And(
+        result = z3.And(
             [
                 self.n == other.n,
                 self.a == other.a,
@@ -803,10 +970,12 @@ class EdgeStateZ3:
                 self.r == other.r,
             ]
         )
+        assert isinstance(result, z3.BoolRef)
+        return result
 
-    def __ne__(self, other: "EdgeState | EdgeStateZ3"):
+    def __ne__(self, other: "EdgeState | EdgeStateZ3") -> z3.BoolRef:
         """Return the conditions for two edge states being different."""
-        return z3.Or(
+        result = z3.Or(
             [
                 self.n != other.a,
                 self.a != other.a,
@@ -815,3 +984,131 @@ class EdgeStateZ3:
                 self.r != other.r,
             ]
         )
+        assert isinstance(result, z3.BoolRef)
+        return result
+
+    def next_a(self, m: MoveZ3) -> TernaryZ3:
+        """Return the next value of a, given a move."""
+        next_a_b1 = z3.If(
+            m.dr != 2,
+            z3.If(
+                self.a == 0,
+                z3.If(
+                    z3.And(m.ax == 1, m.hi == self.y_hi),
+                    True,
+                    z3.If(z3.And(m.ax == 2, m.hi == self.x_hi), False, self.a.b1),
+                ),
+                z3.If(
+                    self.a == 1,
+                    z3.If(
+                        z3.And(m.ax == 0, m.hi == self.x_hi),
+                        True,
+                        z3.If(z3.And(m.ax == 2, m.hi == self.y_hi), False, self.a.b1),
+                    ),
+                    z3.If(
+                        z3.And(m.ax == 0, m.hi == self.x_hi),
+                        False,
+                        z3.If(z3.And(m.ax == 1, m.hi == self.y_hi), False, self.a.b1),
+                    ),
+                ),
+            ),
+            self.a.b1,
+        )
+        next_a_b2 = z3.If(
+            m.dr != 2,
+            z3.If(
+                self.a == 0,
+                z3.If(
+                    z3.And(m.ax == 1, m.hi == self.y_hi),
+                    False,
+                    z3.If(z3.And(m.ax == 2, m.hi == self.x_hi), True, self.a.b2),
+                ),
+                z3.If(
+                    self.a == 1,
+                    z3.If(
+                        z3.And(m.ax == 0, m.hi == self.x_hi),
+                        False,
+                        z3.If(z3.And(m.ax == 2, m.hi == self.y_hi), False, self.a.b2),
+                    ),
+                    z3.If(
+                        z3.And(m.ax == 0, m.hi == self.x_hi),
+                        True,
+                        z3.If(z3.And(m.ax == 1, m.hi == self.y_hi), False, self.a.b2),
+                    ),
+                ),
+            ),
+            self.a.b2,
+        )
+        assert isinstance(next_a_b1, z3.BoolRef)
+        assert isinstance(next_a_b2, z3.BoolRef)
+        return TernaryZ3(next_a_b1, next_a_b2)
+
+    def next_x_hi(self, m: MoveZ3) -> z3.BoolRef:
+        """Return the next value of x_hi, given a move."""
+        result = z3.If(
+            self.a == 0,
+            z3.If(
+                z3.And(m.ax == 1, m.hi == self.y_hi, m.dr != 1),
+                z3.Not(self.x_hi),
+                z3.If(
+                    z3.And(m.ax == 2, m.hi == self.x_hi),
+                    z3.If(
+                        m.dr == 0,
+                        self.y_hi,
+                        z3.If(m.dr == 1, z3.Not(self.y_hi), self.x_hi),
+                    ),
+                    self.x_hi,
+                ),
+            ),
+            z3.If(
+                z3.And(self.a == 1, m.ax == 2, m.hi == self.y_hi),
+                z3.If(m.dr == 2, z3.Not(self.x_hi), self.y_hi),
+                z3.If(
+                    z3.And(self.a == 2, m.ax == 1, m.hi == self.y_hi, m.dr != 0),
+                    z3.Not(self.x_hi),
+                    self.x_hi,
+                ),
+            ),
+        )
+        assert isinstance(result, z3.BoolRef)
+        return result
+
+    def next_y_hi(self, m: MoveZ3) -> z3.BoolRef:
+        """Return the next value of y_hi, given a move."""
+        result = z3.If(
+            z3.And(self.a == 0, m.ax == 2, m.hi == self.x_hi),
+            z3.If(m.dr == 2, z3.Not(self.y_hi), self.x_hi),
+            z3.If(
+                self.a == 1,
+                z3.If(
+                    z3.And(m.ax == 0, m.hi == self.x_hi, m.dr != 0),
+                    z3.Not(self.y_hi),
+                    z3.If(
+                        z3.And(m.ax == 2, m.hi == self.y_hi),
+                        z3.If(
+                            m.dr == 0,
+                            z3.Not(self.x_hi),
+                            z3.If(m.dr == 1, self.x_hi, self.y_hi),
+                        ),
+                        self.y_hi,
+                    ),
+                ),
+                z3.If(
+                    z3.And(self.a == 2, m.ax == 0, m.hi == self.x_hi, m.dr != 1),
+                    z3.Not(self.y_hi),
+                    self.y_hi,
+                ),
+            ),
+        )
+        assert isinstance(result, z3.BoolRef)
+        return result
+
+    def next_r(self, next_a: TernaryZ3) -> z3.BoolRef:
+        """Return the next value of r, given the next axis."""
+        result = z3.If(
+            z3.Or(z3.And(self.a == 0, next_a == 1), z3.And(self.a == 1, next_a == 0)),
+            z3.Not(self.r),
+            self.r,
+        )
+        assert isinstance(result, z3.BoolRef)
+        return result

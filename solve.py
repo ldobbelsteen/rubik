@@ -7,7 +7,6 @@ from typing import cast
 
 import z3
 
-import move_mappers
 from config import SolveConfig, gods_number
 from cubie_min_patterns import load_corner_min_patterns, load_edge_min_patterns
 from puzzle import (
@@ -16,49 +15,9 @@ from puzzle import (
     Puzzle,
     all_puzzles_names,
 )
-from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3, TernaryZ3
+from state import CornerStateZ3, EdgeStateZ3, Move, MoveSeq, MoveZ3
 from stats import SolveStats
 from tools import print_stamped
-
-
-def corner_stacked(c: CornerStateZ3, moves: list[MoveZ3]):
-    """Return the corner state after applying the moves in the given list."""
-    states: list[CornerStateZ3] = [c]
-    for move in moves:
-        states.append(
-            CornerStateZ3(
-                c.n,
-                move_mappers.corner_x_hi_flat(states[-1], move),
-                move_mappers.corner_y_hi_flat(states[-1], move),
-                move_mappers.corner_z_hi_flat(states[-1], move),
-                TernaryZ3(
-                    move_mappers.corner_r_b1_flat(states[-1], move),
-                    move_mappers.corner_r_b2_flat(states[-1], move),
-                ),
-                move_mappers.corner_cw_flat(states[-1], move),
-            )
-        )
-    return states[-1]
-
-
-def edge_stacked(e: EdgeStateZ3, moves: list[MoveZ3]):
-    """Return the edge state after applying the moves in the given list."""
-    states: list[EdgeStateZ3] = [e]
-    for move in moves:
-        next_a = TernaryZ3(
-            move_mappers.edge_a_b1_flat(states[-1], move),
-            move_mappers.edge_a_b2_flat(states[-1], move),
-        )
-        states.append(
-            EdgeStateZ3(
-                e.n,
-                next_a,
-                move_mappers.edge_x_hi_flat(states[-1], move),
-                move_mappers.edge_y_hi_flat(states[-1], move),
-                move_mappers.edge_r_flat(states[-1], next_a),
-            )
-        )
-    return states[-1]
 
 
 class SolveInstance:
@@ -158,40 +117,30 @@ class SolveInstance:
 
         # Restrict cubie states according to moves.
         for s in range(self.k):
-            if self.config.move_size == 0:  # Use basic move mappers.
-                m = self.moves[s]
+            if s % self.config.move_size != 0:
+                continue  # Skip if not multiple of move size.
+            move_size = min(self.k - s, self.config.move_size)
+            current_moves = self.moves[s : s + move_size]
 
-                for i, c in enumerate(self.corners[s]):
-                    next = self.corners[s + 1][i]
-                    goal.add(move_mappers.corner_x_hi(c, m, next))
-                    goal.add(move_mappers.corner_y_hi(c, m, next))
-                    goal.add(move_mappers.corner_z_hi(c, m, next))
-                    goal.add(move_mappers.corner_r(c, m, next))
-                    goal.add(move_mappers.corner_cw(c, m, next))
+            # Add restrictions for the corner cubies.
+            for i, c in enumerate(self.corners[s]):
+                next = self.corners[s + move_size][i]
+                goal.add(
+                    next
+                    == functools.reduce(
+                        lambda s, m: s.execute_move(m), current_moves, c
+                    )
+                )
 
-                # Add restrictions for the edge cubies.
-                for i, e in enumerate(self.edges[s]):
-                    next = self.edges[s + 1][i]
-                    goal.add(move_mappers.edge_a(e, m, next))
-                    goal.add(move_mappers.edge_x_hi(e, m, next))
-                    goal.add(move_mappers.edge_y_hi(e, m, next))
-                    goal.add(move_mappers.edge_r(e, next))
-
-            else:  # Use stacked move mappers.
-                if s % self.config.move_size != 0:
-                    continue  # Skip if not multiple of move size.
-                move_size = min(self.k - s, self.config.move_size)
-                moveset = self.moves[s : s + move_size]
-
-                # Add restrictions for the corner cubies.
-                for i, c in enumerate(self.corners[s]):
-                    next = self.corners[s + move_size][i]
-                    goal.add(next == corner_stacked(c, moveset))
-
-                # Add restrictions for the edge cubies.
-                for i, e in enumerate(self.edges[s]):
-                    next = self.edges[s + move_size][i]
-                    goal.add(next == edge_stacked(e, moveset))
+            # Add restrictions for the edge cubies.
+            for i, e in enumerate(self.edges[s]):
+                next = self.edges[s + move_size][i]
+                goal.add(
+                    next
+                    == functools.reduce(
+                        lambda s, m: s.execute_move(m), current_moves, e
+                    )
+                )
 
         # Add symmetric move sequence filters for n = 2.
         if self.n == 2:
