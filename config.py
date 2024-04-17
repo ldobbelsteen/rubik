@@ -29,8 +29,6 @@ class Tactics:
         "ds": "dom-simplify",
         "esb": "elim-small-bv",
         "eti": "elim-term-ite",
-        "h": "horn",
-        "hs": "horn-simplify",
         "p2b": "pb2bv",
         "pi": "propagate-ineqs",
         "pv": "propagate-values",
