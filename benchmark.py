@@ -1,12 +1,9 @@
+import math
 import os
-import time
-from multiprocessing import Manager, Process
-from multiprocessing.managers import ValueProxy
 
 from config import SolveConfig, Tactics
 from puzzle import Puzzle
 from solve import solve
-from stats import SolveStats
 from tools import print_stamped
 
 TIMEOUT_FACTOR = 3
@@ -35,144 +32,112 @@ def benchmark_param(parameter_name: str, parameter_values: list):
     """Benchmark the solve function for a list of parameter values. This can be
     used to determine which parameters are best.
     """
-    with Manager() as manager:
-        print_stamped(f"benchmarking '{parameter_name}' parameter...")
-        path = os.path.join(BENCHMARK_RESULTS_DIR, f"{parameter_name}.csv")
-        os.makedirs(BENCHMARK_RESULTS_DIR, exist_ok=True)
+    print_stamped(f"benchmarking '{parameter_name}' parameter...")
+    path = os.path.join(BENCHMARK_RESULTS_DIR, f"{parameter_name}.csv")
+    os.makedirs(BENCHMARK_RESULTS_DIR, exist_ok=True)
 
-        # If file does not exist, create it and add CSV column headers.
-        if not os.path.exists(path):
-            with open(path, "w") as file:
-                file.write(
-                    ",".join(
+    # If file does not exist, create it and add CSV column headers.
+    if not os.path.exists(path):
+        with open(path, "w") as file:
+            file.write(
+                ",".join(
+                    [
+                        "puzzle_name",
+                        parameter_name,
+                        "prep_time",
+                        "solve_time",
+                        "k",
+                        "message",
+                    ]
+                )
+                + "\n"
+            )
+
+    # Run the solver for each puzzle and parameter value.
+    with open(path, "a", buffering=1) as file:
+
+        def write_line(puzzle_name, parameter_value, prep_time, solve_time, k, message):
+            """Write a line to the CSV file."""
+            file.write(
+                ",".join(
+                    map(
+                        str,
                         [
-                            "puzzle_name",
-                            parameter_name,
-                            "prep_time",
-                            "solve_time",
-                            "k",
-                            "message",
-                        ]
+                            puzzle_name,
+                            parameter_value,
+                            prep_time,
+                            solve_time,
+                            k,
+                            message,
+                        ],
                     )
-                    + "\n"
                 )
+                + "\n"
+            )
 
-        # Run the solver for each puzzle and parameter value.
-        with open(path, "a", buffering=1) as file:
+        for puzzle in load_benchmark_puzzles():
+            print_stamped(f"puzzle {puzzle.name}...")
+            time_range: tuple[float, float] | None = None
 
-            def write_line(
-                puzzle_name, parameter_value, prep_time, solve_time, k, message
-            ):
-                """Write a line to the CSV file."""
-                file.write(
-                    ",".join(
-                        map(
-                            str,
-                            [
-                                puzzle_name,
-                                parameter_value,
-                                prep_time,
-                                solve_time,
-                                k,
-                                message,
-                            ],
-                        )
-                    )
-                    + "\n"
-                )
+            for parameter_value in parameter_values:
+                print_stamped(f"value {parameter_value}...")
 
-            for puzzle in load_benchmark_puzzles():
-                print_stamped(f"puzzle {puzzle.name}...")
-                time_range: tuple[float, float] | None = None
+                # Set the parameter value in the config.
+                config = SolveConfig(**{parameter_name: parameter_value})
 
-                for parameter_value in parameter_values:
-                    print_stamped(f"value {parameter_value}...")
-
-                    # Set the parameter value in the config.
-                    config = SolveConfig(**{parameter_name: parameter_value})
-
-                    # Set timeout to max of: 3x the fastest run,
-                    # 1x the slowest run, or a minimum timeout.
-                    timeout_secs = (
-                        None
-                        if time_range is None
-                        else max(
+                # Set timeout to max of: 3x the fastest run,
+                # 1x the slowest run, or a minimum timeout.
+                timeout_secs = (
+                    None
+                    if time_range is None
+                    else math.ceil(
+                        max(
                             time_range[1],
                             time_range[0] * TIMEOUT_FACTOR,
                             MIN_TIMEOUT_SECS,
                         )
                     )
+                )
 
-                    def solve_wrapper(
-                        puzzle: Puzzle,
-                        config: SolveConfig,
-                        output: ValueProxy[SolveStats | None],
-                    ):
-                        """Wrapper function to run solve in a separate process."""
-                        result = solve(puzzle, config, False, False)
-                        output.set(result)
-
-                    result: ValueProxy[SolveStats | None] = manager.Value(
-                        "result", None
+                # Solve and write the result to the CSV file.
+                stats = solve(puzzle, config, timeout_secs, False, False)
+                if stats is None:
+                    write_line(
+                        puzzle.name,
+                        parameter_value,
+                        "",
+                        "",
+                        "",
+                        f"timeout after {timeout_secs}s",
                     )
-                    process = Process(
-                        target=solve_wrapper,
-                        args=(puzzle, config, result),
+                elif stats.k() is None:
+                    write_line(
+                        puzzle.name,
+                        parameter_value,
+                        stats.total_prep_time().total_seconds(),
+                        stats.total_solve_time().total_seconds(),
+                        "",
+                        "no solution found",
+                    )
+                else:
+                    write_line(
+                        puzzle.name,
+                        parameter_value,
+                        stats.total_prep_time().total_seconds(),
+                        stats.total_solve_time().total_seconds(),
+                        stats.k(),
+                        "",
                     )
 
-                    # Start the solver and wait with timeout.
-                    start = time.time()
-                    process.start()
-                    if timeout_secs is not None:
-                        process.join(timeout_secs)
-                    else:
-                        process.join()
-                    if process.is_alive():
-                        process.kill()
-                        process.join()
-                    assert process.exitcode is not None
-                    if process.exitcode > 0:
-                        raise Exception(f"process exited with code {process.exitcode}")
-                    process.close()
-
-                    # Write the result to the CSV file.
-                    if result.value is None:
-                        write_line(
-                            puzzle.name,
-                            parameter_value,
-                            "",
-                            "",
-                            "",
-                            f"timeout after {timeout_secs}s",
-                        )
-                    elif result.value.k() is None:
-                        write_line(
-                            puzzle.name,
-                            parameter_value,
-                            result.value.total_prep_time().total_seconds(),
-                            result.value.total_solve_time().total_seconds(),
-                            "",
-                            "no solution found",
-                        )
-                    else:
-                        write_line(
-                            puzzle.name,
-                            parameter_value,
-                            result.value.total_prep_time().total_seconds(),
-                            result.value.total_solve_time().total_seconds(),
-                            result.value.k(),
-                            "",
-                        )
-
-                    # Update the time range.
-                    duration = time.time() - start
-                    if time_range is None:
-                        time_range = (duration, duration)
-                    else:
-                        time_range = (
-                            min(time_range[0], duration),
-                            max(time_range[1], duration),
-                        )
+                # Update the time range.
+                duration = stats.total_solve_time().total_seconds()
+                if time_range is None:
+                    time_range = (duration, duration)
+                else:
+                    time_range = (
+                        min(time_range[0], duration),
+                        max(time_range[1], duration),
+                    )
 
 
 if __name__ == "__main__":

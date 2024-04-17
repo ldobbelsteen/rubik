@@ -1,5 +1,6 @@
 import argparse
 import functools
+import math
 import operator
 import os
 from datetime import datetime, timedelta
@@ -274,9 +275,14 @@ class SolveInstance:
         else:
             return goal
 
-    def solve(self) -> tuple[MoveSeq | None, timedelta, timedelta]:
+    def solve(
+        self,
+        timeout_secs: int | None,
+    ) -> tuple[MoveSeq | None, timedelta, timedelta] | None:
         """Compute the optimal solution for this instance. Returns the solution,
         along with the time it took to build the goal, and the time it took to solve it.
+        If the instance is UNSAT, the solution is None. If the timeout was triggered,
+        nothing is returned.
         """
         prep_start = datetime.now()
         goal = self.build_goal()
@@ -291,11 +297,19 @@ class SolveInstance:
             z3.set_param("parallel.threads.max", self.config.max_solver_threads)
             solver = z3.Tactic("psat").solver()
 
+        if timeout_secs is not None:
+            solver.set("timeout", timeout_secs * 1000)
+
         solver.add(goal)
 
         solve_start = datetime.now()
         result = solver.check()
         solve_time = datetime.now() - solve_start
+
+        # Check if the solve operation timed out.
+        if timeout_secs is not None and solve_time.total_seconds() >= timeout_secs:
+            assert result == z3.unknown
+            return None
 
         if result == z3.sat:
             model = solver.model()
@@ -357,17 +371,35 @@ class SolveInstance:
 def solve(
     puzzle: Puzzle,
     config: SolveConfig,
+    timeout_secs: int | None,
     print_info: bool,
     stats_to_file: bool,
 ) -> SolveStats:
     """Compute the optimal solution for a puzzle within an upperbound for the number
-    of moves. Returns the statistics of the solve operation.
+    of moves. Returns the statistics of the solve operation. Allows for setting
+    a timeout for the allowed time spent solving in total.
     """
     stats = SolveStats(puzzle, config)
     k_upperbound = gods_number(puzzle.n)
 
     for k in range(k_upperbound + 1):
-        solution, prep_time, solve_time = SolveInstance(puzzle, k, config).solve()
+        instance = SolveInstance(puzzle, k, config)
+        k_timeout_secs = (
+            math.ceil(timeout_secs - stats.total_solve_time().total_seconds())
+            if timeout_secs is not None
+            else None
+        )
+        result = instance.solve(k_timeout_secs)
+        if result is None:
+            if print_info:
+                print_stamped(
+                    f"k = {k}: timeout after {timeout_secs}s solve time, quitting..."
+                )
+            if stats_to_file:
+                stats.to_file()
+            return stats
+
+        solution, prep_time, solve_time = result
         stats.register_solution(k, solution, prep_time, solve_time, stats_to_file)
 
         if solution is None:
@@ -400,27 +432,52 @@ def solve(
     return stats
 
 
-def solve_one(name: str, config: SolveConfig, print_info: bool, stats_to_file: bool):
+def solve_one(
+    name: str,
+    config: SolveConfig,
+    timeout_secs: int | None,
+    print_info: bool,
+    stats_to_file: bool,
+):
     """Helper function for solving a single puzzle."""
     puzzle = Puzzle.from_file(name)
-    solve(puzzle, config, print_info, stats_to_file)
+    solve(puzzle, config, timeout_secs, print_info, stats_to_file)
 
 
-def solve_all(config: SolveConfig, print_info: bool, stats_to_file: bool):
+def solve_all(
+    config: SolveConfig,
+    timeout_secs: int | None,
+    print_info: bool,
+    stats_to_file: bool,
+):
     """Helper function for solving all puzzles."""
     names = all_puzzles_names()
     puzzles = [Puzzle.from_file(name) for name in names]
     for puzzle in puzzles:
         print_stamped(f"solving {puzzle.name}...")
-        solve(puzzle, config, print_info, stats_to_file)
+        solve(puzzle, config, timeout_secs, print_info, stats_to_file)
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("name", type=str, nargs="?")
+    parser.add_argument("--timeout", type=int)
+    parser.add_argument("--disable-info-print", action=argparse.BooleanOptionalAction)
+    parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()
 
     if args.name is None:
-        solve_all(SolveConfig(), True, True)
+        solve_all(
+            SolveConfig(),
+            args.timeout,
+            not args.disable_info_print,
+            not args.disable_stats_file,
+        )
     else:
-        solve_one(args.name, SolveConfig(), True, True)
+        solve_one(
+            args.name,
+            SolveConfig(),
+            args.timeout,
+            not args.disable_info_print,
+            not args.disable_stats_file,
+        )
