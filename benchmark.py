@@ -143,9 +143,9 @@ def benchmark_param(parameter_name: str, parameter_values: list):
 if __name__ == "__main__":
     benchmark_param("move_size", [1, 2, 3, 4])
     benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
-    benchmark_param("enable_n2_move_filters_1_and_2", [False, True])
-    benchmark_param("enable_n3_move_filters_1_and_2", [False, True])
-    benchmark_param("enable_n3_move_filters_3_and_4", [False, True])
+    benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
+    benchmark_param("enable_n3_move_filters_1_and_2", [True, False])
+    benchmark_param("enable_n3_move_filters_3_and_4", [True, False])
     benchmark_param(
         "tactics",
         [
