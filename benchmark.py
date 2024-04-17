@@ -151,15 +151,16 @@ if __name__ == "__main__":
         [
             Tactics.from_str(s)
             for s in [
-                "se;s",
-                "se;s;sp",
-                "se;s;cs",
-                "se;s;cs;sp",
-                "se;s;ds",
                 "se;s;ds;sp",
+                "se;s;ds;a;sp",
+                "se;s;ds;bti;sp",
+                "se;s;ds;c2b;sp",
                 "se;s;ds;cs;sp",
-                "se;s;pv;pi;sp",
-                "pa;se;s;pv;pi;sp",
+                "se;s;ds;css;sp",
+                "se;s;ds;eti;sp",
+                "se;s;ds;hs;h;sp",
+                "se;s;ds;pi;sp",
+                "se;s;ds;pv;sp",
             ]
         ],
     )
