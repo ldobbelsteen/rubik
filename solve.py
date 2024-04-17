@@ -268,8 +268,6 @@ class SolveInstance:
                 assert isinstance(tactic, z3.Tactic)
             elif len(tactic_strs) == 1:
                 tactic = z3.Tactic(tactic_strs[0])
-            if self.config.repeat_tactics:
-                tactic = z3.Repeat(tactic)
             applied = tactic(goal)
             assert len(applied) == 1
             return applied[0]
