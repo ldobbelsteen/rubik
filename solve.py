@@ -395,8 +395,6 @@ def solve(
                 print_stamped(
                     f"k = {k}: timeout after {timeout_secs}s solve time, quitting..."
                 )
-            if stats_to_file:
-                stats.to_file()
             return stats
 
         solution, prep_time, solve_time = result
