@@ -1,6 +1,5 @@
 import argparse
 import functools
-import math
 import operator
 import os
 from datetime import datetime, timedelta
@@ -91,10 +90,13 @@ class SolveInstance:
         """Return a list of constraints that enforce the edge states to be identical."""
         return [e1 == e2 for e1, e2 in zip(self.edges[s1], self.edges[s2])]
 
-    def build_goal(self) -> z3.Goal:
+    def build_goal(self, timeout_secs: float | None) -> z3.Goal | None:
         """Build the goal for this instance by accumulating contraints. Returns
         a Z3 goal object (the tactics from the config are already applied).
+        Applies a timeout to applying the tactics if specified and returns nothing
+        if the timeout is reached.
         """
+        start = datetime.now()
         goal = z3.Goal()
 
         # Add base constraints to the goal.
@@ -266,10 +268,23 @@ class SolveInstance:
         if len(tactic_strs) > 0:
             if len(tactic_strs) > 1:
                 tactic = z3.Then(*tactic_strs)
-                assert isinstance(tactic, z3.Tactic)
             elif len(tactic_strs) == 1:
                 tactic = z3.Tactic(tactic_strs[0])
-            applied = tactic(goal)
+
+            # Set timeout of remaining time.
+            if timeout_secs is not None:
+                elapsed = datetime.now() - start
+                remaining = timeout_secs - elapsed.total_seconds()
+                tactic = z3.TryFor(tactic, int(remaining * 1000))
+
+            try:
+                applied = tactic(goal)
+            except z3.z3types.Z3Exception as e:
+                # Catch error only if it was a timeout, else reraise.
+                if e.value.decode("utf-8") == "canceled":
+                    return None
+                raise e
+
             assert len(applied) == 1
             return applied[0]
         else:
@@ -277,7 +292,7 @@ class SolveInstance:
 
     def solve(
         self,
-        timeout_secs: int | None,
+        timeout_secs: float | None,
     ) -> tuple[MoveSeq | None, timedelta, timedelta] | None:
         """Compute the optimal solution for this instance. Returns the solution,
         along with the time it took to build the goal, and the time it took to solve it.
@@ -285,8 +300,12 @@ class SolveInstance:
         nothing is returned.
         """
         prep_start = datetime.now()
-        goal = self.build_goal()
+        goal = self.build_goal(timeout_secs)
         prep_time = datetime.now() - prep_start
+
+        # Check if the prep operation timed out.
+        if goal is None:
+            return None
 
         if self.config.max_solver_threads == 0:
             # Parallelism is disabled; use a single-threaded solver.
@@ -297,8 +316,12 @@ class SolveInstance:
             z3.set_param("parallel.threads.max", self.config.max_solver_threads)
             solver = z3.Tactic("psat").solver()
 
+        # Set timeout of the original time minus the time we already spent preparing.
         if timeout_secs is not None:
-            solver.set("timeout", timeout_secs * 1000)
+            remaining_timeout_secs = timeout_secs - prep_time.total_seconds()
+            solver.set("timeout", int(remaining_timeout_secs * 1000))
+        else:
+            remaining_timeout_secs = None
 
         solver.add(goal)
 
@@ -307,8 +330,10 @@ class SolveInstance:
         solve_time = datetime.now() - solve_start
 
         # Check if the solve operation timed out.
-        if timeout_secs is not None and solve_time.total_seconds() >= timeout_secs:
-            assert result == z3.unknown
+        if (
+            remaining_timeout_secs is not None
+            and remaining_timeout_secs <= solve_time.total_seconds()
+        ):
             return None
 
         if result == z3.sat:
@@ -331,7 +356,7 @@ class SolveInstance:
 
     def to_dimacs(self, path: str):
         """Export the instance to a DIMACS file at the given path."""
-        goal = self.build_goal()
+        goal = self.build_goal(None)
         goal_cnf = z3.Tactic("tseitin-cnf").apply(goal)[0]
 
         def child_map(child) -> int:
@@ -371,13 +396,14 @@ class SolveInstance:
 def solve(
     puzzle: Puzzle,
     config: SolveConfig,
-    timeout_secs: int | None,
+    timeout_secs: float | None,
     print_info: bool,
     stats_to_file: bool,
-) -> SolveStats:
+) -> SolveStats | None:
     """Compute the optimal solution for a puzzle within an upperbound for the number
     of moves. Returns the statistics of the solve operation. Allows for setting
-    a timeout for the allowed time spent solving in total.
+    a timeout for the allowed time spent. If the timeout is reached, the function
+    returns the stats up to that point.
     """
     stats = SolveStats(puzzle, config)
     k_upperbound = gods_number(puzzle.n)
@@ -385,17 +411,15 @@ def solve(
     for k in range(k_upperbound + 1):
         instance = SolveInstance(puzzle, k, config)
         k_timeout_secs = (
-            math.ceil(timeout_secs - stats.total_solve_time().total_seconds())
+            timeout_secs - stats.total_time().total_seconds()
             if timeout_secs is not None
             else None
         )
         result = instance.solve(k_timeout_secs)
         if result is None:
             if print_info:
-                print_stamped(
-                    f"k = {k}: timeout after {timeout_secs}s solve time, quitting..."
-                )
-            return stats
+                print_stamped(f"k = {k}: timeout reached, quitting...")
+            return None
 
         solution, prep_time, solve_time = result
         stats.register_solution(k, solution, prep_time, solve_time, stats_to_file)
@@ -433,7 +457,7 @@ def solve(
 def solve_one(
     name: str,
     config: SolveConfig,
-    timeout_secs: int | None,
+    timeout_secs: float | None,
     print_info: bool,
     stats_to_file: bool,
 ):
@@ -444,7 +468,7 @@ def solve_one(
 
 def solve_all(
     config: SolveConfig,
-    timeout_secs: int | None,
+    timeout_secs: float | None,
     print_info: bool,
     stats_to_file: bool,
 ):
@@ -459,7 +483,7 @@ def solve_all(
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("name", type=str, nargs="?")
-    parser.add_argument("--timeout", type=int)
+    parser.add_argument("--timeout", type=float)
     parser.add_argument("--disable-info-print", action=argparse.BooleanOptionalAction)
     parser.add_argument("--disable-stats-file", action=argparse.BooleanOptionalAction)
     args = parser.parse_args()

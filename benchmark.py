@@ -1,4 +1,3 @@
-import math
 import os
 
 from config import SolveConfig, Tactics
@@ -77,7 +76,7 @@ def benchmark_param(parameter_name: str, parameter_values: list):
 
         for puzzle in load_benchmark_puzzles():
             print_stamped(f"puzzle {puzzle.name}...")
-            time_range: tuple[float, float] | None = None
+            time_range_secs: tuple[float, float] | None = None
 
             for parameter_value in parameter_values:
                 print_stamped(f"value {parameter_value}...")
@@ -89,13 +88,11 @@ def benchmark_param(parameter_name: str, parameter_values: list):
                 # 1x the slowest run, or a minimum timeout.
                 timeout_secs = (
                     None
-                    if time_range is None
-                    else math.ceil(
-                        max(
-                            time_range[1],
-                            time_range[0] * TIMEOUT_FACTOR,
-                            MIN_TIMEOUT_SECS,
-                        )
+                    if time_range_secs is None
+                    else max(
+                        time_range_secs[1],
+                        time_range_secs[0] * TIMEOUT_FACTOR,
+                        MIN_TIMEOUT_SECS,
                     )
                 )
 
@@ -130,14 +127,15 @@ def benchmark_param(parameter_name: str, parameter_values: list):
                     )
 
                 # Update the time range.
-                duration = stats.total_solve_time().total_seconds()
-                if time_range is None:
-                    time_range = (duration, duration)
-                else:
-                    time_range = (
-                        min(time_range[0], duration),
-                        max(time_range[1], duration),
-                    )
+                if stats is not None:
+                    duration_secs = stats.total_time().total_seconds()
+                    if time_range_secs is None:
+                        time_range_secs = (duration_secs, duration_secs)
+                    else:
+                        time_range_secs = (
+                            min(time_range_secs[0], duration_secs),
+                            max(time_range_secs[1], duration_secs),
+                        )
 
 
 if __name__ == "__main__":

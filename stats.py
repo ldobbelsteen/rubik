@@ -66,6 +66,10 @@ class SolveStats:
                 [v for kp, v in self.solve_times.items() if kp <= k], timedelta()
             )
 
+    def total_time(self):
+        """Return the total time."""
+        return self.total_prep_time() + self.total_solve_time()
+
     def to_dict(self, is_intermediate=False):
         """Return the statistics as a dictionary."""
         result: dict[str, str | int | dict[int, str] | tuple[str, ...]] = {}
@@ -78,6 +82,7 @@ class SolveStats:
             )
             result["total_prep_time"] = str(self.total_prep_time())
             result["total_solve_time"] = str(self.total_solve_time())
+            result["total_time"] = str(self.total_time())
 
         result["prep_times"] = {k: str(t) for k, t in sorted(self.prep_times.items())}
         result["solve_times"] = {k: str(t) for k, t in sorted(self.solve_times.items())}
