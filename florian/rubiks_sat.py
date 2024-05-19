@@ -1540,19 +1540,23 @@ if nb_moves < 0:
 if nb_moves > 11:
     nb_moves = 11
 
+file_name = 'rubiks'
+if len(sys.argv) >= 4:
+    file_name = sys.argv[3]
+
 rubiks = read_file(str(sys.argv[1]))
 print_rubiks(sys.stdout, rubiks)
 
 # Changed: Where to save the dimacs file
-myfile = open("florian/dimacs/rubiks.dimacs", 'w')
+myfile = open(f"florian/dimacs/{file_name}.dimacs", 'w')
 myfile.write("p cnf "+str(73)+str(nb_moves+10)+str(3)+" "+str(nb_constraints(nb_moves))+"\n")
 constraints(myfile, rubiks, nb_moves)
 myfile.close()
 
-if len(sys.argv) == 3:
-    phase = ""
-else:
-    phase = sys.argv[3]
+# if len(sys.argv) == 3:
+#     phase = ""
+# else:
+#     phase = sys.argv[3]
 
 
 # Commented out the solving code, for experiments we only need the code to create the cnf files
