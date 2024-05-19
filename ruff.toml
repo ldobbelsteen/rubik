@@ -1,3 +1,5 @@
+exclude = ['florian/*.py']
+line-length = 120
 [lint]
 select = ["F", "E", "W", "C90", "I", "N", "D", "UP", "ARG", "PL", "PERF", "RUF"]
 ignore = [
@@ -10,4 +12,7 @@ ignore = [
     "PLR2004",
     "PLR0912",
     "PLR0915",
+    "RUF100",
 ]
+[format]
+docstring-code-line-length = 120
