@@ -70,7 +70,7 @@ class SolveInstance:
         ]
 
         # Initialize the move for each stpe.
-        self.moves = [MoveZ3(s, self.base_constraints) for s in range(k)]
+        self.moves = [MoveZ3(s, self.base_constraints, self.n) for s in range(k)]
 
     def corner_states_equal(self, s: int, states: tuple[CornerState, ...]):
         """Return a list of constraints that enforce the corner states to be equal."""
@@ -151,15 +151,7 @@ class SolveInstance:
                 # Move filter #1 and #2
                 for s in range(self.k - 1):
                     goal.add(
-                        z3.Implies(
-                            self.moves[s].ax == self.moves[s + 1].ax,
-                            z3.Not(
-                                z3.Or(
-                                    z3.Not(self.moves[s + 1].hi),
-                                    self.moves[s].hi,
-                                )
-                            ),
-                        )
+                        z3.Not(self.moves[s].ax == self.moves[s + 1].ax),
                     )
 
         # Add symmetric move sequence filters for n = 3.
