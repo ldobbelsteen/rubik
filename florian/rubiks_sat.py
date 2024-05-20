@@ -1543,9 +1543,10 @@ if nb_moves > 11:
 file_name = 'rubiks'
 if len(sys.argv) >= 4:
     file_name = sys.argv[3]
+file_name = file_name + "_" + str(nb_moves)
 
 rubiks = read_file(str(sys.argv[1]))
-print_rubiks(sys.stdout, rubiks)
+# print_rubiks(sys.stdout, rubiks)
 
 # Changed: Where to save the dimacs file
 myfile = open(f"florian/dimacs/{file_name}.dimacs", 'w')
