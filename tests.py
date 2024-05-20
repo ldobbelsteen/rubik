@@ -7,7 +7,7 @@ from puzzle import (
     DEFAULT_CENTER_COLORS,
     Puzzle,
     all_puzzles_names,
-    cubie_colors,
+    # cubie_colors,
     facelet_cubie,
 )
 from state import CornerState, EdgeState, Move, MoveSeq, cubie_type
