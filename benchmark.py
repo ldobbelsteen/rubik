@@ -23,12 +23,14 @@ BENCHMARK_PUZZLES = [
 ]
 
 
-def load_benchmark_puzzles() -> list[Puzzle]:
+def load_benchmark_puzzles(only_n2: bool = False) -> list[Puzzle]:
     """Load all benchmark puzzles from the list of puzzles.."""
+    if only_n2:
+        return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES if 'n2' in name]
     return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES]
 
 
-def benchmark_param(parameter_name: str, parameter_values: list | None = None):
+def benchmark_param(parameter_name: str, parameter_values: list | None = None, only_n2: bool = False):
     """Benchmark the solve function for a list of parameter values. This can be
     used to determine which parameters are best.
     """
@@ -106,7 +108,7 @@ def benchmark_param(parameter_name: str, parameter_values: list | None = None):
                     "",
                 )
         else:
-            for puzzle in load_benchmark_puzzles():
+            for puzzle in load_benchmark_puzzles(only_n2):
                 print_stamped(f"puzzle {puzzle.name}...")
                 time_range_secs: tuple[float, float] | None = None
 
@@ -171,7 +173,6 @@ def benchmark_param(parameter_name: str, parameter_values: list | None = None):
 
 
 if __name__ == "__main__":
-    benchmark_param("florian")
     benchmark_param("move_size", [1, 2, 3, 4])
     benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
     benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
@@ -199,3 +200,5 @@ if __name__ == "__main__":
     benchmark_param("ban_repeated_states", [False, True])
     benchmark_param("enable_corner_min_patterns", [False, True])
     benchmark_param("enable_edge_min_patterns", [False, True])
+    benchmark_param("enable_minimal_moves_n2", [False, True], True)
+    benchmark_param("florian")
