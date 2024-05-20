@@ -80,6 +80,7 @@ class SolveConfig:
         ban_repeated_states=False,
         enable_corner_min_patterns=False,
         enable_edge_min_patterns=False,
+        enable_minimal_moves_n2=False,
     ):
         """Create a new solve configuration."""
         self.tactics = tactics
@@ -93,3 +94,4 @@ class SolveConfig:
         self.ban_repeated_states = ban_repeated_states
         self.enable_corner_min_patterns = enable_corner_min_patterns
         self.enable_edge_min_patterns = enable_edge_min_patterns
+        self.enable_minimal_moves_n2 = enable_minimal_moves_n2

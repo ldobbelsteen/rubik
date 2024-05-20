@@ -699,10 +699,10 @@ class TernaryZ3:
 class MoveZ3:
     """A class for representing moves in Z3."""
 
-    def __init__(self, s: int, base_constraints: list[z3.BoolRef], n: int):
+    def __init__(self, s: int, base_constraints: list[z3.BoolRef], n: int, enable_minimal_moves_n2: bool):
         """Create a new move with the given solver."""
         self.ax = TernaryZ3.new(f"s({s}) ax", base_constraints)
-        if n != 2:
+        if not enable_minimal_moves_n2 or n != 2:
             self.hi = z3.Bool(f"s({s}) hi")
         self.dr = TernaryZ3.new(f"s({s}) dr", base_constraints)
 
@@ -718,6 +718,7 @@ class CornerStateZ3:
         z_hi: z3.BoolRef,
         r: TernaryZ3,
         cw: z3.BoolRef,
+        enable_minimal_moves_n2: bool,
     ):
         """Create a new corner state with the given variables."""
         self.n = n
@@ -726,6 +727,7 @@ class CornerStateZ3:
         self.z_hi = z_hi
         self.r = r
         self.cw = cw
+        self.enable_minimal_moves_n2 = enable_minimal_moves_n2
 
     @staticmethod
     def new(
@@ -735,6 +737,7 @@ class CornerStateZ3:
         y_hi: bool,
         z_hi: bool,
         base_constraints: list[z3.BoolRef],
+        enable_minimal_moves_n2: bool,
     ):
         """Create a new corner state with the given coordinates and orientation."""
         return CornerStateZ3(
@@ -744,6 +747,7 @@ class CornerStateZ3:
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) z_hi"),
             TernaryZ3.new(f"corner({x_hi},{y_hi},{z_hi}) s({s}) r", base_constraints),
             z3.Bool(f"corner({x_hi},{y_hi},{z_hi}) s({s}) c"),
+            enable_minimal_moves_n2,
         )
 
     def execute_move(self, move: MoveZ3) -> "CornerStateZ3":
@@ -755,6 +759,7 @@ class CornerStateZ3:
             self.next_z_hi(move),
             self.next_r(move),
             self.next_cw(move),
+            self.enable_minimal_moves_n2
         )
 
     def __eq__(self, other: "CornerState | CornerStateZ3") -> z3.BoolRef:
@@ -789,7 +794,7 @@ class CornerStateZ3:
 
     def next_x_hi(self, m: MoveZ3) -> z3.BoolRef:
         """Return the next value of x_hi, given a move."""
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
                 m.ax == 1,
                 z3.If(
@@ -830,7 +835,7 @@ class CornerStateZ3:
 
     def next_y_hi(self, m: MoveZ3) -> z3.BoolRef:
         """Return the next value of y_hi, given a move."""
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
                 m.ax == 0,
                 z3.If(
@@ -871,7 +876,7 @@ class CornerStateZ3:
 
     def next_z_hi(self, m: MoveZ3) -> z3.BoolRef:
         """Return the next value of z_hi, given a move."""
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
                 m.ax == 0,
                 z3.If(
@@ -916,7 +921,7 @@ class CornerStateZ3:
             z3.Not(self.r.b1), z3.Not(self.r.b2)
         )  # condition for (r - 1) % 3
         b1_add_one = self.r.b2  # condition for (r + 1) % 3
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             next_r_b1 = z3.If(
                 m.dr != 2,
                 z3.If(
@@ -949,7 +954,7 @@ class CornerStateZ3:
         b2_add_one = z3.And(
             z3.Not(self.r.b1), z3.Not(self.r.b2)
         )  # condition for (r + 1) % 3
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             next_r_b2 = z3.If(
                 m.dr != 2,
                 z3.If(
@@ -984,7 +989,7 @@ class CornerStateZ3:
 
     def next_cw(self, m: MoveZ3) -> z3.BoolRef:
         """Return the next value of cw, given a move."""
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
                 z3.And(
                     m.dr != 2,
@@ -1024,6 +1029,7 @@ class EdgeStateZ3:
         x_hi: z3.BoolRef,
         y_hi: z3.BoolRef,
         r: z3.BoolRef,
+        enable_minimal_moves_n2: bool,
     ):
         """Create a new edge state with the given variables."""
         self.n = n
@@ -1031,6 +1037,7 @@ class EdgeStateZ3:
         self.x_hi = x_hi
         self.y_hi = y_hi
         self.r = r
+        self.enable_minimal_moves_n2 = enable_minimal_moves_n2
 
     @staticmethod
     def new(
@@ -1040,6 +1047,7 @@ class EdgeStateZ3:
         x_hi: bool,
         y_hi: bool,
         base_constraints: list[z3.BoolRef],
+        enable_minimal_moves_n2: bool,
     ):
         """Create a new edge state with the given coordinates and orientation."""
         return EdgeStateZ3(
@@ -1048,6 +1056,7 @@ class EdgeStateZ3:
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) x_hi"),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) y_hi"),
             z3.Bool(f"edge({a},{x_hi},{y_hi}) s({s}) r"),
+            enable_minimal_moves_n2,
         )
 
     def execute_move(self, move: MoveZ3) -> "EdgeStateZ3":
@@ -1059,6 +1068,7 @@ class EdgeStateZ3:
             self.next_x_hi(move),
             self.next_y_hi(move),
             self.next_r(next_a),
+            self.enable_minimal_moves_n2,
         )
 
     def __eq__(self, other: "EdgeState | EdgeStateZ3") -> z3.BoolRef:
@@ -1091,7 +1101,7 @@ class EdgeStateZ3:
 
     def next_a(self, m: MoveZ3) -> TernaryZ3:
         """Return the next value of a, given a move."""
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             next_a_b1 = z3.If(
                 m.dr != 2,
                 z3.If(
@@ -1199,7 +1209,7 @@ class EdgeStateZ3:
 
     def next_x_hi(self, m: MoveZ3) -> z3.BoolRef:
         """Return the next value of x_hi, given a move."""
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
                 self.a == 0,
                 z3.If(
@@ -1256,7 +1266,7 @@ class EdgeStateZ3:
 
     def next_y_hi(self, m: MoveZ3) -> z3.BoolRef:
         """Return the next value of y_hi, given a move."""
-        if self.n == 2:
+        if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
                 z3.And(self.a == 0, m.ax == 2),
                 z3.If(m.dr == 2, z3.Not(self.y_hi), self.x_hi),
