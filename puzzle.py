@@ -18,7 +18,16 @@ FACE_ORDERING: list[int] = [4, 5, 0, 2, 3, 1]
 # The default center cubie colors of a cube. The indices correspond to the face indices
 # in the face_name function. The values correspond to the color indices in
 # the color_name function.
-DEFAULT_CENTER_COLORS: tuple[int, ...] = (0, 1, 2, 3, 4, 5)
+DEFAULT_CENTER_COLORS: tuple[int, ...] = (2, 3, 0, 1, 4, 5)
+
+OPPOSITE_COLOR_MAP = {
+    0: 2,
+    1: 3,
+    2: 0,
+    3: 1,
+    4: 5,
+    5: 4,
+}
 
 
 def face_name(f: int) -> str:
@@ -354,7 +363,21 @@ class Puzzle:
             # since the puzzle can be in a solved state with different center colors.
             # However, since this software mainly focuses on 3x3x3 cubes, this is not
             # a big issue.
-            center_colors = DEFAULT_CENTER_COLORS
+            front_face_color = facelet_colors[0][0][0]
+            back_face_color = OPPOSITE_COLOR_MAP[front_face_color]
+            left_face_color = facelet_colors[3][0][1]
+            right_face_color = OPPOSITE_COLOR_MAP[left_face_color]
+            down_face_color = facelet_colors[5][1][0]
+            up_face_color = OPPOSITE_COLOR_MAP[down_face_color]
+
+            center_colors = (
+                front_face_color,
+                right_face_color,
+                back_face_color,
+                left_face_color,
+                up_face_color,
+                down_face_color
+            )
 
         corner_fin = CornerState.all_finished(n)
         edge_fin = EdgeState.all_finished(n)
