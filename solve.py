@@ -47,6 +47,7 @@ class SolveInstance:
                     corner.y_hi,
                     corner.z_hi,
                     self.base_constraints,
+                    self.config.enable_minimal_moves_n2,
                 )
                 for corner in CornerState.all_finished(self.n)
             ]
@@ -63,6 +64,7 @@ class SolveInstance:
                     edge.x_hi,
                     edge.y_hi,
                     self.base_constraints,
+                    self.config.enable_minimal_moves_n2,
                 )
                 for edge in EdgeState.all_finished(self.n)
             ]
@@ -70,7 +72,7 @@ class SolveInstance:
         ]
 
         # Initialize the move for each stpe.
-        self.moves = [MoveZ3(s, self.base_constraints, self.n) for s in range(k)]
+        self.moves = [MoveZ3(s, self.base_constraints, self.n, self.config.enable_minimal_moves_n2) for s in range(k)]
 
     def corner_states_equal(self, s: int, states: tuple[CornerState, ...]):
         """Return a list of constraints that enforce the corner states to be equal."""
@@ -150,9 +152,22 @@ class SolveInstance:
             if self.config.enable_n2_move_filters_1_and_2:
                 # Move filter #1 and #2
                 for s in range(self.k - 1):
-                    goal.add(
-                        z3.Not(self.moves[s].ax == self.moves[s + 1].ax),
-                    )
+                    if self.config.enable_minimal_moves_n2:
+                        goal.add(
+                            z3.Not(self.moves[s].ax == self.moves[s + 1].ax),
+                        )
+                    else:
+                        goal.add(
+                            z3.Implies(
+                                self.moves[s].ax == self.moves[s + 1].ax,
+                                z3.Not(
+                                    z3.Or(
+                                        z3.Not(self.moves[s + 1].hi),
+                                        self.moves[s].hi,
+                                    )
+                                ),
+                            )
+                        )
 
         # Add symmetric move sequence filters for n = 3.
         if self.n == 3:
