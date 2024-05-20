@@ -28,7 +28,7 @@ def load_benchmark_puzzles() -> list[Puzzle]:
     return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES]
 
 
-def benchmark_param(parameter_name: str, parameter_values: list = None):
+def benchmark_param(parameter_name: str, parameter_values: list | None = None):
     """Benchmark the solve function for a list of parameter values. This can be
     used to determine which parameters are best.
     """
@@ -79,33 +79,32 @@ def benchmark_param(parameter_name: str, parameter_values: list = None):
             )
 
         if parameter_name.lower() == "florian":
-            for _ in range(4):
-                for puzzle in [puzzle for puzzle in BENCHMARK_PUZZLES if 'n2' in puzzle]:
-                    print_stamped(f"puzzle {puzzle}...")
-                    prep_time = 0
-                    solve_time = 0
-                    number_of_moves = 1
+            for puzzle in [puzzle for puzzle in BENCHMARK_PUZZLES if 'n2' in puzzle]:
+                print_stamped(f"puzzle {puzzle}...")
+                prep_time = 0
+                solve_time = 0
+                number_of_moves = 1
 
-                    while True:
-                        florian_instance = florian.Florian(puzzle, number_of_moves)
-                        time_prep, time_solve, solve_result = florian_instance.solve()
+                while True:
+                    florian_instance = florian.Florian(puzzle, number_of_moves)
+                    time_prep, time_solve, solve_result = florian_instance.solve()
 
-                        prep_time += time_prep
-                        solve_time += time_solve
+                    prep_time += time_prep
+                    solve_time += time_solve
 
-                        if solve_result.__str__() == "sat":
-                            break
+                    if solve_result.__str__() == "sat":
+                        break
 
-                        number_of_moves += 1
+                    number_of_moves += 1
 
-                    write_line(
-                        puzzle,
-                        parameter_name,
-                        prep_time,
-                        solve_time,
-                        number_of_moves,
-                        "",
-                    )
+                write_line(
+                    puzzle,
+                    parameter_name,
+                    prep_time,
+                    solve_time,
+                    number_of_moves,
+                    "",
+                )
         else:
             for puzzle in load_benchmark_puzzles():
                 print_stamped(f"puzzle {puzzle.name}...")
@@ -173,30 +172,30 @@ def benchmark_param(parameter_name: str, parameter_values: list = None):
 
 if __name__ == "__main__":
     benchmark_param("florian")
-    # benchmark_param("move_size", [1, 2, 3, 4])
-    # benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
-    # benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
-    # benchmark_param("enable_n3_move_filters_1_and_2", [True, False])
-    # benchmark_param("enable_n3_move_filters_3_and_4", [True, False])
-    # benchmark_param(
-    #     "tactics",
-    #     [
-    #         Tactics.from_str(s)
-    #         for s in [
-    #             "se;s;ds;sp",
-    #             "se;s;ds;a;sp",
-    #             "se;s;ds;bti;sp",
-    #             "se;s;ds;c2b;sp",
-    #             "se;s;ds;cs;sp",
-    #             # "se;s;ds;css;sp",
-    #             "se;s;ds;eti;sp",
-    #             "se;s;ds;pi;sp",
-    #             "se;s;ds;pv;sp",
-    #         ]
-    #     ],
-    # )
-    # # benchmark_param("apply_theorem_11a", [False, True])
-    # # benchmark_param("apply_theorem_11b", [False, True])
-    # benchmark_param("ban_repeated_states", [False, True])
-    # benchmark_param("enable_corner_min_patterns", [False, True])
-    # benchmark_param("enable_edge_min_patterns", [False, True])
+    benchmark_param("move_size", [1, 2, 3, 4])
+    benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
+    benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
+    benchmark_param("enable_n3_move_filters_1_and_2", [True, False])
+    benchmark_param("enable_n3_move_filters_3_and_4", [True, False])
+    benchmark_param(
+        "tactics",
+        [
+            Tactics.from_str(s)
+            for s in [
+                "se;s;ds;sp",
+                "se;s;ds;a;sp",
+                "se;s;ds;bti;sp",
+                "se;s;ds;c2b;sp",
+                "se;s;ds;cs;sp",
+                # "se;s;ds;css;sp",
+                "se;s;ds;eti;sp",
+                "se;s;ds;pi;sp",
+                "se;s;ds;pv;sp",
+            ]
+        ],
+    )
+    # benchmark_param("apply_theorem_11a", [False, True])
+    # benchmark_param("apply_theorem_11b", [False, True])
+    benchmark_param("ban_repeated_states", [False, True])
+    benchmark_param("enable_corner_min_patterns", [False, True])
+    benchmark_param("enable_edge_min_patterns", [False, True])

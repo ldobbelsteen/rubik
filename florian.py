@@ -9,8 +9,19 @@ _FLORIAN_FOLDER = 'florian/'
 
 
 class Florian:
+    """A class used to represent Florian's solver.
+
+    This class can transform the puzzles from our format to Florian's format and solve them using Florian's
+     rubiks_sat.py.
+    """
+
+    # The name of the puzzle file to be used.
     __puzzle_file: str
+
+    # The name of the puzzle file as text file to be used.
     __puzzle_file_txt: str
+
+    # The number of moves to be made in the solution.
     __number_of_moves: int
 
     def __init__(self, puzzle_file: str, number_of_moves: int):
@@ -22,7 +33,13 @@ class Florian:
         self.__puzzle_file_txt = self.__puzzle_file + '.txt'
         self.__number_of_moves = number_of_moves
 
-    def solve(self):
+    def solve(self) -> tuple[float, float, str]:
+        """Solves the puzzle using Florian's rubiks_sat.py.
+
+        Also, this function measures the preparation time and the solving time.
+
+        @return: A tuple containing the preparation time, the solving time and the result of the solution.
+        """
         prep_time = 0
         solve_time = 0
 
