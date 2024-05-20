@@ -796,14 +796,14 @@ class CornerStateZ3:
         """Return the next value of x_hi, given a move."""
         if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
-                m.ax == 1,
+                z3.And(m.ax == 1, self.y_hi),
                 z3.If(
                     m.dr == 0,
                     z3.Not(self.z_hi),
                     z3.If(m.dr == 1, self.z_hi, z3.Not(self.x_hi)),
                 ),
                 z3.If(
-                    m.ax == 2,
+                    z3.And(m.ax == 2, self.z_hi),
                     z3.If(
                         m.dr == 0,
                         self.y_hi,
@@ -837,14 +837,14 @@ class CornerStateZ3:
         """Return the next value of y_hi, given a move."""
         if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
-                m.ax == 0,
+                z3.And(m.ax == 0, self.x_hi),
                 z3.If(
                     m.dr == 0,
                     self.z_hi,
                     z3.If(m.dr == 1, z3.Not(self.z_hi), z3.Not(self.y_hi)),
                 ),
                 z3.If(
-                    m.ax == 2,
+                    z3.And(m.ax == 2, self.z_hi),
                     z3.If(
                         m.dr == 0,
                         z3.Not(self.x_hi),
@@ -878,14 +878,14 @@ class CornerStateZ3:
         """Return the next value of z_hi, given a move."""
         if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
-                m.ax == 0,
+                z3.And(m.ax == 0, self.x_hi),
                 z3.If(
                     m.dr == 0,
                     z3.Not(self.y_hi),
                     z3.If(m.dr == 1, self.y_hi, z3.Not(self.z_hi)),
                 ),
                 z3.If(
-                    m.ax == 1,
+                    z3.And(m.ax == 1, self.y_hi),
                     z3.If(
                         m.dr == 0,
                         self.x_hi,
@@ -925,10 +925,10 @@ class CornerStateZ3:
             next_r_b1 = z3.If(
                 m.dr != 2,
                 z3.If(
-                    m.ax == 0,
+                    z3.And(m.ax == 0, self.x_hi),
                     z3.If(self.cw, b1_minus_one, b1_add_one),
                     z3.If(
-                        m.ax == 2,
+                        z3.And(m.ax == 2, self.z_hi),
                         z3.If(self.cw, b1_add_one, b1_minus_one),
                         self.r.b1,
                     ),
@@ -958,10 +958,10 @@ class CornerStateZ3:
             next_r_b2 = z3.If(
                 m.dr != 2,
                 z3.If(
-                    m.ax == 0,
+                    z3.And(m.ax == 0, self.x_hi),
                     z3.If(self.cw, b2_minus_one, b2_add_one),
                     z3.If(
-                        m.ax == 2,
+                        z3.And(m.ax == 2, self.z_hi),
                         z3.If(self.cw, b2_add_one, b2_minus_one),
                         self.r.b2,
                     ),
@@ -994,9 +994,9 @@ class CornerStateZ3:
                 z3.And(
                     m.dr != 2,
                     z3.Or(
-                        m.ax == 0,
-                        m.ax == 1,
-                        m.ax == 2,
+                        z3.And(m.ax == 0, self.x_hi),
+                        z3.And(m.ax == 1, self.y_hi),
+                        z3.And(m.ax == 2, self.z_hi),
                     ),
                 ),
                 z3.Not(self.cw),
@@ -1107,21 +1107,21 @@ class EdgeStateZ3:
                 z3.If(
                     self.a == 0,
                     z3.If(
-                        m.ax == 1,
+                        z3.And(m.ax == 1, self.y_hi),
                         True,
-                        z3.If(m.ax == 2, False, self.a.b1),
+                        z3.If(z3.And(m.ax == 2, self.x_hi), False, self.a.b1),
                     ),
                     z3.If(
                         self.a == 1,
                         z3.If(
-                            m.ax == 0,
+                            z3.And(m.ax == 0, self.x_hi),
                             True,
-                            z3.If(m.ax == 2, False, self.a.b1),
+                            z3.If(z3.And(m.ax == 2, self.y_hi), False, self.a.b1),
                         ),
                         z3.If(
-                            m.ax == 0,
+                            z3.And(m.ax == 0, self.x_hi),
                             False,
-                            z3.If(m.ax == 1, False, self.a.b1),
+                            z3.If(z3.And(m.ax == 1, self.y_hi), False, self.a.b1),
                         ),
                     ),
                 ),
@@ -1132,21 +1132,21 @@ class EdgeStateZ3:
                 z3.If(
                     self.a == 0,
                     z3.If(
-                        m.ax == 1,
+                        z3.And(m.ax == 1, self.y_hi),
                         False,
-                        z3.If(m.ax == 2, True, self.a.b2),
+                        z3.If(z3.And(m.ax == 2, self.x_hi), True, self.a.b2),
                     ),
                     z3.If(
                         self.a == 1,
                         z3.If(
-                            m.ax == 0,
+                            z3.And(m.ax == 0, self.x_hi),
                             False,
-                            z3.If(m.ax == 2, False, self.a.b2),
+                            z3.If(z3.And(m.ax == 2, self.y_hi), False, self.a.b2),
                         ),
                         z3.If(
-                            m.ax == 0,
+                            z3.And(m.ax == 0, self.x_hi),
                             True,
-                            z3.If(m.ax == 1, False, self.a.b2),
+                            z3.If(z3.And(m.ax == 1, self.y_hi), False, self.a.b2),
                         ),
                     ),
                 ),
@@ -1213,10 +1213,10 @@ class EdgeStateZ3:
             result = z3.If(
                 self.a == 0,
                 z3.If(
-                    z3.And(m.ax == 1, m.dr != 1),
+                    z3.And(m.ax == 1, self.y_hi, m.dr != 1),
                     z3.Not(self.x_hi),
                     z3.If(
-                        m.ax == 2,
+                        z3.And(m.ax == 2, self.x_hi),
                         z3.If(
                             m.dr == 0,
                             self.y_hi,
@@ -1226,10 +1226,10 @@ class EdgeStateZ3:
                     ),
                 ),
                 z3.If(
-                    z3.And(self.a == 1, m.ax == 2),
+                    z3.And(self.a == 1, m.ax == 2, self.y_hi),
                     z3.If(m.dr == 2, z3.Not(self.x_hi), self.y_hi),
                     z3.If(
-                        z3.And(self.a == 2, m.ax == 1, m.dr != 0),
+                        z3.And(self.a == 2, m.ax == 1, self.y_hi, m.dr != 0),
                         z3.Not(self.x_hi),
                         self.x_hi,
                     ),
@@ -1268,15 +1268,15 @@ class EdgeStateZ3:
         """Return the next value of y_hi, given a move."""
         if self.enable_minimal_moves_n2 and self.n == 2:
             result = z3.If(
-                z3.And(self.a == 0, m.ax == 2),
+                z3.And(self.a == 0, m.ax == 2, self.x_hi),
                 z3.If(m.dr == 2, z3.Not(self.y_hi), self.x_hi),
                 z3.If(
                     self.a == 1,
                     z3.If(
-                        z3.And(m.ax == 0, m.dr != 0),
+                        z3.And(m.ax == 0, self.x_hi, m.dr != 0),
                         z3.Not(self.y_hi),
                         z3.If(
-                            m.ax == 2,
+                            z3.And(m.ax == 2, self.y_hi),
                             z3.If(
                                 m.dr == 0,
                                 z3.Not(self.x_hi),
@@ -1286,7 +1286,7 @@ class EdgeStateZ3:
                         ),
                     ),
                     z3.If(
-                        z3.And(self.a == 2, m.ax == 0, m.dr != 1),
+                        z3.And(self.a == 2, m.ax == 0, self.x_hi, m.dr != 1),
                         z3.Not(self.y_hi),
                         self.y_hi,
                     ),
