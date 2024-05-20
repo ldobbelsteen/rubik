@@ -78,21 +78,22 @@ def visualize_ours_vs_florians():
             ["ours_vs_florians.png", "ours_with_minimal_moves_n2_vs_florians.png",
              "ours_without_minimal_moves_n2_vs_florians.png"]
     ):
+        df_ours_used = df_ours.copy()
         # Set value in enable_minimal_moves_n2 to 'with_minimal_moves' or 'without_minimal_moves' dependent on whether
         #  enable_minimal_moves_n2 is True or False, respectively
-        df_ours['enable_minimal_moves_n2'] = df_ours['enable_minimal_moves_n2'].apply(
+        df_ours_used['enable_minimal_moves_n2'] = df_ours_used['enable_minimal_moves_n2'].apply(
             lambda x: 'with_minimal_moves' if x else 'without_minimal_moves')
 
         # Take average prep_time, solve_time for each puzzle
-        df_ours = df_ours.groupby(["puzzle_name", 'enable_minimal_moves_n2', 'k']).mean().reset_index()
+        df_ours_used = df_ours_used.groupby(["puzzle_name", 'enable_minimal_moves_n2', 'k']).mean().reset_index()
 
         # Rename move_size to parameter_name
-        df_ours = df_ours.rename(columns={'enable_minimal_moves_n2': 'parameter_name'})
+        df_ours_used = df_ours_used.rename(columns={'enable_minimal_moves_n2': 'parameter_name'})
         # Drop the message column
-        df_ours.drop(columns=["message"], inplace=True)
+        df_ours_used.drop(columns=["message"], inplace=True)
 
         # Concatenate the two dataframes
-        df = pd.concat([df_ours, df_florians])
+        df = pd.concat([df_ours_used, df_florians])
         # Add a column that combines prep_time and solve_time in combined_time
         df['combined_time'] = df['prep_time'] + df['solve_time']
 
