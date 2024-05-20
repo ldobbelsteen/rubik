@@ -345,16 +345,28 @@ class SolveInstance:
 
         if result == z3.sat:
             model = solver.model()
-            solution = MoveSeq(
-                tuple(
-                    Move(
-                        model.eval(self.moves[s].ax.arith_value()).as_long(),  # type: ignore
-                        z3.is_true(model.get_interp(self.moves[s].hi)),
-                        model.eval(self.moves[s].dr.arith_value()).as_long(),  # type: ignore
+            if self.config.enable_minimal_moves_n2 and self.n == 2:
+                solution = MoveSeq(
+                    tuple(
+                        Move(
+                            model.eval(self.moves[s].ax.arith_value()).as_long(),  # type: ignore
+                            True,
+                            model.eval(self.moves[s].dr.arith_value()).as_long(),  # type: ignore
+                        )
+                        for s in range(self.k)
                     )
-                    for s in range(self.k)
                 )
-            )
+            else:
+                solution = MoveSeq(
+                    tuple(
+                        Move(
+                            model.eval(self.moves[s].ax.arith_value()).as_long(),  # type: ignore
+                            z3.is_true(model.get_interp(self.moves[s].hi)),
+                            model.eval(self.moves[s].dr.arith_value()).as_long(),  # type: ignore
+                        )
+                        for s in range(self.k)
+                    )
+                )
             return solution, prep_time, solve_time
         elif result == z3.unsat:
             return None, prep_time, solve_time
