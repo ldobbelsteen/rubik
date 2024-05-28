@@ -1,3 +1,4 @@
+import argparse
 import os
 
 import florian
@@ -172,33 +173,195 @@ def benchmark_param(parameter_name: str, parameter_values: list | None = None, o
                             )
 
 
-if __name__ == "__main__":
-    benchmark_param("move_size", [1, 2, 3, 4])
-    benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
-    benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
-    benchmark_param("enable_n3_move_filters_1_and_2", [True, False])
-    benchmark_param("enable_n3_move_filters_3_and_4", [True, False])
-    benchmark_param(
-        "tactics",
+def run(
+    number_of_times: int,
+    all_benchmarks: bool = False,
+    move_size: bool = False,
+    max_solver_threads: bool = False,
+    enable_n2_move_filters_1_and_2: bool = False,
+    enable_n3_move_filters_1_and_2: bool = False,
+    enable_n3_move_filters_3_and_4: bool = False,
+    tactics: bool = False,
+    apply_theorem_11a: bool = False,
+    apply_theorem_11b: bool = False,
+    ban_repeated_states: bool = False,
+    enable_corner_min_patterns: bool = False,
+    enable_edge_min_patterns: bool = False,
+    enable_minimal_moves_n2: bool = False,
+    florian_benchmark: bool = False,
+) -> None:
+    """Run the benchmarks.
+
+    @param number_of_times: The number of times to run the benchmarks.
+    @param all_benchmarks: Whether to perform all benchmarks.
+    @param move_size: Whether to perform the move size benchmark.
+    @param max_solver_threads: Whether to perform the max solver threads benchmark.
+    @param enable_n2_move_filters_1_and_2: Whether to perform the enable n2 move filters 1 and 2 benchmark.
+    @param enable_n3_move_filters_1_and_2: Whether to perform the enable n3 move filters 1 and 2 benchmark.
+    @param enable_n3_move_filters_3_and_4: Whether to perform the enable n3 move filters 3 and 4 benchmark.
+    @param tactics: Whether to perform the tactics benchmark.
+    @param apply_theorem_11a: Whether to perform the apply theorem 11a benchmark.
+    @param apply_theorem_11b: Whether to perform the apply theorem 11b benchmark.
+    @param ban_repeated_states: Whether to perform the ban repeated states benchmark.
+    @param enable_corner_min_patterns: Whether to perform the enable corner min patterns benchmark.
+    @param enable_edge_min_patterns: Whether to perform the enable edge min patterns benchmark.
+    @param enable_minimal_moves_n2: Whether to perform the enable minimal moves n2 benchmark.
+    @param florian_benchmark: Whether to perform the florian benchmark.
+    """
+    if not any(
         [
-            Tactics.from_str(s)
-            for s in [
-                "se;s;ds;sp",
-                "se;s;ds;a;sp",
-                "se;s;ds;bti;sp",
-                "se;s;ds;c2b;sp",
-                "se;s;ds;cs;sp",
-                # "se;s;ds;css;sp",
-                "se;s;ds;eti;sp",
-                "se;s;ds;pi;sp",
-                "se;s;ds;pv;sp",
-            ]
-        ],
+            all_benchmarks,
+            move_size,
+            max_solver_threads,
+            enable_n2_move_filters_1_and_2,
+            enable_n3_move_filters_1_and_2,
+            enable_n3_move_filters_3_and_4,
+            tactics,
+            apply_theorem_11a,
+            apply_theorem_11b,
+            ban_repeated_states,
+            enable_corner_min_patterns,
+            enable_edge_min_patterns,
+            enable_minimal_moves_n2,
+            florian_benchmark,
+        ]
+    ):
+        raise ValueError("No benchmarks selected.")
+
+    for iteration in range(number_of_times):
+        print_stamped(f"Starting iteration {iteration + 1}")
+        if all_benchmarks or move_size:
+            print_stamped("Running move size benchmark...")
+            benchmark_param("move_size", [1, 2, 3, 4])
+            print_stamped("Finished move size benchmark")
+
+        if all_benchmarks or max_solver_threads:
+            print_stamped("Running max solver threads benchmark...")
+            benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
+            print_stamped("Finished max solver threads benchmark")
+
+        if all_benchmarks or enable_n2_move_filters_1_and_2:
+            print_stamped("Running enable n2 move filters 1 and 2 benchmark...")
+            benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
+            print_stamped("Finished enable n2 move filters 1 and 2 benchmark")
+
+        if all_benchmarks or enable_n3_move_filters_1_and_2:
+            print_stamped("Running enable n3 move filters 1 and 2 benchmark...")
+            benchmark_param("enable_n3_move_filters_1_and_2", [True, False])
+            print_stamped("Finished enable n3 move filters 1 and 2 benchmark")
+
+        if all_benchmarks or enable_n3_move_filters_3_and_4:
+            print_stamped("Running enable n3 move filters 3 and 4 benchmark...")
+            benchmark_param("enable_n3_move_filters_3_and_4", [True, False])
+            print_stamped("Finished enable n3 move filters 3 and 4 benchmark")
+
+        if all_benchmarks or tactics:
+            print_stamped("Running tactics benchmark...")
+            benchmark_param(
+                "tactics",
+                [
+                    Tactics.from_str(s)
+                    for s in [
+                        "se;s;ds;sp",
+                        "se;s;ds;a;sp",
+                        "se;s;ds;bti;sp",
+                        "se;s;ds;c2b;sp",
+                        "se;s;ds;cs;sp",
+                        # "se;s;ds;css;sp",
+                        "se;s;ds;eti;sp",
+                        "se;s;ds;pi;sp",
+                        "se;s;ds;pv;sp",
+                    ]
+                ],
+            )
+            print_stamped("Finished tactics benchmark")
+
+        if all_benchmarks or apply_theorem_11a:
+            print_stamped("Running apply theorem 11a benchmark...")
+            benchmark_param("apply_theorem_11a", [False, True])
+            print_stamped("Finished apply theorem 11a benchmark")
+
+        if all_benchmarks or apply_theorem_11b:
+            print_stamped("Running apply theorem 11b benchmark...")
+            benchmark_param("apply_theorem_11b", [False, True])
+            print_stamped("Finished apply theorem 11b benchmark")
+
+        if all_benchmarks or ban_repeated_states:
+            print_stamped("Running ban repeated states benchmark...")
+            benchmark_param("ban_repeated_states", [False, True])
+            print_stamped("Finished ban repeated states benchmark")
+
+        if all_benchmarks or enable_corner_min_patterns:
+            print_stamped("Running enable corner min patterns benchmark...")
+            benchmark_param("enable_corner_min_patterns", [False, True])
+            print_stamped("Finished enable corner min patterns benchmark")
+
+        if all_benchmarks or enable_edge_min_patterns:
+            print_stamped("Running enable edge min patterns benchmark...")
+            benchmark_param("enable_edge_min_patterns", [False, True])
+            print_stamped("Finished enable edge min patterns benchmark")
+
+        if all_benchmarks or enable_minimal_moves_n2:
+            print_stamped("Running enable minimal moves n2 benchmark...")
+            benchmark_param("enable_minimal_moves_n2", [False, True], True)
+            print_stamped("Finished enable minimal moves n2 benchmark")
+
+        if all_benchmarks or florian_benchmark:
+            print_stamped("Running florian benchmark...")
+            benchmark_param("florian")
+            print_stamped("Finished florian benchmark")
+
+        print_stamped(f"Finished iteration {iteration + 1}")
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--number_of_times", type=int, default=10,
+                        help="The number of times to run the benchmarks.")
+    parser.add_argument("--all", type=bool, default=False,
+                        help="Whether to perform all benchmarks.")
+    parser.add_argument("--move_size", type=bool, default=False,
+                        help="Whether to perform the move size benchmark.")
+    parser.add_argument("--max_solver_threads", type=bool, default=False,
+                        help="Whether to perform the max solver threads benchmark.")
+    parser.add_argument("--enable_n2_move_filters_1_and_2", type=bool, default=False,
+                        help="Whether to perform the enable n2 move filters 1 and 2 benchmark.")
+    parser.add_argument("--enable_n3_move_filters_1_and_2", type=bool, default=False,
+                        help="Whether to perform the enable n3 move filters 1 and 2 benchmark.")
+    parser.add_argument("--enable_n3_move_filters_3_and_4", type=bool, default=False,
+                        help="Whether to perform the enable n3 move filters 3 and 4 benchmark.")
+    parser.add_argument("--tactics", type=bool, default=False,
+                        help="Whether to perform the tactics benchmark.")
+    parser.add_argument("--apply_theorem_11a", type=bool, default=False,
+                        help="Whether to perform the apply theorem 11a benchmark.")
+    parser.add_argument("--apply_theorem_11b", type=bool, default=False,
+                        help="Whether to perform the apply theorem 11b benchmark.")
+    parser.add_argument("--ban_repeated_states", type=bool, default=False,
+                        help="Whether to perform the ban repeated states benchmark.")
+    parser.add_argument("--enable_corner_min_patterns", type=bool, default=False,
+                        help="Whether to perform the enable corner min patterns benchmark.")
+    parser.add_argument("--enable_edge_min_patterns", type=bool, default=False,
+                        help="Whether to perform the enable edge min patterns benchmark.")
+    parser.add_argument("--enable_minimal_moves_n2", type=bool, default=False,
+                        help="Whether to perform the enable minimal moves n2 benchmark.")
+    parser.add_argument("--florian", type=bool, default=False,
+                        help="Whether to perform the florian benchmark.")
+    args = parser.parse_args()
+
+    run(
+        args.number_of_times,
+        args.all,
+        args.move_size,
+        args.max_solver_threads,
+        args.enable_n2_move_filters_1_and_2,
+        args.enable_n3_move_filters_1_and_2,
+        args.enable_n3_move_filters_3_and_4,
+        args.tactics,
+        args.apply_theorem_11a,
+        args.apply_theorem_11b,
+        args.ban_repeated_states,
+        args.enable_corner_min_patterns,
+        args.enable_edge_min_patterns,
+        args.enable_minimal_moves_n2,
+        args.florian,
     )
-    # benchmark_param("apply_theorem_11a", [False, True])
-    # benchmark_param("apply_theorem_11b", [False, True])
-    benchmark_param("ban_repeated_states", [False, True])
-    benchmark_param("enable_corner_min_patterns", [False, True])
-    benchmark_param("enable_edge_min_patterns", [False, True])
-    benchmark_param("enable_minimal_moves_n2", [False, True], True)
-    benchmark_param("florian")
