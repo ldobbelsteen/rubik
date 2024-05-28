@@ -35,7 +35,9 @@ def visualize_benchmarks():
                 subplot = subplots[xi, yi]
                 name = names[coords_to_idx(xi, yi)]
                 puzzle_df = df[df["puzzle_name"] == name]
+                puzzle_df = puzzle_df.groupby([parameter_name])[['prep_time', 'solve_time']].mean().reset_index()
                 x = np.array(range(len(puzzle_df[parameter_name])))
+
                 subplot.bar(
                     x - (width / 2),
                     puzzle_df["prep_time"],
@@ -48,6 +50,7 @@ def visualize_benchmarks():
                     label="Solve time",
                     width=width,
                 )
+
                 subplot.set_xticks(x, puzzle_df[parameter_name])
                 subplot.set_xlabel(parameter_name)
                 subplot.set_ylabel("Time (s)")
@@ -144,5 +147,5 @@ def visualize_ours_vs_florians():
 
 
 if __name__ == "__main__":
-    # visualize_benchmarks()
+    visualize_benchmarks()
     visualize_ours_vs_florians()
