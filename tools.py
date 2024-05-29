@@ -1,10 +1,18 @@
 import re
+import logging
 from datetime import datetime
 
 
 def print_stamped(s: str):
     """Print with a timestamp."""
     print(f"[{datetime.now().isoformat(' ', 'seconds')}] {s}")
+
+
+def log_stamped(s: str, path: str = "benchmark.log"):
+    """Log with a timestamp."""
+    print_stamped(s)
+    logging.basicConfig(filename=path, level=logging.INFO)
+    logging.info(f"[{datetime.now().isoformat(' ', 'seconds')}] {s}")
 
 
 def natural_sorted(ls: list[str]):

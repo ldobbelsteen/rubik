@@ -5,7 +5,7 @@ import florian
 from config import SolveConfig, Tactics
 from puzzle import Puzzle
 from solve import solve
-from tools import print_stamped
+from tools import log_stamped
 
 TIMEOUT_FACTOR = 3
 MIN_TIMEOUT_SECS = 60
@@ -38,7 +38,7 @@ def benchmark_param(parameter_name: str, parameter_values: list | None = None, o
     if parameter_values is None:
         parameter_values = []
 
-    print_stamped(f"benchmarking '{parameter_name}' parameter...")
+    log_stamped(f"benchmarking '{parameter_name}' parameter...")
     path = os.path.join(BENCHMARK_RESULTS_DIR, f"{parameter_name}.csv")
     os.makedirs(BENCHMARK_RESULTS_DIR, exist_ok=True)
 
@@ -83,7 +83,7 @@ def benchmark_param(parameter_name: str, parameter_values: list | None = None, o
 
         if parameter_name.lower() == "florian":
             for puzzle in [puzzle for puzzle in BENCHMARK_PUZZLES if 'n2' in puzzle]:
-                print_stamped(f"puzzle {puzzle}...")
+                log_stamped(f"puzzle {puzzle}...")
                 prep_time = 0
                 solve_time = 0
                 number_of_moves = 1
@@ -110,11 +110,11 @@ def benchmark_param(parameter_name: str, parameter_values: list | None = None, o
                 )
         else:
             for puzzle in load_benchmark_puzzles(only_n2):
-                print_stamped(f"puzzle {puzzle.name}...")
+                log_stamped(f"puzzle {puzzle.name}...")
                 time_range_secs: tuple[float, float] | None = None
 
                 for parameter_value in parameter_values:
-                    print_stamped(f"value {parameter_value}...")
+                    log_stamped(f"value {parameter_value}...")
 
                     # Set the parameter value in the config.
                     config = SolveConfig(**{parameter_name: parameter_value})
@@ -229,34 +229,34 @@ def run(
         raise ValueError("No benchmarks selected.")
 
     for iteration in range(number_of_times):
-        print_stamped(f"Starting iteration {iteration + 1}")
+        log_stamped(f"Starting iteration {iteration + 1}")
         if all_benchmarks or move_size:
-            print_stamped("Running move size benchmark...")
+            log_stamped("Running move size benchmark...")
             benchmark_param("move_size", [1, 2, 3, 4])
-            print_stamped("Finished move size benchmark")
+            log_stamped("Finished move size benchmark")
 
         if all_benchmarks or max_solver_threads:
-            print_stamped("Running max solver threads benchmark...")
+            log_stamped("Running max solver threads benchmark...")
             benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
-            print_stamped("Finished max solver threads benchmark")
+            log_stamped("Finished max solver threads benchmark")
 
         if all_benchmarks or enable_n2_move_filters_1_and_2:
-            print_stamped("Running enable n2 move filters 1 and 2 benchmark...")
+            log_stamped("Running enable n2 move filters 1 and 2 benchmark...")
             benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
-            print_stamped("Finished enable n2 move filters 1 and 2 benchmark")
+            log_stamped("Finished enable n2 move filters 1 and 2 benchmark")
 
         if all_benchmarks or enable_n3_move_filters_1_and_2:
-            print_stamped("Running enable n3 move filters 1 and 2 benchmark...")
+            log_stamped("Running enable n3 move filters 1 and 2 benchmark...")
             benchmark_param("enable_n3_move_filters_1_and_2", [True, False])
-            print_stamped("Finished enable n3 move filters 1 and 2 benchmark")
+            log_stamped("Finished enable n3 move filters 1 and 2 benchmark")
 
         if all_benchmarks or enable_n3_move_filters_3_and_4:
-            print_stamped("Running enable n3 move filters 3 and 4 benchmark...")
+            log_stamped("Running enable n3 move filters 3 and 4 benchmark...")
             benchmark_param("enable_n3_move_filters_3_and_4", [True, False])
-            print_stamped("Finished enable n3 move filters 3 and 4 benchmark")
+            log_stamped("Finished enable n3 move filters 3 and 4 benchmark")
 
         if all_benchmarks or tactics:
-            print_stamped("Running tactics benchmark...")
+            log_stamped("Running tactics benchmark...")
             benchmark_param(
                 "tactics",
                 [
@@ -274,44 +274,44 @@ def run(
                     ]
                 ],
             )
-            print_stamped("Finished tactics benchmark")
+            log_stamped("Finished tactics benchmark")
 
         if all_benchmarks or apply_theorem_11a:
-            print_stamped("Running apply theorem 11a benchmark...")
+            log_stamped("Running apply theorem 11a benchmark...")
             benchmark_param("apply_theorem_11a", [False, True])
-            print_stamped("Finished apply theorem 11a benchmark")
+            log_stamped("Finished apply theorem 11a benchmark")
 
         if all_benchmarks or apply_theorem_11b:
-            print_stamped("Running apply theorem 11b benchmark...")
+            log_stamped("Running apply theorem 11b benchmark...")
             benchmark_param("apply_theorem_11b", [False, True])
-            print_stamped("Finished apply theorem 11b benchmark")
+            log_stamped("Finished apply theorem 11b benchmark")
 
         if all_benchmarks or ban_repeated_states:
-            print_stamped("Running ban repeated states benchmark...")
+            log_stamped("Running ban repeated states benchmark...")
             benchmark_param("ban_repeated_states", [False, True])
-            print_stamped("Finished ban repeated states benchmark")
+            log_stamped("Finished ban repeated states benchmark")
 
         if all_benchmarks or enable_corner_min_patterns:
-            print_stamped("Running enable corner min patterns benchmark...")
+            log_stamped("Running enable corner min patterns benchmark...")
             benchmark_param("enable_corner_min_patterns", [False, True])
-            print_stamped("Finished enable corner min patterns benchmark")
+            log_stamped("Finished enable corner min patterns benchmark")
 
         if all_benchmarks or enable_edge_min_patterns:
-            print_stamped("Running enable edge min patterns benchmark...")
+            log_stamped("Running enable edge min patterns benchmark...")
             benchmark_param("enable_edge_min_patterns", [False, True])
-            print_stamped("Finished enable edge min patterns benchmark")
+            log_stamped("Finished enable edge min patterns benchmark")
 
         if all_benchmarks or enable_minimal_moves_n2:
-            print_stamped("Running enable minimal moves n2 benchmark...")
+            log_stamped("Running enable minimal moves n2 benchmark...")
             benchmark_param("enable_minimal_moves_n2", [False, True], True)
-            print_stamped("Finished enable minimal moves n2 benchmark")
+            log_stamped("Finished enable minimal moves n2 benchmark")
 
         if all_benchmarks or florian_benchmark:
-            print_stamped("Running florian benchmark...")
+            log_stamped("Running florian benchmark...")
             benchmark_param("florian")
-            print_stamped("Finished florian benchmark")
+            log_stamped("Finished florian benchmark")
 
-        print_stamped(f"Finished iteration {iteration + 1}")
+        log_stamped(f"Finished iteration {iteration + 1}")
 
 
 if __name__ == "__main__":
