@@ -24,14 +24,16 @@ BENCHMARK_PUZZLES = [
 ]
 
 
-def load_benchmark_puzzles(only_n2: bool = False) -> list[Puzzle]:
+def load_benchmark_puzzles(only_n2: bool = False, only_n3: bool = False) -> list[Puzzle]:
     """Load all benchmark puzzles from the list of puzzles.."""
     if only_n2:
         return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES if 'n2' in name]
+    elif only_n3:
+        return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES if 'n3' in name]
     return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES]
 
 
-def benchmark_param(parameter_name: str, parameter_values: list | None = None, only_n2: bool = False):
+def benchmark_param(parameter_name: str, parameter_values: list | None = None, only_n2: bool = False, only_n3: bool = False):
     """Benchmark the solve function for a list of parameter values. This can be
     used to determine which parameters are best.
     """
@@ -109,7 +111,7 @@ def benchmark_param(parameter_name: str, parameter_values: list | None = None, o
                     "",
                 )
         else:
-            for puzzle in load_benchmark_puzzles(only_n2):
+            for puzzle in load_benchmark_puzzles(only_n2, only_n3):
                 log_stamped(f"puzzle {puzzle.name}...")
                 time_range_secs: tuple[float, float] | None = None
 
@@ -182,8 +184,6 @@ def run(
     enable_n3_move_filters_1_and_2: bool = False,
     enable_n3_move_filters_3_and_4: bool = False,
     tactics: bool = False,
-    apply_theorem_11a: bool = False,
-    apply_theorem_11b: bool = False,
     ban_repeated_states: bool = False,
     enable_corner_min_patterns: bool = False,
     enable_edge_min_patterns: bool = False,
@@ -200,8 +200,6 @@ def run(
     @param enable_n3_move_filters_1_and_2: Whether to perform the enable n3 move filters 1 and 2 benchmark.
     @param enable_n3_move_filters_3_and_4: Whether to perform the enable n3 move filters 3 and 4 benchmark.
     @param tactics: Whether to perform the tactics benchmark.
-    @param apply_theorem_11a: Whether to perform the apply theorem 11a benchmark.
-    @param apply_theorem_11b: Whether to perform the apply theorem 11b benchmark.
     @param ban_repeated_states: Whether to perform the ban repeated states benchmark.
     @param enable_corner_min_patterns: Whether to perform the enable corner min patterns benchmark.
     @param enable_edge_min_patterns: Whether to perform the enable edge min patterns benchmark.
@@ -217,8 +215,6 @@ def run(
             enable_n3_move_filters_1_and_2,
             enable_n3_move_filters_3_and_4,
             tactics,
-            apply_theorem_11a,
-            apply_theorem_11b,
             ban_repeated_states,
             enable_corner_min_patterns,
             enable_edge_min_patterns,
@@ -242,17 +238,17 @@ def run(
 
         if all_benchmarks or enable_n2_move_filters_1_and_2:
             log_stamped("Running enable n2 move filters 1 and 2 benchmark...")
-            benchmark_param("enable_n2_move_filters_1_and_2", [True, False])
+            benchmark_param("enable_n2_move_filters_1_and_2", [True, False], True)
             log_stamped("Finished enable n2 move filters 1 and 2 benchmark")
 
         if all_benchmarks or enable_n3_move_filters_1_and_2:
             log_stamped("Running enable n3 move filters 1 and 2 benchmark...")
-            benchmark_param("enable_n3_move_filters_1_and_2", [True, False])
+            benchmark_param("enable_n3_move_filters_1_and_2", [True, False], only_n3=True)
             log_stamped("Finished enable n3 move filters 1 and 2 benchmark")
 
         if all_benchmarks or enable_n3_move_filters_3_and_4:
             log_stamped("Running enable n3 move filters 3 and 4 benchmark...")
-            benchmark_param("enable_n3_move_filters_3_and_4", [True, False])
+            benchmark_param("enable_n3_move_filters_3_and_4", [True, False], only_n3=True)
             log_stamped("Finished enable n3 move filters 3 and 4 benchmark")
 
         if all_benchmarks or tactics:
@@ -267,7 +263,6 @@ def run(
                         "se;s;ds;bti;sp",
                         "se;s;ds;c2b;sp",
                         "se;s;ds;cs;sp",
-                        # "se;s;ds;css;sp",
                         "se;s;ds;eti;sp",
                         "se;s;ds;pi;sp",
                         "se;s;ds;pv;sp",
@@ -275,16 +270,6 @@ def run(
                 ],
             )
             log_stamped("Finished tactics benchmark")
-
-        if all_benchmarks or apply_theorem_11a:
-            log_stamped("Running apply theorem 11a benchmark...")
-            benchmark_param("apply_theorem_11a", [False, True])
-            log_stamped("Finished apply theorem 11a benchmark")
-
-        if all_benchmarks or apply_theorem_11b:
-            log_stamped("Running apply theorem 11b benchmark...")
-            benchmark_param("apply_theorem_11b", [False, True])
-            log_stamped("Finished apply theorem 11b benchmark")
 
         if all_benchmarks or ban_repeated_states:
             log_stamped("Running ban repeated states benchmark...")
@@ -332,10 +317,6 @@ if __name__ == "__main__":
                         help="Whether to perform the enable n3 move filters 3 and 4 benchmark.")
     parser.add_argument("--tactics", type=bool, default=False,
                         help="Whether to perform the tactics benchmark.")
-    parser.add_argument("--apply_theorem_11a", type=bool, default=False,
-                        help="Whether to perform the apply theorem 11a benchmark.")
-    parser.add_argument("--apply_theorem_11b", type=bool, default=False,
-                        help="Whether to perform the apply theorem 11b benchmark.")
     parser.add_argument("--ban_repeated_states", type=bool, default=False,
                         help="Whether to perform the ban repeated states benchmark.")
     parser.add_argument("--enable_corner_min_patterns", type=bool, default=False,
@@ -357,8 +338,6 @@ if __name__ == "__main__":
         args.enable_n3_move_filters_1_and_2,
         args.enable_n3_move_filters_3_and_4,
         args.tactics,
-        args.apply_theorem_11a,
-        args.apply_theorem_11b,
         args.ban_repeated_states,
         args.enable_corner_min_patterns,
         args.enable_edge_min_patterns,
