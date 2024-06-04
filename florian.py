@@ -80,8 +80,12 @@ class Florian:
     def puzzle_file_to_florian(self) -> None:
         """Converts a puzzle file to Florian's format."""
         puzzle = open(f'{_PUZZLES_FOLDER}{self.__puzzle_file_txt}').readline()
-        (open(f'{_FLORIAN_FOLDER}{_PUZZLES_FOLDER}{self.__puzzle_file_txt}', 'w')
-         .write(self.puzzle_us_to_florian(puzzle)))
+
+        if not os.path.exists(f'{_FLORIAN_FOLDER}{_PUZZLES_FOLDER}'):
+            os.makedirs(f'{_FLORIAN_FOLDER}{_PUZZLES_FOLDER}')
+
+        with open(f'{_FLORIAN_FOLDER}{_PUZZLES_FOLDER}{self.__puzzle_file_txt}', 'w') as f:
+            f.write(self.puzzle_us_to_florian(puzzle))
 
     def to_florians_dimacs(self) -> timedelta:
         """Converts a puzzle file to Florian's format and runs rubiks_sat.py with the given number of moves.

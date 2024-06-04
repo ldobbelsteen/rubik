@@ -1,3 +1,4 @@
+import os.path
 import sys
 import subprocess
 
@@ -1549,6 +1550,9 @@ rubiks = read_file(str(sys.argv[1]))
 # print_rubiks(sys.stdout, rubiks)
 
 # Changed: Where to save the dimacs file
+if not os.path.exists("florian/dimacs"):
+    os.makedirs("florian/dimacs")
+
 myfile = open(f"florian/dimacs/{file_name}.dimacs", 'w')
 myfile.write("p cnf "+str(73)+str(nb_moves+10)+str(3)+" "+str(nb_constraints(nb_moves))+"\n")
 constraints(myfile, rubiks, nb_moves)
