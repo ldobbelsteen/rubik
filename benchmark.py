@@ -228,72 +228,105 @@ def run(
         log_stamped(f"Starting iteration {iteration + 1}")
         if all_benchmarks or move_size:
             log_stamped("Running move size benchmark...")
-            benchmark_param("move_size", [1, 2, 3, 4])
+            try:
+                benchmark_param("move_size", [1, 2, 3, 4])
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished move size benchmark")
 
         if all_benchmarks or max_solver_threads:
             log_stamped("Running max solver threads benchmark...")
-            benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
+            try:
+                benchmark_param("max_solver_threads", [0, 1, 2, 4, 7])
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished max solver threads benchmark")
 
         if all_benchmarks or enable_n2_move_filters_1_and_2:
             log_stamped("Running enable n2 move filters 1 and 2 benchmark...")
-            benchmark_param("enable_n2_move_filters_1_and_2", [True, False], True)
+            try:
+                benchmark_param("enable_n2_move_filters_1_and_2", [True, False], True)
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished enable n2 move filters 1 and 2 benchmark")
 
         if all_benchmarks or enable_n3_move_filters_1_and_2:
             log_stamped("Running enable n3 move filters 1 and 2 benchmark...")
-            benchmark_param("enable_n3_move_filters_1_and_2", [True, False], only_n3=True)
+            try:
+                benchmark_param("enable_n3_move_filters_1_and_2", [True, False], only_n3=True)
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished enable n3 move filters 1 and 2 benchmark")
 
         if all_benchmarks or enable_n3_move_filters_3_and_4:
             log_stamped("Running enable n3 move filters 3 and 4 benchmark...")
-            benchmark_param("enable_n3_move_filters_3_and_4", [True, False], only_n3=True)
+            try:
+                benchmark_param("enable_n3_move_filters_3_and_4", [True, False], only_n3=True)
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished enable n3 move filters 3 and 4 benchmark")
 
         if all_benchmarks or tactics:
             log_stamped("Running tactics benchmark...")
-            benchmark_param(
-                "tactics",
-                [
-                    Tactics.from_str(s)
-                    for s in [
-                        "se;s;ds;sp",
-                        "se;s;ds;a;sp",
-                        "se;s;ds;bti;sp",
-                        "se;s;ds;c2b;sp",
-                        "se;s;ds;cs;sp",
-                        "se;s;ds;eti;sp",
-                        "se;s;ds;pi;sp",
-                        "se;s;ds;pv;sp",
-                    ]
-                ],
-            )
+            try:
+                benchmark_param(
+                    "tactics",
+                    [
+                        Tactics.from_str(s)
+                        for s in [
+                            "se;s;ds;sp",
+                            "se;s;ds;a;sp",
+                            "se;s;ds;bti;sp",
+                            "se;s;ds;c2b;sp",
+                            "se;s;ds;cs;sp",
+                            "se;s;ds;eti;sp",
+                            "se;s;ds;pi;sp",
+                            "se;s;ds;pv;sp",
+                        ]
+                    ],
+                )
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished tactics benchmark")
 
         if all_benchmarks or ban_repeated_states:
             log_stamped("Running ban repeated states benchmark...")
-            benchmark_param("ban_repeated_states", [False, True])
+            try:
+                benchmark_param("ban_repeated_states", [False, True])
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished ban repeated states benchmark")
 
         if all_benchmarks or enable_corner_min_patterns:
             log_stamped("Running enable corner min patterns benchmark...")
-            benchmark_param("enable_corner_min_patterns", [False, True])
+            try:
+                benchmark_param("enable_corner_min_patterns", [False, True])
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished enable corner min patterns benchmark")
 
         if all_benchmarks or enable_edge_min_patterns:
             log_stamped("Running enable edge min patterns benchmark...")
-            benchmark_param("enable_edge_min_patterns", [False, True])
+            try:
+                benchmark_param("enable_edge_min_patterns", [False, True])
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished enable edge min patterns benchmark")
 
         if all_benchmarks or enable_minimal_moves_n2:
             log_stamped("Running enable minimal moves n2 benchmark...")
-            benchmark_param("enable_minimal_moves_n2", [False, True], True)
+            try:
+                benchmark_param("enable_minimal_moves_n2", [False, True], True)
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished enable minimal moves n2 benchmark")
 
         if all_benchmarks or florian_benchmark:
             log_stamped("Running florian benchmark...")
-            benchmark_param("florian")
+            try:
+                benchmark_param("florian")
+            except Exception as e:
+                log_stamped(f"Error: {e}")
             log_stamped("Finished florian benchmark")
 
         log_stamped(f"Finished iteration {iteration + 1}")
