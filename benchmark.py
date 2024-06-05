@@ -33,7 +33,12 @@ def load_benchmark_puzzles(only_n2: bool = False, only_n3: bool = False) -> list
     return [Puzzle.from_file(name) for name in BENCHMARK_PUZZLES]
 
 
-def benchmark_param(parameter_name: str, parameter_values: list | None = None, only_n2: bool = False, only_n3: bool = False):
+def benchmark_param(
+        parameter_name: str,
+        parameter_values: list | None = None,
+        only_n2: bool = False,
+        only_n3: bool = False
+):
     """Benchmark the solve function for a list of parameter values. This can be
     used to determine which parameters are best.
     """
